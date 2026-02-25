@@ -1,0 +1,232 @@
+---
+title: "Testing Your Agent"
+description: "How to properly test your agent before going live — checklists, scenarios, and red flags."
+---
+
+## Why Testing Matters
+
+<Warning>
+  **The risks of skipping testing:**
+  - Agent gives incorrect information to real customers — damages trust
+  - Edge cases cause confusion or repetitive loops
+  - Functions fail silently — customers get no answer
+  - You discover problems after launch, not before
+
+  **Rule of thumb:** Run at least 20 test conversations before going live.
+</Warning>
+
+---
+
+## Three Levels of Testing
+
+### Level 1: Browser Test (Fastest)
+
+Test directly in the Studio — no phone number required.
+
+<Steps>
+  <Step title="Open the Studio">
+    Go to [studio.talkifai.dev/agents](https://studio.talkifai.dev/agents) and open your agent.
+  </Step>
+  <Step title="Click Test Agent">
+    Find the **Test Agent** or **Try** button on the agent card.
+  </Step>
+  <Step title="Allow microphone access">
+    The browser will ask for microphone permission — click Allow.
+  </Step>
+  <Step title="Have a conversation">
+    Behave like a real user. Take notes on anything that feels off.
+  </Step>
+</Steps>
+
+### Level 2: Phone Test
+
+Call your agent on a real phone to verify carrier setup, audio quality, and latency.
+
+1. Assign a phone number to the agent — [Telephony Guide →](/platform/telephony)
+2. Call from your own phone
+3. Verify: audio quality, response latency, call routing
+
+### Level 3: Team Testing
+
+Before going to production, have 2–3 team members test independently.
+
+- Give them specific scenarios to test
+- Collect structured feedback
+- Fix issues before real customers encounter them
+
+---
+
+## Complete Testing Checklist
+
+### ✅ Basic Functionality
+
+<Check>Agent answers the call correctly?</Check>
+<Check>Introduction is correct (name, company)?</Check>
+<Check>Voice sounds right (speed, tone, quality)?</Check>
+<Check>Language is correct?</Check>
+<Check>Agent understands its role?</Check>
+
+### ✅ Conversation Quality
+
+<Check>Handles normal questions accurately?</Check>
+<Check>Remembers context within the call (e.g., uses name after asking)?</Check>
+<Check>Responses sound natural — not robotic?</Check>
+<Check>Responses are concise — not overly long?</Check>
+<Check>No unnecessary repetition?</Check>
+
+### ✅ Functions (If Configured)
+
+<Check>Functions are called at the right time?</Check>
+<Check>Function results are used correctly in the response?</Check>
+<Check>Function failures are handled gracefully?</Check>
+<Check>User is informed when the agent is fetching data?</Check>
+
+### ✅ Edge Cases
+
+<Check>Handles unknown questions gracefully?</Check>
+<Check>Redirects when user goes off-topic?</Check>
+<Check>Stays calm with an angry or rude user?</Check>
+<Check>Handles very fast speech?</Check>
+<Check>Handles silence of several seconds?</Check>
+<Check>Works with background noise?</Check>
+
+### ✅ Escalation & End
+
+<Check>Escalation triggers correctly when expected?</Check>
+<Check>End call works properly?</Check>
+<Check>Transfer works (if configured)?</Check>
+
+---
+
+## Test Scenario Library
+
+Copy and run these scenarios during testing:
+
+### Customer Support Scenarios
+
+```
+Scenario 1 — Happy Path:
+"I'd like to track my order. The order ID is ORD-12345."
+
+Scenario 2 — Information Not Available:
+"Can I get an invoice from January 2022?"
+
+Scenario 3 — Angry Customer:
+"This is the third time I'm calling about the same issue and nothing has been fixed!"
+
+Scenario 4 — Escalation Request:
+"I need to speak with a manager immediately."
+
+Scenario 5 — Off-Topic:
+"By the way, what city are you based in?"
+```
+
+### Appointment Booking Scenarios
+
+```
+Scenario 1 — Simple Booking:
+"I'd like to book an appointment for tomorrow."
+
+Scenario 2 — Fully Booked:
+"Is there anything available today?" (test when slots are full)
+
+Scenario 3 — Reschedule:
+"I need to change my existing appointment."
+
+Scenario 4 — Wrong Context:
+"I'd like to book an appointment for my dog."
+(For a human clinic — does it handle gracefully?)
+```
+
+### Sales Scenarios
+
+```
+Scenario 1 — Qualified Lead:
+"Yes, I'm very interested. My budget is around $500/month."
+
+Scenario 2 — Not Interested:
+"No thanks, I'm not looking for anything right now."
+
+Scenario 3 — Price Negotiator:
+"Can you just do it for $50?"
+
+Scenario 4 — Competitor Mention:
+"I'm already using [Competitor Name]."
+```
+
+---
+
+## Red Flags to Watch For
+
+<AccordionGroup>
+  <Accordion title="🔴 Agent loses context mid-conversation">
+    **Symptom:** Asks the customer's name twice, or doesn't use the name after learning it.
+
+    **Fix:** Add to system prompt: "Use the customer's name throughout the conversation once you know it."
+  </Accordion>
+
+  <Accordion title="🔴 Responses are too long">
+    **Symptom:** Agent speaks 5–6 sentences per response.
+
+    **Fix:** Add to prompt: "Every response must be a maximum of 2 sentences. Never exceed 30 words."
+  </Accordion>
+
+  <Accordion title="🔴 Confused by edge cases">
+    **Symptom:** When asked something out of scope, the agent repeats itself or gives a strange answer.
+
+    **Fix:** Add an explicit edge case handler to the prompt.
+  </Accordion>
+
+  <Accordion title="🔴 Functions called at wrong time">
+    **Symptom:** Order status function fires before the user asks for it.
+
+    **Fix:** Improve the function description — be very specific about when it should be triggered.
+  </Accordion>
+
+  <Accordion title="🔴 Unnatural-sounding numbers or abbreviations">
+    **Symptom:** "Order I.D. one two three four" sounds choppy.
+
+    **Fix:** Add to prompt: "Spell out all numbers and abbreviations naturally — say 'order number one-two-three-four' not 'order ID 1234'."
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Performance Benchmarks
+
+After going live, monitor these metrics in [Analytics →](/platform/analytics):
+
+| Metric | Target | If Below Target |
+|--------|--------|-----------------|
+| **Call completion rate** | > 80% | Agent is frustrating — review the prompt |
+| **Function call success rate** | > 95% | Check API/webhook connection |
+| **Escalation rate** | < 20% | Too many escalations = prompt is unclear |
+| **Average call duration** | Use-case specific | Too short = unhelpful; too long = inefficient |
+
+---
+
+## Production Ready Checklist
+
+Only go live when all of these are checked:
+
+<Check>20+ test conversations completed</Check>
+<Check>All basic scenarios pass</Check>
+<Check>All edge cases handled correctly</Check>
+<Check>All functions working properly</Check>
+<Check>Voice sounds natural and appropriate</Check>
+<Check>Escalation path works correctly</Check>
+<Check>At least 2 team members have tested independently</Check>
+<Check>Agent is Activated in the Studio</Check>
+
+---
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Connect a Phone Number" icon="phone" href="/platform/telephony">
+    Set up real calling after testing is complete.
+  </Card>
+  <Card title="Monitor with Analytics" icon="chart-bar" href="/platform/analytics">
+    Track live calls and continuously improve.
+  </Card>
+</CardGroup>

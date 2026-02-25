@@ -1,0 +1,172 @@
+---
+title: "Custom Functions"
+description: "Give your voice agent access to your own APIs using custom function webhooks."
+---
+
+## Overview
+
+Custom Functions let your agent **call external APIs during a live conversation** — fetching data, triggering actions, or integrating with your systems.
+
+When the LLM decides a function is needed, TalkifAI makes an HTTP POST to your webhook URL and injects the result back into the conversation.
+
+---
+
+## How It Works
+
+```
+User: "What's my order status?"
+         │
+         ▼
+   LLM decides to call check_order_status()
+         │
+         ▼
+   TalkifAI → POST https://your-api.com/check-order
+              Body: { "arguments": { "order_id": "ORD-123" } }
+              Headers: X-User-ID, X-Org-ID (auto-injected)
+         │
+         ▼
+   Your API returns: { "status": "shipped", "eta": "tomorrow" }
+         │
+         ▼
+   Agent says: "Your order is shipped and arrives tomorrow!"
+```
+
+---
+
+## Creating a Custom Function
+
+### Step 1: Define the function in Studio
+
+1. Go to **Studio → Functions → Custom Functions**
+2. Click **Create Function**
+3. Fill in:
+
+| Field | Description |
+|-------|-------------|
+| **Name** | Snake_case identifier (e.g., `check_order_status`) |
+| **Description** | What the function does (LLM reads this to decide when to call it) |
+| **Webhook URL** | Your HTTPS endpoint |
+| **Parameters** | JSON Schema defining the input |
+
+### Step 2: Define parameters (JSON Schema)
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "order_id": {
+      "type": "string",
+      "description": "The customer's order ID"
+    },
+    "customer_email": {
+      "type": "string",
+      "description": "Customer email for verification"
+    }
+  },
+  "required": ["order_id"]
+}
+```
+
+### Step 3: Implement your webhook
+
+Your endpoint receives:
+
+```json
+{
+  "function_name": "check_order_status",
+  "arguments": {
+    "order_id": "ORD-123",
+    "customer_email": "user@example.com"
+  },
+  "call_id": "call_abc123",
+  "session_id": "sess_xyz789"
+}
+```
+
+**Headers sent by TalkifAI:**
+
+| Header | Value |
+|--------|-------|
+| `X-User-ID` | Authenticated user's ID |
+| `X-Org-ID` | Active organization ID |
+| `Content-Type` | `application/json` |
+
+### Step 4: Return a response
+
+```python
+# Flask example
+from flask import Flask, request, jsonify
+
+app = Flask(__name__)
+
+@app.route('/check-order', methods=['POST'])
+def check_order():
+    data = request.json
+    order_id = data['arguments']['order_id']
+
+    # Your business logic
+    order = db.get_order(order_id)
+
+    return jsonify({
+        "result": f"Order {order_id} is {order.status}. Expected delivery: {order.eta}."
+    })
+```
+
+<Note>
+  The `result` field is what the agent reads aloud. Keep it conversational and concise.
+</Note>
+
+---
+
+## Enable on an Agent
+
+1. Go to **Agent Settings → Functions**
+2. Under **Custom Functions**, toggle on the functions you want available
+3. Save the agent
+
+The agent will only call functions that are explicitly enabled on it.
+
+---
+
+## Built-in Functions
+
+TalkifAI also provides built-in functions you can enable without any webhook:
+
+| Function | Description |
+|----------|-------------|
+| `web_search` | Search the internet in real-time |
+| `end_call` | Programmatically end the conversation |
+| `get_time` | Get current time in a timezone |
+
+Enable them in **Agent Settings → Functions → Built-in Functions**.
+
+---
+
+## Security
+
+- All function webhook calls include `X-User-ID` and `X-Org-ID` headers
+- These headers are **auto-injected** and cannot be spoofed by the user's voice
+- Validate the headers in your webhook to prevent unauthorized access
+- Use HTTPS-only endpoints
+
+```python
+@app.route('/check-order', methods=['POST'])
+def check_order():
+    user_id = request.headers.get('X-User-ID')
+    org_id = request.headers.get('X-Org-ID')
+
+    if not user_id or not org_id:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    # Proceed safely
+```
+
+---
+
+## Timeout Behavior
+
+Functions must respond within **5 seconds**. If your endpoint times out, the agent will say:
+
+> "I'm having trouble accessing that information right now. Let me try something else."
+
+For slow operations, consider returning a quick acknowledgment and using follow-up functions.

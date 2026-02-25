@@ -1,0 +1,419 @@
+---
+title: "Commercial Agents & Marketplace"
+description: "Publish your agents to the marketplace and monetize your AI creations — or discover pre-built agents for your business."
+---
+
+## Overview
+
+The **TalkifAI Marketplace** is a commercial platform where you can:
+
+1. **Publish** your agents for others to use
+2. **Discover** pre-built agents for common use cases
+3. **Monetize** your AI creations
+4. **Share** agents within your organization or globally
+
+**Agent Visibility Modes:**
+
+| Mode | Who Can Access | Best For |
+|------|---------------|----------|
+| **Private** | Only you + org admins | Personal projects, testing |
+| **Public** | All organization members | Team collaboration |
+| **Commercial** | Anyone (marketplace) | Monetization, public distribution |
+
+---
+
+## Publishing a Commercial Agent
+
+### Step 1: Build & Test Your Agent
+
+Before publishing:
+
+<Check>Agent handles 20+ test conversations successfully</Check>
+<Check>System prompt is polished and professional</Check>
+<Check>All functions work correctly</Check>
+<Check>Voice quality is excellent</Check>
+<Check>Edge cases are handled gracefully</Check>
+<Check>Agent provides genuine value to users</Check>
+
+<Warning>
+  Commercial agents represent your brand. Poor quality agents receive negative reviews and damage your reputation.
+</Warning>
+
+### Step 2: Prepare Agent for Publication
+
+1. **Complete Agent Profile:**
+   - Professional name (e.g., "E-Commerce Support Pro" not "Test Bot")
+   - Clear description explaining what it does
+   - Comprehensive system prompt
+   - All necessary functions configured
+
+2. **Set Appropriate Pricing:**
+   - Consider your costs (API usage, development time)
+   - Research similar agents in marketplace
+   - Start competitive, adjust based on demand
+
+3. **Create Documentation:**
+   - Usage instructions
+   - Supported use cases
+   - Limitations and requirements
+   - Support contact information
+
+### Step 3: Change Visibility to Commercial
+
+**Via Studio:**
+
+1. Go to **Agent Settings → Visibility**
+2. Select **Commercial**
+3. Fill in marketplace details:
+   - **Category**: Customer Support, Sales, Healthcare, etc.
+   - **Pricing**: Free or paid (coming soon)
+   - **Demo**: Enable public testing (recommended)
+4. Click **Submit for Review**
+
+**Via API:**
+
+```bash
+PATCH /v1/agents/{agentId}
+Authorization: Bearer YOUR_API_KEY
+
+{
+  "mode": "commercial",
+  "category": "customer_support",
+  "publicDescription": "Professional customer support agent for e-commerce..."
+}
+```
+
+### Step 4: Review Process
+
+All commercial agents go through a review:
+
+**Review Criteria:**
+- ✅ Agent functions correctly
+- ✅ System prompt is appropriate and safe
+- ✅ No harmful or misleading content
+- ✅ Voice and audio quality meet standards
+- ✅ Functions work as described
+- ✅ Compliance with terms of service
+
+**Timeline:** 1-3 business days
+
+**If Rejected:**
+- You'll receive feedback via email
+- Fix issues and resubmit
+- Unlimited resubmissions allowed
+
+---
+
+## Marketplace Discovery
+
+### Browse Available Agents
+
+1. Go to **Studio → Marketplace**
+2. Filter by:
+   - **Category**: Support, Sales, Healthcare, Finance, etc.
+   - **Price**: Free or Paid
+   - **Rating**: User reviews
+   - **Architecture**: Pipeline or Realtime
+
+### Agent Details Page
+
+Each agent shows:
+
+| Section | Information |
+|---------|-------------|
+| **Overview** | Description, features, use cases |
+| **Specifications** | Architecture, LLM, voice, languages |
+| **Pricing** | Cost structure (if paid) |
+| **Reviews** | User ratings and feedback |
+| **Documentation** | Setup guide, API reference |
+| **Support** | Contact information |
+
+### Try Before You Buy
+
+**Demo Mode:**
+- Most agents offer free demo calls
+- Test in browser before activating
+- No credit card required for demo
+
+---
+
+## Using Commercial Agents
+
+### Activate an Agent
+
+1. Find agent in **Marketplace**
+2. Click **Use This Agent**
+3. Agent is copied to your organization
+4. Configure settings:
+   - System prompt (customize for your needs)
+   - Voice (optional change)
+   - Functions (add your API keys)
+5. Click **Activate**
+
+### Customization
+
+After copying, the agent is **yours to modify**:
+
+- ✅ Edit system prompt
+- ✅ Change voice and settings
+- ✅ Add/remove functions
+- ✅ Link your knowledge bases
+- ✅ Adjust for your use case
+
+<Note>
+  You're customizing your own copy. Changes don't affect the original agent or other users.
+</Note>
+
+### Pricing Models
+
+**Free Agents:**
+- No cost to use
+- You pay only for API usage (LLM, TTS, etc.)
+- Great for getting started
+
+**Paid Agents:** (Coming Soon)
+- One-time purchase or subscription
+- Revenue shared with creator
+- Premium support included
+
+---
+
+## For Agent Creators
+
+### Best Practices for Commercial Success
+
+<CardGroup cols={2}>
+  <Card title="Solve a Real Problem" icon="target">
+    Focus on specific use cases. "E-commerce returns handler" performs better than "General support bot".
+  </Card>
+  <Card title="Professional Quality" icon="star">
+    Invest in excellent voice quality, natural prompts, and thorough testing. First impressions matter.
+  </Card>
+  <Card title="Clear Documentation" icon="book">
+    Provide setup instructions, use case examples, and troubleshooting guides.
+  </Card>
+  <Card title="Responsive Support" icon="envelope">
+    Offer email support. Respond to user questions within 24-48 hours.
+  </Card>
+  <Card title="Regular Updates" icon="rotate">
+    Improve your agent based on user feedback. Add features, fix issues, stay current.
+  </Card>
+  <Card title="Competitive Pricing" icon="dollar-sign">
+    Research similar agents. Price fairly for the value provided.
+  </Card>
+</CardGroup>
+
+### Agent Categories
+
+**Popular Categories:**
+
+| Category | Examples |
+|----------|----------|
+| **Customer Support** | Order tracking, returns, FAQs |
+| **Sales** | Lead qualification, product demos |
+| **Healthcare** | Appointment booking, triage |
+| **Finance** | Payment reminders, account info |
+| **Real Estate** | Property inquiries, scheduling |
+| **Education** | Tutoring, course information |
+| **Hospitality** | Reservations, concierge |
+| **Legal** | Initial consultation, intake |
+
+### Revenue Sharing (Coming Soon)
+
+**Paid Agent Model:**
+- **70%** to creator
+- **30%** to TalkifAI platform
+- Monthly payouts via Stripe
+- Minimum payout: $50
+
+**Earnings Dashboard:**
+- Track usage and revenue
+- Download reports
+- Manage subscriptions
+
+---
+
+## Permissions & Access Control
+
+### Who Can Create Commercial Agents?
+
+| Role | Can Create Commercial |
+|------|----------------------|
+| **Owner** | ✅ Yes |
+| **Admin** | ✅ Yes |
+| **Member** | ❌ No (can create private/public only) |
+
+### Who Can Modify Commercial Agents?
+
+| Agent Mode | Who Can Edit |
+|------------|--------------|
+| **Private** | Creator + org owners/admins |
+| **Public** | Creator + org owners/admins |
+| **Commercial** | Only org owners/admins |
+
+<Warning>
+  Commercial agents cannot be edited by members — only owners and admins. This prevents accidental changes to public-facing agents.
+</Warning>
+
+### Deleting Commercial Agents
+
+**Restrictions:**
+- Only org owners/admins can delete
+- Creator can delete if also owner/admin
+- Deleted agents cannot be recovered
+- Existing users keep their copies
+
+---
+
+## API Reference
+
+### List Commercial Agents
+
+```bash
+GET /v1/marketplace/agents
+```
+
+**Query Parameters:**
+
+| Param | Type | Description |
+|-------|------|-------------|
+| `category` | string | Filter by category |
+| `search` | string | Search by name/description |
+| `page` | number | Page number |
+| `limit` | number | Items per page |
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "agent_commercial123",
+      "name": "E-Commerce Support Pro",
+      "description": "Professional customer support agent...",
+      "category": "customer_support",
+      "organization": {
+        "name": "AI Solutions Inc",
+        "slug": "ai-solutions"
+      },
+      "rating": 4.8,
+      "users": 1250,
+      "pricing": "free"
+    }
+  ]
+}
+```
+
+### Get Agent Details
+
+```bash
+GET /v1/marketplace/agents/{agentId}
+```
+
+### Clone Commercial Agent
+
+```bash
+POST /v1/marketplace/agents/{agentId}/clone
+Authorization: Bearer YOUR_API_KEY
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "newAgentId": "agent_your123",
+    "message": "Agent copied to your organization successfully"
+  }
+}
+```
+
+---
+
+## Legal & Compliance
+
+### Terms of Service
+
+**Agent Creators Must:**
+- Own or have rights to all content
+- Not infringe intellectual property
+- Not include harmful or malicious code
+- Comply with applicable laws
+- Provide accurate descriptions
+
+**Prohibited Content:**
+- Hate speech or discrimination
+- Medical/legal advice (without disclaimers)
+- Adult or explicit content
+- Political campaigning
+- Spam or misleading information
+
+### User Data & Privacy
+
+- Commercial agents process user data
+- Creators **cannot** access user conversation data
+- All data handled per TalkifAI privacy policy
+- GDPR and CCPA compliant
+
+### Dispute Resolution
+
+- Users can report problematic agents
+- TalkifAI reviews and removes violating content
+- Creators can appeal removal decisions
+- Repeated violations → account suspension
+
+---
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="My agent was rejected from marketplace">
+    **Common Reasons:**
+    - Incomplete system prompt
+    - Poor audio quality
+    - Functions not working
+    - Inappropriate content
+
+    **Fix:** Review feedback email, improve agent, resubmit.
+  </Accordion>
+
+  <Accordion title="How do I update my commercial agent?">
+    **Process:**
+    1. Edit agent in Studio
+    2. Changes auto-apply to all users
+    3. For major changes, notify existing users
+    4. Test thoroughly before publishing
+  </Accordion>
+
+  <Accordion title="Can I remove my agent from marketplace?">
+    **Yes:**
+    1. Change mode from `commercial` to `private`
+    2. Agent removed from marketplace immediately
+    3. Existing users keep their copies
+    4. New users cannot discover it
+  </Accordion>
+
+  <Accordion title="How do I support users of my agent?">
+    **Best Practices:**
+    - Provide email support in documentation
+    - Respond within 48 hours
+    - Create FAQ/troubleshooting guide
+    - Monitor user reviews for issues
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Browse Marketplace" icon="store">
+    Discover pre-built agents for your use case.
+  </Card>
+  <Card title="Publish Your Agent" icon="rocket">
+    Share your creation with the world.
+  </Card>
+  <Card title="Agent Templates" icon="file">
+    Start with proven templates for common use cases.
+  </Card>
+</CardGroup>

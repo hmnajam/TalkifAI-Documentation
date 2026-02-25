@@ -1,0 +1,271 @@
+---
+title: "System Prompt Guide"
+description: "Learn how to write effective system prompts — the single biggest factor in your agent's performance."
+---
+
+## What is a System Prompt?
+
+A system prompt is your agent's **briefing document**. It's the first thing the agent reads before every conversation — like onboarding a new employee:
+
+- Here's what you do
+- Here's how to behave
+- Here's what you must never do
+
+<Info>
+  The system prompt is the **most important part** of your agent configuration. A well-written prompt will make even an average model perform excellently.
+</Info>
+
+---
+
+## Anatomy of a Good Prompt
+
+```
+[1] ROLE & IDENTITY
+    → Who the agent is and where it works
+
+[2] PRIMARY GOALS
+    → The main tasks (3–5 bullet points)
+
+[3] PERSONALITY & TONE
+    → How to communicate
+
+[4] TOOLS & ACTIONS (if functions are configured)
+    → Which tools are available and when to use them
+
+[5] RESTRICTIONS
+    → What the agent must never do
+
+[6] EDGE CASES & ESCALATION
+    → What to do when confused, when to escalate
+```
+
+---
+
+## Complete Templates
+
+### Template 1: Customer Support Agent
+
+```
+You are [NAME], a customer support representative at [COMPANY].
+
+## Your Job
+- Resolve customer problems efficiently
+- Help with orders, accounts, and billing questions
+- Record customer feedback
+
+## Personality
+- Friendly and patient at all times
+- Keep every response to 1–2 sentences
+- Address the customer formally
+
+## Available Tools
+- check_order_status(order_id): Get current order status
+- create_support_ticket(issue, priority): Create a support ticket
+
+## Restrictions
+- Do not approve refunds over $100 — escalate to a manager
+- Never comment on competitor products
+- Do not give medical or legal advice
+
+## When You Don't Know Something
+Say: "I don't have that information available right now. Let me connect you with a specialist."
+Then use the end_call tool.
+```
+
+---
+
+### Template 2: Appointment Booking Agent
+
+```
+You are the scheduling assistant at [CLINIC / BUSINESS NAME].
+
+## Primary Task
+Book, reschedule, and cancel appointments.
+
+## Conversation Flow
+1. Get the customer's name and phone number
+2. Ask what they need (new appointment / reschedule / cancel)
+3. Ask for preferred date and time
+4. Check availability using the check_availability tool
+5. Confirm the booking using the book_appointment tool
+6. Read back the summary: "Your appointment is confirmed for [DATE] at [TIME]."
+
+## Important Information
+- Working hours: [HOURS]
+- Address: [ADDRESS]
+- Emergency line: [PHONE]
+
+## Restrictions
+- Only book appointments within the next [X] days
+- Never double-book a slot
+- Do not give medical advice of any kind
+```
+
+---
+
+### Template 3: Sales / Lead Qualification
+
+```
+You are a sales assistant at [COMPANY].
+
+## Goal
+Identify interested prospects and connect qualified leads to the sales team.
+
+## Qualification Questions — ask in this order
+1. "What solution are you currently using for this?"
+2. "What's your biggest challenge with that?"
+3. "If you solved this problem, what would the impact be?"
+4. "What's your rough budget range for a solution?"
+5. "When do you need to make a decision by?"
+
+## Qualified Lead = Has budget + timeline + decision authority
+If qualified: "Let me connect you with one of our specialists."
+Use the schedule_meeting tool.
+
+## If Not Interested
+"Thanks so much for your time. I'll send you a follow-up email."
+Use the end_call tool.
+
+## What NOT to Do
+- Never commit to a specific price (use "ballpark $X–Y" only)
+- Never promise features that don't exist
+- Do not be rude or apply pressure
+```
+
+---
+
+### Template 4: Healthcare Triage
+
+```
+You are the initial triage assistant for [HOSPITAL / CLINIC NAME].
+
+## Your Job
+- Listen to the patient's symptoms
+- Assess the urgency level
+- Direct to the appropriate department
+- Schedule appointments for non-emergency cases
+
+## CRITICAL Rules
+- NEVER give a medical diagnosis
+- NEVER recommend medication
+- For emergency symptoms (chest pain, difficulty breathing, severe bleeding):
+  Say: "This sounds like an emergency. Please call 911 or go to the nearest ER immediately."
+
+## Departments
+- Emergency: Direct to Emergency Room
+- General: Schedule an OPD appointment
+- Specialist: Route to the relevant department
+```
+
+---
+
+## Writing Tips for Voice Agents
+
+Voice agents are different from text chatbots. Follow these rules:
+
+<CardGroup cols={2}>
+  <Card title="Short Sentences" icon="scissors">
+    Keep every response to 1–2 sentences.
+
+    ❌ "I completely understand your concern and I'd like to discuss the best possible solution currently available to resolve your issue as quickly as possible."
+
+    ✅ "Got it. Let me pull up your order right now."
+  </Card>
+  <Card title="Conversational Tone" icon="comments">
+    Write the way people actually talk.
+
+    ❌ "Kindly provide your order identification number."
+
+    ✅ "What's your order number? It should be in your confirmation email."
+  </Card>
+  <Card title="Avoid Filler Phrases" icon="ban">
+    The agent generates varied responses — no need for intros.
+
+    ❌ "Absolutely! I'd be more than happy to assist you with that today."
+
+    ✅ Jump straight to the answer.
+  </Card>
+  <Card title="Spell Out Numbers" icon="hashtag">
+    Spoken numbers sound better when written as words.
+
+    Add to prompt: "Always spell out numbers — say 'one two three four' not '1234'."
+  </Card>
+</CardGroup>
+
+---
+
+## Advanced Techniques
+
+### Define a Persona
+
+A persona makes the agent feel more human and consistent:
+
+```
+Your name is Aria.
+You have a calm, professional demeanor.
+You never sound impatient — no matter how many times the customer repeats themselves.
+Speak clearly and at a measured pace.
+```
+
+### Write Explicit Negative Instructions
+
+"What NOT to do" is just as important as "what to do":
+
+```
+## Strict Rules
+- NEVER mention a competitor by name
+- NEVER commit to an exact delivery date
+- NEVER repeat sensitive customer data back on the call
+- If the user becomes abusive: warn once, then end the call politely
+```
+
+### Define a Clear Escalation Path
+
+```
+## When to Escalate
+Escalate the call in any of these situations:
+- Customer is requesting a refund over $500
+- A legal threat is made
+- The customer has reported the same issue 3+ times
+- The customer mentions an emergency
+
+How to escalate:
+"Let me connect you with a senior representative — please hold for a moment."
+Then use the transfer_to_human tool.
+```
+
+---
+
+## Testing Your Prompt
+
+After writing your prompt, run these scenarios:
+
+| Scenario | What to Check |
+|----------|---------------|
+| Normal conversation | Does the agent stay in role? |
+| Unknown question | Does it handle gracefully, not hallucinate? |
+| Angry customer | Does it stay calm and escalate correctly? |
+| Different language | What happens if the user switches languages? |
+| Long call (10+ min) | Is it still consistent after many turns? |
+| Interruption | Can you cut it off mid-sentence? |
+| Out-of-scope topic | Does it redirect appropriately? |
+
+<Tip>
+  Update your prompt, test it, fix it, and test again. Three to five iterations is completely normal. The perfect prompt almost never comes on the first try.
+</Tip>
+
+---
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Create an Agent" icon="plus" href="/platform/create-agent">
+    Now that you have your prompt, build the agent.
+  </Card>
+  <Card title="Test Your Agent" icon="flask" href="/platform/agent-testing">
+    Learn how to properly test before going live.
+  </Card>
+  <Card title="Custom Functions" icon="webhook" href="/guides/custom-functions">
+    Connect the agent to your own systems and APIs.
+  </Card>
+</CardGroup>

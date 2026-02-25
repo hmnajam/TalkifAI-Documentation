@@ -1,0 +1,480 @@
+---
+title: "Post-Call Analysis"
+description: "Automatically analyze call quality, extract insights, and ensure compliance with customizable AI-powered evaluation forms."
+---
+
+## Overview
+
+**Post-Call Analysis** automatically evaluates every call session using AI to:
+
+- Assess call quality and agent performance
+- Extract key insights and action items
+- Ensure compliance with company standards
+- Identify training opportunities
+- Track metrics over time
+
+**Best for:**
+- Quality assurance teams
+- Call center managers
+- Compliance officers
+- Training coordinators
+
+---
+
+## How It Works
+
+```
+Call ends
+    │
+    ▼
+Transcript saved to database
+    │
+    ▼
+Post-call analysis triggered automatically
+    │
+    ▼
+AI analyzes transcript using configured form
+    │
+    ▼
+Results saved and linked to call session
+    │
+    ▼
+Available in Analytics dashboard
+```
+
+---
+
+## Step 1: Configure Analysis Model
+
+### Choose Analysis Model
+
+Go to **Agent Settings → Post-Call Analysis** and select:
+
+| Model | Speed | Cost | Best For |
+|-------|-------|------|----------|
+| **GPT-5 Mini** ⭐ | Fast | $$ | Most use cases |
+| **GPT-5 Nano** | Very fast | $ | High volume, simple analysis |
+| **Gemini 2.5 Flash** | Fast | $$ | Google ecosystem |
+| **Gemini 2.5 Flash Lite** | Very fast | $ | Cost-sensitive analysis |
+
+<Info>
+  **Recommended:** GPT-5 Mini offers the best balance of accuracy and cost for most quality assurance workflows.
+</Info>
+
+### Update via API
+
+```bash
+PUT /api/post-call-analysis/model/{agentId}
+Authorization: Bearer YOUR_API_KEY
+
+{
+  "model": "gpt_5_mini"
+}
+```
+
+---
+
+## Step 2: Create Analysis Form
+
+### Form Fields
+
+Each analysis form contains custom fields that define what the AI should evaluate:
+
+**Field Types:**
+
+| Type | Use Case | Example |
+|------|----------|---------|
+| **Text** | Open-ended analysis | "Summarize the customer's issue" |
+| **Selector** | Multiple choice rating | "Call outcome: Resolved / Partial / Unresolved" |
+| **Boolean** | Yes/No questions | "Did the agent follow greeting protocol?" |
+| **Number** | Numeric scores | "Rate professionalism 1-10" |
+
+### Create Form via Studio
+
+1. Go to **Agent Settings → Post-Call Analysis**
+2. Click **Add Field**
+3. Configure each field:
+
+| Field | Description |
+|-------|-------------|
+| **Name** | Internal identifier (snake_case) |
+| **Description** | What to evaluate |
+| **Type** | Text, Selector, Boolean, or Number |
+| **Options** | For Selector type: available choices |
+| **Required** | Must this field be completed? |
+| **Order** | Display order in results |
+
+4. Click **Save Form**
+
+### Example Form: Customer Support QA
+
+```json
+[
+  {
+    "name": "call_summary",
+    "description": "Briefly summarize the customer's issue and how it was resolved",
+    "type": "text",
+    "optional": false,
+    "order": 1
+  },
+  {
+    "name": "call_outcome",
+    "description": "How was the call resolved?",
+    "type": "selector",
+    "options": [
+      "Fully Resolved",
+      "Partially Resolved",
+      "Unresolved - Escalated",
+      "Unresolved - Follow-up Required"
+    ],
+    "optional": false,
+    "order": 2
+  },
+  {
+    "name": "agent_professionalism",
+    "description": "Rate the agent's professionalism and tone",
+    "type": "number",
+    "optional": false,
+    "order": 3
+  },
+  {
+    "name": "followed_protocol",
+    "description": "Did the agent follow the greeting and closing protocol?",
+    "type": "boolean",
+    "optional": false,
+    "order": 4
+  },
+  {
+    "name": "empathy_shown",
+    "description": "Did the agent demonstrate empathy for the customer's situation?",
+    "type": "boolean",
+    "optional": true,
+    "order": 5
+  },
+  {
+    "name": "improvement_areas",
+    "description": "Identify specific areas where the agent could improve",
+    "type": "text",
+    "optional": true,
+    "order": 6
+  }
+]
+```
+
+### Create Form via API
+
+```bash
+POST /api/post-call-analysis/{agentId}
+Authorization: Bearer YOUR_API_KEY
+
+{
+  "name": "Customer Support QA",
+  "description": "Quality assurance evaluation for support calls",
+  "type": "text",
+  "optional": false,
+  "order": 1
+}
+```
+
+---
+
+## Step 3: View Analysis Results
+
+### Individual Call Results
+
+1. Go to **Analytics → Call Logs**
+2. Click on any completed call
+3. View **Post-Call Analysis** tab
+4. See AI-generated evaluation
+
+**Example Result:**
+```json
+{
+  "roomName": "agent_123_1705320000_xyz",
+  "analysisData": {
+    "call_summary": "Customer called about delayed order #ORD-12345. Agent checked system, identified shipping delay, and arranged expedited replacement. Customer satisfied with resolution.",
+    "call_outcome": "Fully Resolved",
+    "agent_professionalism": 9,
+    "followed_protocol": true,
+    "empathy_shown": true,
+    "improvement_areas": "Agent could have proactively offered compensation for the inconvenience."
+  },
+  "createdAt": "2024-01-15T10:35:00Z"
+}
+```
+
+### Aggregate Analytics
+
+Go to **Analytics → Quality Scores** to see:
+
+- **Average scores** by metric
+- **Trends over time**
+- **Agent performance comparison**
+- **Common improvement areas**
+- **Compliance rates**
+
+---
+
+## Advanced Features
+
+### Drag-and-Drop Field Ordering
+
+**In Studio:**
+1. Go to **Agent Settings → Post-Call Analysis**
+2. Drag fields to reorder
+3. Changes save automatically
+4. Order updates for all future analyses
+
+### Multiple Analysis Forms
+
+Create different forms for different call types:
+
+**Example Setup:**
+```
+Sales Agent
+├── Lead Qualification Form
+├── Demo Call Form
+└── Follow-up Form
+
+Support Agent
+├── Technical Issue Form
+├── Billing Inquiry Form
+└── Escalation Form
+```
+
+### Custom Analysis Models
+
+For specialized needs, use custom models:
+
+**Use Cases:**
+- Industry-specific compliance (HIPAA, PCI-DSS)
+- Multi-language analysis
+- Sentiment analysis for specific demographics
+- Custom scoring algorithms
+
+Contact support for custom model setup.
+
+---
+
+## API Reference
+
+### List Analysis Forms
+
+```bash
+GET /api/post-call-analysis/{agentId}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "fields": [
+    {
+      "id": "field_abc123",
+      "name": "call_summary",
+      "description": "Summarize the customer's issue",
+      "type": "text",
+      "optional": false,
+      "options": [],
+      "order": 1,
+      "createdAt": "2024-01-10T09:00:00Z"
+    }
+  ]
+}
+```
+
+### Create Field
+
+```bash
+POST /api/post-call-analysis/{agentId}
+Authorization: Bearer YOUR_API_KEY
+Content-Type: application/json
+
+{
+  "name": "customer_satisfaction",
+  "description": "Rate overall customer satisfaction",
+  "type": "number",
+  "optional": false,
+  "order": 1
+}
+```
+
+### Update Field
+
+```bash
+PUT /api/post-call-analysis/{agentId}
+Authorization: Bearer YOUR_API_KEY
+Content-Type: application/json
+
+{
+  "fieldId": "field_abc123",
+  "name": "customer_satisfaction_score",
+  "description": "Rate customer satisfaction (1-10)",
+  "type": "number",
+  "optional": false,
+  "options": [],
+  "order": 1
+}
+```
+
+### Delete Field
+
+```bash
+DELETE /api/post-call-analysis/{agentId}?fieldId={fieldId}
+Authorization: Bearer YOUR_API_KEY
+```
+
+### Get Analysis Results
+
+```bash
+GET /api/post-call-analysis/results/{agentId}
+Authorization: Bearer YOUR_API_KEY
+
+Query Parameters:
+- roomName: Filter by specific call
+- startDate: Filter by date range
+- endDate: Filter by date range
+- limit: Number of results (default: 20)
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "results": [
+    {
+      "id": "result_xyz789",
+      "roomName": "agent_123_1705320000_xyz",
+      "analysisData": {
+        "call_summary": "...",
+        "call_outcome": "Fully Resolved",
+        "agent_professionalism": 9
+      },
+      "createdAt": "2024-01-15T10:35:00Z"
+    }
+  ]
+}
+```
+
+---
+
+## Use Cases
+
+<CardGroup cols={2}>
+  <Card title="Quality Assurance" icon="clipboard-check">
+    Automatically evaluate every call for compliance with company standards. Identify agents needing coaching.
+  </Card>
+  <Card title="Compliance Monitoring" icon="shield">
+    Ensure regulated industries (healthcare, finance) meet compliance requirements. Generate audit reports.
+  </Card>
+  <Card title="Training & Coaching" icon="chalkboard-teacher">
+    Identify common mistakes and improvement areas. Create targeted training programs.
+  </Card>
+  <Card title="Customer Insights" icon="lightbulb">
+    Extract recurring issues, sentiment trends, and customer pain points from call data.
+  </Card>
+  <Card title="Performance Metrics" icon="chart-line">
+    Track agent performance over time. Set benchmarks and measure improvement.
+  </Card>
+  <Card title="Risk Management" icon="triangle-exclamation">
+    Flag problematic calls for review. Identify potential legal or PR risks early.
+  </Card>
+</CardGroup>
+
+---
+
+## Best Practices
+
+### Writing Effective Analysis Fields
+
+<CardGroup cols={2}>
+  <Card title="Be Specific" icon="crosshairs">
+    ❌ "Rate the call quality"
+    ✅ "Did the agent actively listen and acknowledge the customer's concerns?"
+  </Card>
+  <Card title="Use Clear Scales" icon="sliders">
+    ❌ "Rate professionalism 1-10" (undefined)
+    ✅ "Rate professionalism: 1=Rude, 5=Neutral, 10=Exceptionally polite"
+  </Card>
+  <Card title="Keep It Focused" icon="target">
+    Limit to 5-10 key metrics. Too many fields increase analysis time and cost.
+  </Card>
+  <Card title="Include Action Items" icon="list">
+    Always have a text field for "Improvement areas" or "Action items" to get actionable feedback.
+  </Card>
+</CardGroup>
+
+### Analysis Frequency
+
+| Use Case | Recommended Frequency |
+|----------|----------------------|
+| **Quality Assurance** | 100% of calls |
+| **Compliance** | 100% of calls |
+| **Training** | 10-20% random sample |
+| **Customer Insights** | 100% of calls |
+| **Performance Reviews** | All calls + monthly summary |
+
+### Cost Optimization
+
+**Tips:**
+- Use **GPT-5 Nano** for high-volume simple analysis
+- Analyze only **completed calls** (skip abandoned/failed)
+- Limit text fields to **200 words max**
+- Batch analysis during off-peak hours (coming soon)
+
+---
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Analysis is taking too long">
+    **Problem:** Analysis typically takes 10-30 seconds per call. If longer:
+
+    **Solutions:**
+    - Reduce number of fields
+    - Use faster model (Nano or Flash Lite)
+    - Shorten text field descriptions
+    - Check if transcript is very long (>30 min call)
+  </Accordion>
+
+  <Accordion title="Analysis results are generic or unhelpful">
+    **Problem:** Field descriptions are too vague.
+
+    **Solution:** Be more specific:
+    - ❌ "Rate the agent"
+    - ✅ "Rate how well the agent explained the solution in simple terms"
+  </Accordion>
+
+  <Accordion title="Some fields are empty in results">
+    **Problem:** Optional fields may be skipped if AI can't determine answer.
+
+    **Solution:**
+    - Make critical fields required (optional: false)
+    - Improve field descriptions
+    - Add examples to descriptions
+  </Accordion>
+
+  <Accordion title="Analysis cost is too high">
+    **Solutions:**
+    - Switch to cheaper model (Nano or Flash Lite)
+    - Analyze sample instead of 100% of calls
+    - Reduce number of text fields (most expensive)
+    - Shorten analysis prompts
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Create Analysis Form" icon="file-plus">
+    Set up your first quality assurance evaluation form.
+  </Card>
+  <Card title="View Analytics" icon="chart-bar">
+    See aggregated quality scores and trends.
+  </Card>
+  <Card title="Export Reports" icon="download">
+    Download analysis results for external reporting.
+  </Card>
+</CardGroup>

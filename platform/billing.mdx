@@ -1,0 +1,272 @@
+---
+title: "Billing & Credits"
+description: "Understand how TalkifAI billing works, manage your credits, and optimize costs across voice and text agent usage."
+---
+
+## Overview
+
+TalkifAI uses a **credit-based billing system**. You purchase credits, and credits are consumed as your agents handle conversations. This gives you predictable costs and full control over spending.
+
+**Key points:**
+- Credits are pre-purchased (no surprise monthly bills)
+- Credits never expire
+- Usage tracked per minute for voice, per token for text
+- All billing is per-organization
+
+---
+
+## How Credits Work
+
+```
+Buy Credits → Deploy Agents → Agents Handle Calls → Credits Consumed
+```
+
+Credits are consumed based on:
+
+| Usage Type | Credit Rate |
+|------------|-------------|
+| **Voice Call** | Per minute of active conversation |
+| **Text Chat** | Per 1,000 tokens (input + output) |
+| **Post-Call Analysis** | Per analysis run |
+| **Knowledge Base Queries** | Per similarity search |
+
+<Info>
+  Exact credit rates are shown in your **Dashboard → Billing** page. Rates vary based on your plan and selected AI providers.
+</Info>
+
+---
+
+## Billing Modes
+
+The cost of running an agent depends on your **Key Mode** (set in Settings → API Keys):
+
+### TalkifAI Keys Mode (Default)
+
+TalkifAI covers all provider costs (OpenAI, Deepgram, Cartesia, Google). You pay a **single per-minute rate** that includes everything.
+
+**Best for:** Simplicity. One rate, one invoice.
+
+```
+You pay TalkifAI Credits
+    └── TalkifAI pays: OpenAI + Deepgram + Cartesia
+```
+
+### My Keys (BYOK) Mode
+
+You provide your own provider API keys. You pay TalkifAI a **reduced platform fee** only. Provider costs are billed directly to your provider accounts.
+
+**Best for:** High-volume deployments where you want direct provider relationships and potentially lower costs.
+
+```
+You pay TalkifAI Credits (platform fee only)
+    +
+You pay OpenAI directly (LLM costs)
+You pay Deepgram directly (STT costs)
+You pay Cartesia directly (TTS costs)
+```
+
+---
+
+## Purchasing Credits
+
+### Via Dashboard
+
+1. Go to **Settings → Billing**
+2. Click **Add Credits**
+3. Select a credit package or enter a custom amount
+4. Complete payment via credit card
+5. Credits are added instantly to your account
+
+### Credit Packages
+
+| Package | Credits | Price |
+|---------|---------|-------|
+| Starter | 1,000 | $10 |
+| Growth | 5,000 | $45 (10% off) |
+| Scale | 20,000 | $160 (20% off) |
+| Enterprise | Custom | Contact us |
+
+---
+
+## Auto Top-Up
+
+Prevent service interruptions by enabling automatic credit top-up:
+
+1. Go to **Settings → Billing**
+2. Enable **Auto Top-Up**
+3. Set a **Low Balance Threshold** (e.g., 500 credits)
+4. Set a **Top-Up Amount** (e.g., 2,000 credits)
+5. Save your payment method
+
+When your balance drops below the threshold, TalkifAI automatically purchases the configured amount and charges your saved payment method.
+
+<Note>
+  Auto top-up uses your **saved payment method**. Update it in Settings → Billing → Payment Methods.
+</Note>
+
+---
+
+## Monitoring Usage
+
+### Credit Balance
+
+Your current balance is shown in the **top navigation bar** of Studio. Click it to go to the Billing page.
+
+### Usage Breakdown
+
+Go to **Settings → Billing → Usage** to see:
+
+- Credits consumed per day / week / month
+- Breakdown by agent
+- Breakdown by call type (voice, text, analysis)
+- Export usage as CSV
+
+### Usage Alerts
+
+Set up alerts to notify you before credits run out:
+
+1. Go to **Settings → Billing → Alerts**
+2. Enable **Low Balance Alert**
+3. Set threshold (e.g., "Alert me when below 1,000 credits")
+4. Enter notification email
+5. Save
+
+---
+
+## Developer Quotas
+
+For **developer accounts** within your organization, you can set monthly minute limits to control individual usage:
+
+- Default quota: **3,000 minutes/month** per developer
+- Check current usage: **Analytics → Usage by Member**
+- Adjust quota: **Settings → Team → [Member] → Edit Quota**
+
+When a developer reaches their quota, their calls are blocked until the next month or until their quota is increased by an admin.
+
+---
+
+## Cost Optimization
+
+### Choose the Right Architecture
+
+| Architecture | Relative Cost | Best For |
+|-------------|--------------|----------|
+| **Realtime (OpenAI/Gemini)** | Higher | Low-latency priority |
+| **Pipeline** | Moderate | Balance of cost + flexibility |
+| **Text Chat** | Lowest | Non-voice use cases |
+
+### Choose Cost-Effective Providers
+
+When using Pipeline architecture, mixing providers affects cost:
+
+```
+Most Expensive: OpenAI GPT-4o + ElevenLabs + Deepgram
+Most Balanced:  GPT-4o-mini + Cartesia + Deepgram
+Most Affordable: Gemini Flash + Cartesia + Deepgram
+```
+
+### Optimize Post-Call Analysis
+
+Post-call analysis adds to cost. Optimize by:
+- Use **GPT-4o-mini** or **Gemini Flash** (cheaper than GPT-4o)
+- Limit analysis to **5-7 fields** (fewer = cheaper)
+- Analyze **100% for compliance**, sample 10-20% for general QA
+
+### Reduce Call Duration
+
+Shorter calls = fewer credits. Improve agent efficiency:
+- Write concise system prompts (agents that talk less)
+- Enable **inactivity timeout** to end abandoned calls
+- Use effective triage to route calls faster
+
+---
+
+## Invoices & Billing History
+
+### Download Invoices
+
+1. Go to **Settings → Billing → History**
+2. Click **Download Invoice** next to any purchase
+3. Invoices are in PDF format for accounting
+
+### Billing Email
+
+By default, receipts go to the organization owner's email. Update:
+
+1. Go to **Settings → Billing**
+2. Under **Billing Email**, enter the desired address
+3. Save
+
+---
+
+## Enterprise & Custom Plans
+
+For high-volume deployments or custom requirements:
+
+- **Volume discounts** on large credit purchases
+- **Monthly invoicing** instead of pre-purchase
+- **Dedicated support** SLA
+- **Custom rate limits** for batch calling
+- **SLA guarantees** for uptime
+
+Contact [support@talkifai.dev](mailto:support@talkifai.dev) or your account manager for enterprise pricing.
+
+---
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Calls failing with 'insufficient credits'">
+    **Problem:** Agents stop working due to low balance.
+
+    **Solutions:**
+    1. Purchase additional credits in Settings → Billing
+    2. Enable Auto Top-Up to prevent future outages
+    3. Set a Low Balance Alert to be notified early
+  </Accordion>
+
+  <Accordion title="Credits depleted faster than expected">
+    **Check:**
+    1. Go to Settings → Billing → Usage to see which agents/call types are consuming most
+    2. Look for unusually long calls (inactivity timeout may be off)
+    3. Check if Post-Call Analysis is running on all calls unnecessarily
+    4. Verify no test agent is running in an infinite loop
+
+    **Quick wins:** Enable inactivity timeout, switch to cheaper LLM model for low-stakes agents.
+  </Accordion>
+
+  <Accordion title="Payment failed">
+    **Common causes:**
+    - Card declined by bank (3D Secure / international transaction)
+    - Card expired
+    - Insufficient funds
+
+    **Fix:**
+    1. Update payment method in Settings → Billing → Payment Methods
+    2. Try a different card
+    3. Contact your bank if card is being declined
+  </Accordion>
+
+  <Accordion title="Invoice shows wrong amount">
+    **Contact support:** Email [support@talkifai.dev](mailto:support@talkifai.dev) with your invoice number. Include the dates in question and your usage CSV export from the billing dashboard.
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Add Credits" icon="plus">
+    Purchase credits to start deploying agents.
+  </Card>
+  <Card title="Enable Auto Top-Up" icon="rotate">
+    Never run out of credits with automatic balance management.
+  </Card>
+  <Card title="Optimize Costs" icon="chart-line">
+    Review Analytics to find cost reduction opportunities.
+  </Card>
+  <Card title="API Key Mode" icon="key">
+    Switch to BYOK mode to reduce per-minute costs at scale.
+  </Card>
+</CardGroup>

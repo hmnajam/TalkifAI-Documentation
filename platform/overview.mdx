@@ -1,0 +1,152 @@
+---
+title: "Platform Overview"
+description: "Understand TalkifAI's core concepts — organizations, agents, and sessions."
+---
+
+## What is TalkifAI?
+
+TalkifAI is a **no-code AI voice agent platform**. Without writing a single line of code, you can build AI phone agents that:
+
+- Receive and handle phone calls
+- Hold natural conversations with customers
+- Fetch data from your systems (CRM, database, etc.)
+- Make automated outbound calls
+
+<Info>
+  Think of it as hiring an AI receptionist — available 24/7, never tired, and handling every call perfectly.
+</Info>
+
+---
+
+## Core Concepts
+
+There are only **4 things** you need to understand:
+
+<CardGroup cols={2}>
+  <Card title="Organization" icon="building">
+    Your workspace. Everything — agents, phone numbers, team members — lives here.
+  </Card>
+  <Card title="Agent" icon="robot">
+    Your AI assistant. You define its name, personality, and capabilities.
+  </Card>
+  <Card title="Voice Session" icon="phone-volume">
+    A single call conversation. Every call is tracked with recording, transcript, and analytics.
+  </Card>
+  <Card title="Functions" icon="webhook">
+    Tools the agent can use during a call — like checking order status or creating a support ticket.
+  </Card>
+</CardGroup>
+
+---
+
+## Organizations
+
+An **organization** is your TalkifAI workspace.
+
+```
+You (User)
+  └── Organization (e.g., "Acme Corp")
+        ├── Agents         (your AI assistants)
+        ├── Phone Numbers  (inbound/outbound calling)
+        ├── API Keys       (developer access)
+        ├── Call Logs      (history of every call)
+        └── Team Members   (your colleagues)
+```
+
+**Key rules:**
+- One user can belong to **multiple organizations**
+- Data from one organization is **never visible** to another (full isolation)
+- Every resource is scoped to an organization
+
+### Team Roles
+
+| Role | Permissions |
+|------|-------------|
+| **Owner** | Full control — billing, agents, members, settings |
+| **Admin** | Invite members, manage public/commercial agents |
+| **Member** | Use agents, manage own private agents |
+
+<Tip>
+  When you first sign up, TalkifAI automatically creates a default organization for you.
+</Tip>
+
+---
+
+## Agents
+
+An **agent** is your configured AI voice assistant.
+
+Every agent has these components:
+
+| Component | What it defines | Example |
+|-----------|-----------------|---------|
+| **Architecture** | How voice is processed | Pipeline or Realtime |
+| **System Prompt** | Agent's personality and role | "You are a support agent for Acme Corp..." |
+| **LLM** | Which AI model powers the conversation | GPT-4o, Gemini 1.5 Pro |
+| **Voice (TTS)** | What the agent sounds like | Cartesia, ElevenLabs |
+| **STT** | Converts speech to text | Deepgram Nova 2 |
+| **Functions** | Actions the agent can take | Check order, create ticket |
+| **Visibility** | Who can access the agent | Public / Private / Commercial |
+
+### Agent Visibility
+
+| Mode | Who can access |
+|------|----------------|
+| **Private** | Only you and org admins |
+| **Public** | Everyone in your organization |
+| **Commercial** | Available on the marketplace — anyone can use it |
+
+<Note>
+  Start new agents as **Private**. Test thoroughly, then switch to **Public** or **Commercial**.
+</Note>
+
+---
+
+## Voice Sessions
+
+A **voice session** is a complete call conversation.
+
+Every session automatically goes through this lifecycle:
+
+```
+📞 Call starts (inbound or outbound)
+    │
+    ▼
+🤖 Agent joins the LiveKit room
+    │
+    ▼
+🗣️ Live conversation loop
+   User speaks → STT → LLM → TTS → Agent responds
+    │
+    ▼
+📊 Call ends
+   ✓ Recording saved to cloud storage
+   ✓ Transcript stored in database
+   ✓ Duration calculated (used for billing)
+   ✓ Post-call analysis runs (if configured)
+```
+
+---
+
+## Where to Go Next
+
+<CardGroup cols={2}>
+  <Card title="Create Your First Agent" icon="circle-play" href="/platform/create-agent">
+    Step-by-step guide — your first agent ready in 10 minutes.
+  </Card>
+  <Card title="Choose an Architecture" icon="diagram-project" href="/platform/agent-architectures">
+    Pipeline or Realtime? Clear up the confusion.
+  </Card>
+  <Card title="Write a System Prompt" icon="pen-to-square" href="/platform/system-prompt-guide">
+    Good prompt = good agent. Learn how to write one.
+  </Card>
+  <Card title="Choose a Voice" icon="microphone" href="/platform/voices">
+    The right voice makes your agent sound professional.
+  </Card>
+  <Card title="Connect a Phone Number" icon="phone" href="/platform/telephony">
+    Set up a carrier for real phone calls.
+  </Card>
+  <Card title="Test Your Agent" icon="flask" href="/platform/agent-testing">
+    How to properly test before going live.
+  </Card>
+</CardGroup>

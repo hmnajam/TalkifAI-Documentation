@@ -1,0 +1,246 @@
+---
+title: "Custom Functions"
+description: "Create and manage custom API integrations that agents call in real-time during conversations."
+---
+
+## Overview
+
+Custom Functions give your agent the ability to **take real actions** during a call — check order status, book appointments, query your database, update your CRM.
+
+When the agent decides to call a function, TalkifAI sends a **POST request to your endpoint** with the parameters it extracted from the conversation. Your server responds with data, and the agent uses it in its reply.
+
+```
+User says: "What's the status of my order?"
+       ↓
+Agent calls: check_order_status({ order_id: "12345" })
+       ↓
+TalkifAI → POST https://api.yourcompany.com/order-status
+       ↓
+Your server responds: { "status": "shipped", "eta": "Jan 20" }
+       ↓
+Agent says: "Your order shipped! It should arrive by January 20th."
+```
+
+For setup instructions, see [Custom Functions Guide →](/guides/custom-functions)
+
+---
+
+## Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/v1/agents/{agentId}/functions` | List all functions for an agent |
+| `POST` | `/v1/agents/{agentId}/functions` | Add a function to an agent |
+| `PUT` | `/v1/agents/{agentId}/functions` | Update an existing function |
+| `DELETE` | `/v1/agents/{agentId}/functions?functionId={id}` | Remove a function |
+
+---
+
+## List Functions
+
+```bash
+GET /v1/agents/{agentId}/functions
+Authorization: Bearer YOUR_API_KEY
+```
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "functions": [
+    {
+      "id": "func_abc123",
+      "name": "check_order_status",
+      "label": "Check Order Status",
+      "description": "Looks up the current status of a customer's order",
+      "endpoint": "https://api.yourcompany.com/orders/status",
+      "method": "POST",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "order_id": {
+            "type": "string",
+            "description": "The order ID to look up"
+          }
+        },
+        "required": ["order_id"]
+      },
+      "createdAt": "2024-01-10T09:00:00Z"
+    }
+  ],
+  "canEdit": true
+}
+```
+
+---
+
+## Add a Function
+
+```bash
+POST /v1/agents/{agentId}/functions
+Authorization: Bearer YOUR_API_KEY
+Content-Type: application/json
+```
+
+**Request body:**
+
+```json
+{
+  "name": "check_order_status",
+  "label": "Check Order Status",
+  "description": "Looks up the current status of a customer order by order ID",
+  "endpoint": "https://api.yourcompany.com/orders/status",
+  "method": "POST",
+  "headers": {
+    "Authorization": "Bearer your-internal-api-key",
+    "X-Source": "talkifai"
+  },
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "order_id": {
+        "type": "string",
+        "description": "The order ID to check"
+      }
+    },
+    "required": ["order_id"]
+  }
+}
+```
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `name` | Yes | Function identifier (snake_case, used in system prompt) |
+| `label` | Yes | Human-readable name shown in Studio |
+| `description` | No | What the function does — the agent uses this to decide when to call it |
+| `endpoint` | Yes | Your API endpoint URL (must be HTTPS) |
+| `method` | No | HTTP method: `POST` (default), `GET`, `PUT`, `PATCH` |
+| `headers` | No | Custom headers sent with every call (for auth, etc.) |
+| `parameters` | No | JSON Schema defining the function's input parameters |
+
+**Response:**
+
+```json
+{
+  "id": "func_new789",
+  "name": "check_order_status",
+  "label": "Check Order Status",
+  "agentId": "agent_abc123",
+  "createdAt": "2024-01-15T10:30:00Z"
+}
+```
+
+<Note>
+  After creating the function, **mention it in your system prompt** so the agent knows when to use it. Example: `"To check order status, use the check_order_status function."`
+</Note>
+
+---
+
+## Update a Function
+
+```bash
+PUT /v1/agents/{agentId}/functions
+Authorization: Bearer YOUR_API_KEY
+Content-Type: application/json
+```
+
+**Request body** — include `id` plus any fields to update:
+
+```json
+{
+  "id": "func_abc123",
+  "endpoint": "https://api.yourcompany.com/v2/orders/status",
+  "description": "Updated description for the agent"
+}
+```
+
+**Response:** Updated function object.
+
+---
+
+## Delete a Function
+
+```bash
+DELETE /v1/agents/{agentId}/functions?functionId={functionId}
+Authorization: Bearer YOUR_API_KEY
+```
+
+**Response:**
+
+```json
+{
+  "success": true
+}
+```
+
+<Warning>
+  Deleting a function immediately stops the agent from calling it. If your system prompt references the function by name, update the prompt too.
+</Warning>
+
+---
+
+## How TalkifAI Calls Your Endpoint
+
+When the agent triggers a function, TalkifAI makes a POST to your endpoint:
+
+**Request from TalkifAI to your server:**
+
+```http
+POST https://api.yourcompany.com/orders/status
+Content-Type: application/json
+Authorization: Bearer your-internal-api-key   ← your custom header
+
+{
+  "order_id": "12345"
+}
+```
+
+**Your server must respond within 10 seconds:**
+
+```json
+{
+  "status": "shipped",
+  "carrier": "FedEx",
+  "tracking": "9274899992136003",
+  "eta": "2024-01-20"
+}
+```
+
+The agent receives your response and uses it in its reply to the user. Return any JSON — the agent understands it.
+
+---
+
+## Parameters JSON Schema
+
+Parameters follow **JSON Schema** format (same as OpenAI function calling):
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "order_id": {
+      "type": "string",
+      "description": "The customer's order ID (e.g., ORD-12345)"
+    },
+    "include_history": {
+      "type": "boolean",
+      "description": "Whether to include full order history",
+      "default": false
+    }
+  },
+  "required": ["order_id"]
+}
+```
+
+**Supported types:** `string`, `number`, `boolean`, `array`, `object`
+
+---
+
+## Permissions
+
+| Role | Can View | Can Create/Edit/Delete |
+|------|----------|------------------------|
+| Owner | ✅ | ✅ |
+| Admin | ✅ | ✅ |
+| Member | ✅ (public agents only) | ❌ |

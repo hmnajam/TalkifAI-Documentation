@@ -1,0 +1,135 @@
+---
+title: "Authentication"
+description: "API keys and organization context for the TalkifAI API."
+---
+
+## API Keys
+
+TalkifAI uses **Bearer token authentication**. Every API request must include your API key.
+
+```bash
+Authorization: Bearer tk_live_your_api_key_here
+```
+
+### Generating an API Key
+
+1. Go to **Studio → Settings → API Keys**
+2. Click **Create API Key**
+3. Give it a name (e.g., "Production Backend")
+4. Copy the key immediately — **it won't be shown again**
+
+<Warning>
+  API keys grant full access to your organization. Treat them like passwords. Never commit them to version control or expose them in client-side code.
+</Warning>
+
+### Key Prefixes
+
+| Prefix | Environment |
+|--------|-------------|
+| `tk_live_` | Production |
+| `tk_test_` | Testing/Sandbox |
+
+---
+
+## Organization Context
+
+All API operations are scoped to your **active organization**. The API key is automatically linked to the organization it was created in.
+
+If you're a member of multiple organizations, you'll need separate API keys per organization.
+
+---
+
+## Environment Variables
+
+Store your API key securely as an environment variable:
+
+```bash
+# .env
+TALKIFAI_API_KEY=tk_live_your_key_here
+TALKIFAI_BASE_URL=https://api.talkifai.dev/v1
+```
+
+**Usage in code:**
+
+<CodeGroup>
+```python Python
+import os
+import httpx
+
+headers = {
+    "Authorization": f"Bearer {os.environ['TALKIFAI_API_KEY']}",
+    "Content-Type": "application/json"
+}
+
+response = httpx.get(
+    f"{os.environ['TALKIFAI_BASE_URL']}/agents",
+    headers=headers
+)
+```
+
+```javascript Node.js
+const TALKIFAI_API_KEY = process.env.TALKIFAI_API_KEY;
+
+const response = await fetch('https://api.talkifai.dev/v1/agents', {
+  headers: {
+    'Authorization': `Bearer ${TALKIFAI_API_KEY}`,
+    'Content-Type': 'application/json'
+  }
+});
+```
+
+```bash cURL
+curl https://api.talkifai.dev/v1/agents \
+  -H "Authorization: Bearer $TALKIFAI_API_KEY"
+```
+</CodeGroup>
+
+---
+
+## Verifying Your Key
+
+Test your API key with a simple request:
+
+```bash
+GET /v1/me
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "user": {
+      "id": "user_abc123",
+      "email": "you@company.com",
+      "name": "Your Name"
+    },
+    "organization": {
+      "id": "org_xyz789",
+      "name": "My Company",
+      "slug": "my-company"
+    }
+  }
+}
+```
+
+---
+
+## Revoking API Keys
+
+To revoke a key:
+1. Go to **Studio → Settings → API Keys**
+2. Find the key in the list
+3. Click **Revoke**
+
+Revoked keys immediately return `401 Unauthorized` on all requests.
+
+---
+
+## Security Best Practices
+
+- Rotate API keys every 90 days
+- Use separate keys for development, staging, and production
+- Set up key expiration dates for temporary integrations
+- Monitor API key usage in **Settings → API Keys → Usage**
+- Never log API keys in application logs

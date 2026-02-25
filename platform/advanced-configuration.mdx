@@ -1,0 +1,787 @@
+---
+title: "Advanced Agent Configuration"
+description: "Master advanced agent settings including webhooks, farewell messages, function calling API, multi-language support, greeting configuration, and inactivity timeout."
+---
+
+## Overview
+
+This guide covers six advanced agent configuration options that give you fine-grained control over your agent's behavior:
+
+1. **Webhook Configuration** — Real-time event notifications
+2. **Last Message / Farewell** — Professional conversation closing
+3. **Function Calling API** — Programmatic function management
+4. **Multi-language Support** — Serve customers in multiple languages
+5. **Greeting Configuration** — Control who speaks first
+6. **Inactivity Timeout** — Automatic call cleanup
+
+---
+
+# 1. Webhook Configuration
+
+## Overview
+
+**Webhooks** send real-time HTTP notifications to your server when specific agent events occur. Use webhooks to:
+
+- Trigger actions in your systems
+- Log call events for compliance
+- Update CRM records in real-time
+- Send notifications to your team
+- Sync data with external systems
+
+## Supported Events
+
+| Event | Trigger | Payload |
+|-------|---------|---------|
+| `call.started` | User joins the call | Call ID, user info, timestamp |
+| `call.ended` | Call disconnects | Call ID, duration, transcript URL |
+| `function.called` | Agent calls a function | Function name, arguments, result |
+| `escalation.triggered` | Agent escalates to human | Reason, call context |
+| `transcript.available` | Transcript ready | Transcript URL, call ID |
+
+## Setup Webhook
+
+### Via Studio
+
+1. Go to **Agent Settings → Webhook**
+2. Enter your **Webhook URL** (HTTPS required)
+3. Select **Events** to subscribe to
+4. Click **Save**
+
+### Via API
+
+```bash
+PUT /api/agents/{agentId}/webhook
+Authorization: Bearer YOUR_API_KEY
+Content-Type: application/json
+
+{
+  "webhookUrl": "https://your-api.com/webhooks/talkifai",
+  "events": ["call.started", "call.ended", "function.called"]
+}
+```
+
+## Webhook Payload
+
+### Call Started
+
+```json
+{
+  "event": "call.started",
+  "timestamp": "2024-01-15T10:30:00Z",
+  "data": {
+    "callId": "call_abc123",
+    "roomName": "agent_xyz_1705320000_user123",
+    "agentId": "agent_xyz",
+    "agentName": "Customer Support Bot",
+    "userId": "user_123",
+    "organizationId": "org_456",
+    "direction": "inbound",
+    "phoneNumber": "+12025550123"
+  }
+}
+```
+
+### Call Ended
+
+```json
+{
+  "event": "call.ended",
+  "timestamp": "2024-01-15T10:35:00Z",
+  "data": {
+    "callId": "call_abc123",
+    "roomName": "agent_xyz_1705320000_user123",
+    "agentId": "agent_xyz",
+    "duration": 300,
+    "transcriptUrl": "https://storage.talkifai.dev/transcripts/call_abc123.txt",
+    "recordingUrl": "https://storage.talkifai.dev/recordings/call_abc123.mp3",
+    "status": "completed",
+    "outcome": "resolved"
+  }
+}
+```
+
+### Function Called
+
+```json
+{
+  "event": "function.called",
+  "timestamp": "2024-01-15T10:32:00Z",
+  "data": {
+    "callId": "call_abc123",
+    "functionName": "check_order_status",
+    "arguments": {
+      "order_id": "ORD-12345"
+    },
+    "result": {
+      "status": "shipped",
+      "eta": "2024-01-18"
+    },
+    "success": true
+  }
+}
+```
+
+## Verify Webhook Signature
+
+All webhook requests include a signature header for security:
+
+```
+X-TalkifAI-Signature: sha256=abc123def456...
+```
+
+### Verify in Node.js
+
+```javascript
+const crypto = require('crypto');
+
+function verifyWebhookSignature(payload, signature, secret) {
+  const expectedSignature = crypto
+    .createHmac('sha256', secret)
+    .update(payload)
+    .digest('hex');
+  
+  return `sha256=${expectedSignature}` === signature;
+}
+
+// Usage in Express
+app.post('/webhooks/talkifai', (req, res) => {
+  const signature = req.headers['x-talkifai-signature'];
+  const isValid = verifyWebhookSignature(
+    JSON.stringify(req.body),
+    signature,
+    process.env.TALKIFAI_WEBHOOK_SECRET
+  );
+  
+  if (!isValid) {
+    return res.status(401).send('Invalid signature');
+  }
+  
+  // Process webhook
+  console.log('Webhook event:', req.body.event);
+  res.status(200).send('OK');
+});
+```
+
+## Webhook Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Respond Quickly" icon="bolt">
+  Return 200 OK within 5 seconds. Process heavy tasks asynchronously.
+  </Card>
+  <Card title="Handle Retries" icon="rotate">
+  Webhooks retry up to 3 times on failure. Make your endpoint idempotent.
+  </Card>
+  <Card title="Log Everything" icon="file-alt">
+  Log all webhook events for debugging and audit trails.
+  </Card>
+  <Card title="Use HTTPS" icon="lock">
+  Webhook URLs must use HTTPS for security.
+  </Card>
+</CardGroup>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Webhook not receiving events">
+    **Check:**
+    1. Is webhook URL accessible from public internet?
+    2. Is HTTPS enabled?
+    3. Is webhook enabled on the agent?
+    4. Check webhook logs in Studio → Analytics → Webhook Logs
+  </Accordion>
+
+  <Accordion title="Signature verification failing">
+    **Problem:** Secret mismatch or payload modification.
+
+    **Solution:**
+    - Ensure you're using the correct webhook secret
+    - Verify payload isn't modified before verification
+    - Check encoding (use raw JSON string, not parsed object)
+  </Accordion>
+</AccordionGroup>
+
+---
+
+# 2. Last Message / Farewell
+
+## Overview
+
+The **Last Message** (farewell message) is a closing statement your agent says when the conversation ends naturally. This creates a professional, polished ending to every call.
+
+## When It's Used
+
+**Triggers Last Message:**
+- ✅ User says "thank you, goodbye"
+- ✅ Issue resolved and user confirms
+- ✅ Agent completes all tasks
+- ✅ Natural conversation conclusion
+
+**Does NOT Trigger:**
+- ❌ Call dropped/technical error
+- ❌ Inactivity timeout
+- ❌ User hangs up abruptly
+- ❌ Escalation to human
+
+## Configure Farewell Message
+
+### Via Studio
+
+1. Go to **Agent Settings → Conversation**
+2. Find **Last Message** field
+3. Enter your farewell message (max 100 characters)
+4. Click **Save**
+
+### Examples
+
+**Customer Support:**
+```
+"Thank you for contacting Acme Corp. Have a wonderful day!"
+```
+
+**Sales:**
+```
+"Thanks for your interest! Our team will be in touch soon. Goodbye!"
+```
+
+**Appointment Booking:**
+```
+"Your appointment is confirmed. See you then! Have a great day."
+```
+
+**Medical:**
+```
+"Thank you for calling City Clinic. Take care and stay healthy."
+```
+
+### Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Keep It Short" icon="scissors">
+  Maximum 100 characters. Long farewells frustrate users.
+  </Card>
+  <Card title="Match Your Brand" icon="badge">
+  Use tone consistent with your brand (professional, friendly, casual).
+  </Card>
+  <Card title="Include Well-Wishes" icon="heart">
+  "Have a great day" leaves positive final impression.
+  </Card>
+  <Card title="Avoid CTAs" icon="ban">
+  Farewell is not the time for "Visit our website" or other requests.
+  </Card>
+</CardGroup>
+
+---
+
+# 3. Function Calling API
+
+## Overview
+
+Manage agent functions programmatically via dedicated API endpoints. Enable/disable functions, update configurations, and audit function usage.
+
+## Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `PUT` | `/api/agents/{id}/function-calling` | Update function calling settings |
+| `GET` | `/api/functions` | List built-in functions |
+| `GET` | `/api/custom-functions/{agentId}` | List custom functions for agent |
+| `POST` | `/api/custom-functions` | Create custom function |
+| `PUT` | `/api/custom-functions/{id}` | Update custom function |
+| `DELETE` | `/api/custom-functions/{id}` | Delete custom function |
+
+## Update Function Calling Status
+
+### Enable/Disable Function Calling
+
+```bash
+PUT /api/agents/{agentId}/function-calling
+Authorization: Bearer YOUR_API_KEY
+Content-Type: application/json
+
+{
+  "functionCallingEnabled": true,
+  "enabledFunctions": ["web_search", "end_call", "check_order_status"]
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "agent": {
+    "id": "agent_xyz",
+    "functionCallingEnabled": true,
+    "enabledFunctions": ["web_search", "end_call", "check_order_status"]
+  },
+  "message": "Function calling enabled successfully"
+}
+```
+
+### Add/Remove Individual Functions
+
+**Add Function:**
+```bash
+PUT /api/agents/{agentId}/function-calling
+Authorization: Bearer YOUR_API_KEY
+Content-Type: application/json
+
+{
+  "functionCallingEnabled": true,
+  "enabledFunctions": ["web_search", "end_call", "NEW_FUNCTION"]
+}
+```
+
+**Remove Function:**
+```bash
+PUT /api/agents/{agentId}/function-calling
+Authorization: Bearer YOUR_API_KEY
+Content-Type: application/json
+
+{
+  "functionCallingEnabled": true,
+  "enabledFunctions": ["web_search", "end_call"]
+}
+```
+
+## Built-in Functions
+
+### List Available Functions
+
+```bash
+GET /api/functions
+Authorization: Bearer YOUR_API_KEY
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "functions": [
+    {
+      "id": "func_web_search",
+      "name": "web_search",
+      "label": "Web Search",
+      "description": "Search the internet for current information",
+      "category": "Information",
+      "parameters": [
+        {
+          "name": "query",
+          "type": "string",
+          "description": "The search query",
+          "required": true
+        },
+        {
+          "name": "max_results",
+          "type": "number",
+          "description": "Maximum results to return",
+          "required": false,
+          "default": 5
+        }
+      ]
+    },
+    {
+      "id": "func_end_call",
+      "name": "end_call",
+      "label": "End Call",
+      "description": "Programmatically end the conversation",
+      "category": "Call Control",
+      "parameters": []
+    }
+  ]
+}
+```
+
+## Custom Functions
+
+### Create Custom Function
+
+```bash
+POST /api/custom-functions
+Authorization: Bearer YOUR_API_KEY
+Content-Type: application/json
+
+{
+  "agentId": "agent_xyz",
+  "name": "check_order_status",
+  "label": "Check Order Status",
+  "description": "Get current status of a customer order",
+  "endpoint": "https://your-api.com/check-order",
+  "method": "POST",
+  "headers": {
+    "Authorization": "Bearer YOUR_SECRET"
+  },
+  "parameters": [
+    {
+      "name": "order_id",
+      "type": "string",
+      "description": "The order ID to check",
+      "required": true
+    }
+  ]
+}
+```
+
+### Update Custom Function
+
+```bash
+PUT /api/custom-functions/{functionId}
+Authorization: Bearer YOUR_API_KEY
+Content-Type: application/json
+
+{
+  "name": "check_order_status_v2",
+  "label": "Check Order Status (Updated)",
+  "description": "Get current status and tracking info",
+  "endpoint": "https://your-api.com/v2/check-order",
+  "method": "POST",
+  "headers": {
+    "Authorization": "Bearer NEW_SECRET"
+  },
+  "parameters": [
+    {
+      "name": "order_id",
+      "type": "string",
+      "description": "The order ID to check",
+      "required": true
+    },
+    {
+      "name": "include_tracking",
+      "type": "boolean",
+      "description": "Include tracking information",
+      "required": false,
+      "default": true
+    }
+  ]
+}
+```
+
+### Delete Custom Function
+
+```bash
+DELETE /api/custom-functions/{functionId}
+Authorization: Bearer YOUR_API_KEY
+```
+
+---
+
+# 4. Multi-language Support
+
+## Overview
+
+Configure your agent to understand and respond in **multiple languages**. The agent automatically detects the user's language and responds accordingly.
+
+## Supported Languages
+
+**Currently Supported:**
+
+| Language | Code | Best For |
+|----------|------|----------|
+| **English** | `en` | Default, global |
+| **Urdu** | `ur` | Pakistan, South Asia |
+| **Sindhi** | `sd` | Sindh region, Pakistan |
+| **Spanish** | `es` | Latin America, Spain |
+| **French** | `fr` | France, Canada, Africa |
+| **German** | `de` | Germany, Austria |
+| **Mandarin** | `zh` | China, Taiwan |
+| **Hindi** | `hi` | India |
+| **Arabic** | `ar` | Middle East, North Africa |
+
+<Info>
+  **Coming Soon:** Portuguese, Italian, Japanese, Korean, and 20+ additional languages.
+</Info>
+
+## Configure Languages
+
+### Via Studio
+
+1. Go to **Agent Settings → Languages**
+2. Select **Primary Language** (default response language)
+3. Add **Secondary Languages** (auto-detected)
+4. Click **Save**
+
+### Via API
+
+```bash
+POST /api/agents/{agentId}/languages
+Authorization: Bearer YOUR_API_KEY
+Content-Type: application/json
+
+{
+  "languages": ["english", "urdu", "spanish"]
+}
+```
+
+## How It Works
+
+```
+User speaks in Spanish
+         │
+         ▼
+Language detection (automatic)
+         │
+         ▼
+Switch to Spanish model/STT/TTS
+         │
+         ▼
+Agent responds in Spanish
+```
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Set Clear Primary Language" icon="star">
+  Define one primary language for system prompt and default behavior.
+  </Card>
+  <Card title="Test Each Language" icon="flask">
+  Test your agent in every configured language before going live.
+  </Card>
+  <Card title="Use Native Speakers" icon="users">
+  Have native speakers validate pronunciation and grammar.
+  </Card>
+  <Card title="Cultural Adaptation" icon="globe">
+  Adapt examples and references for each language/culture.
+  </Card>
+</CardGroup>
+
+## Limitations
+
+- **System prompt** is in primary language only
+- **Functions** return data in primary language
+- **Knowledge base** content should match configured languages
+- **Mixed language** conversations may confuse detection
+
+---
+
+# 5. Greeting Configuration
+
+## Overview
+
+Control **who speaks first** when the call starts — the agent (with a greeting) or the user.
+
+## Greeting Types
+
+### Agent First (Default)
+
+Agent speaks immediately after user joins:
+
+```
+Call connects
+    │
+    ▼
+Agent: "Hello! Thank you for calling Acme Corp. How can I help you today?"
+    │
+    ▼
+User responds
+```
+
+**Best for:**
+- Customer support
+- Receptionist agents
+- Professional contexts
+- Guided conversations
+
+### User First
+
+Agent waits for user to speak first:
+
+```
+Call connects
+    │
+    ▼
+Agent: [waiting silently]
+    │
+    ▼
+User: "Hi, I need help with my order"
+    │
+    ▼
+Agent responds
+```
+
+**Best for:**
+- Outbound calls (user expecting call)
+- Survey/follow-up calls
+- Casual conversations
+- When user initiated the action
+
+## Configure Greeting
+
+### Via Studio
+
+1. Go to **Agent Settings → Conversation**
+2. Select **Greeting Type**:
+   - **AI speaks first** (Agent First)
+   - **User speaks first** (User First)
+3. If Agent First, enter **Greeting Message**
+4. Click **Save**
+
+### Greeting Message Template
+
+```
+Hello! Thank you for calling [COMPANY NAME].
+
+My name is [AGENT NAME], and I'm here to help you with [PURPOSE].
+
+How can I assist you today?
+```
+
+### Examples
+
+**Customer Support:**
+```
+"Hello! Thank you for calling Acme Corp customer support. My name is Aria. How can I help you today?"
+```
+
+**Appointment Reminder:**
+```
+"Hi! This is an automated call from City Dental to confirm your appointment. Please press 1 to confirm or 2 to reschedule."
+```
+
+**Sales Outbound:**
+```
+"Hello! This is [Agent Name] calling from Acme Corp. Am I speaking with [Customer Name]?"
+```
+
+## Advanced: Dynamic Greetings
+
+Use variables in greeting messages:
+
+| Variable | Example | Output |
+|----------|---------|--------|
+| `{time_of_day}` | "Good {time_of_day}!" | "Good morning!" |
+| `{date}` | "Today is {date}" | "Today is Monday, January 15" |
+| `{customer_name}` | "Hello {customer_name}" | "Hello John Smith" |
+
+### Configure Dynamic Greeting
+
+```
+"Good {time_of_day}! Thank you for calling Acme Corp. My name is {agent_name}. How can I help you today?"
+```
+
+---
+
+# 6. Inactivity Timeout
+
+## Overview
+
+**Inactivity Timeout** automatically ends calls after a period of silence, preventing abandoned calls from consuming resources.
+
+## How It Works
+
+```
+Call active
+    │
+    ▼
+No speech detected from either party
+    │
+    ▼
+Timer starts (default: 30 seconds)
+    │
+    ├──→ Speech detected → Timer resets
+    │
+    └──→ Timer expires → Call ends automatically
+```
+
+## Configure Timeout
+
+### Via Studio
+
+1. Go to **Agent Settings → Conversation**
+2. Find **Inactivity Timeout** slider
+3. Set value (10-60 seconds)
+4. Click **Save**
+
+### Recommended Settings
+
+| Use Case | Timeout | Reasoning |
+|----------|---------|-----------|
+| **Customer Support** | 30s | Standard, allows for thinking pauses |
+| **Sales** | 20s | Faster pace, quicker disconnect |
+| **Survey/Follow-up** | 20s | Short, structured conversations |
+| **Technical Support** | 45s | User may be troubleshooting |
+| **Elderly Care** | 60s | Users may need more time to respond |
+
+### Via API
+
+```bash
+PATCH /api/agents/{agentId}
+Authorization: Bearer YOUR_API_KEY
+Content-Type: application/json
+
+{
+  "inactivityTimeout": 45
+}
+```
+
+## Timeout Behavior
+
+When timeout expires:
+
+1. **Warning message** (optional, coming soon):
+   "I haven't heard anything. Are you still there?"
+
+2. **Wait 5 seconds** for response
+
+3. **If still no response:**
+   "I'll end this call now. Please call back if you need further assistance. Goodbye!"
+
+4. **Call disconnects**
+
+5. **Session marked** as `abandoned` (not `completed`)
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Don't Set Too Short" icon="clock">
+  Under 10 seconds frustrates users who pause to think.
+  </Card>
+  <Card title="Consider Your Audience" icon="users">
+  Elderly users need longer timeouts than tech-savvy users.
+  </Card>
+  <Card title="Monitor Abandoned Rate" icon="chart-line">
+  High abandoned rate may indicate timeout too short.
+  </Card>
+  <Card title="Test Realistically" icon="flask">
+  Test with real users to find optimal timeout duration.
+  </Card>
+</CardGroup>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Calls ending too quickly">
+    **Problem:** Timeout may be set too short.
+
+    **Solution:**
+    - Increase timeout to 45-60 seconds
+    - Check if background noise is being detected as speech
+    - Verify microphone sensitivity settings
+  </Accordion>
+
+  <Accordion title="Abandoned calls consuming resources">
+    **Problem:** Timeout too long or not triggering.
+
+    **Solution:**
+    - Decrease timeout to 20-30 seconds
+    - Check if agent is generating background noise
+    - Contact support if issue persists
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Configure Webhooks" icon="webhook">
+  Set up real-time event notifications for your systems.
+  </Card>
+  <Card title="Customize Greetings" icon="comments">
+  Create professional first impressions with custom greetings.
+  </Card>
+  <Card title="Manage Functions" icon="tools">
+  Programmatically control agent functions via API.
+  </Card>
+  <Card title="Enable Multi-language" icon="globe">
+  Serve customers in their preferred language.
+  </Card>
+</CardGroup>

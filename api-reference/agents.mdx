@@ -1,0 +1,211 @@
+---
+title: "Agents API"
+description: "Create, read, update, and delete voice agents via the REST API."
+---
+
+## Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/v1/agents` | List all agents |
+| `POST` | `/v1/agents` | Create a new agent |
+| `GET` | `/v1/agents/{id}` | Get agent details |
+| `PATCH` | `/v1/agents/{id}` | Update an agent |
+| `DELETE` | `/v1/agents/{id}` | Delete an agent |
+
+---
+
+## List Agents
+
+```bash
+GET /v1/agents
+```
+
+**Query parameters:**
+
+| Param | Type | Description |
+|-------|------|-------------|
+| `mode` | string | Filter by `public`, `private`, or `commercial` |
+| `page` | number | Page number (default: 1) |
+| `limit` | number | Items per page (default: 20, max: 100) |
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "agent_abc123",
+      "name": "Customer Support",
+      "mode": "public",
+      "agentArchitecture": "pipeline",
+      "active": true,
+      "createdAt": "2024-01-10T09:00:00Z"
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "total": 5,
+    "hasNext": false
+  }
+}
+```
+
+---
+
+## Create Agent
+
+```bash
+POST /v1/agents
+```
+
+### Pipeline Architecture
+
+```json
+{
+  "name": "Sales Bot",
+  "agentArchitecture": "pipeline",
+  "model": "gpt-4o",
+  "stt": "deepgram",
+  "tts": "cartesia",
+  "voiceId": "some-cartesia-voice-id",
+  "systemPrompt": "You are a helpful sales agent for Acme Corp...",
+  "language": "en",
+  "mode": "private",
+  "temperature": 0.7
+}
+```
+
+### Realtime Architecture
+
+```json
+{
+  "name": "Low Latency Support",
+  "agentArchitecture": "realtime",
+  "realtimeProvider": "openai",
+  "voiceId": "alloy",
+  "systemPrompt": "You are a support agent...",
+  "language": "en",
+  "mode": "public"
+}
+```
+
+### Text Architecture
+
+```json
+{
+  "name": "Support Chatbot",
+  "agentArchitecture": "text",
+  "model": "gpt-4o-mini",
+  "systemPrompt": "You are a helpful support assistant...",
+  "language": "en",
+  "mode": "public"
+}
+```
+
+<Info>
+  Text agents are accessible via the **Chat API** only. They cannot handle voice calls or phone numbers.
+</Info>
+
+### Required Fields by Architecture
+
+| Field | Pipeline | Realtime | Text |
+|-------|----------|---------|------|
+| `name` | Required | Required | Required |
+| `agentArchitecture` | Required | Required | Required |
+| `model` | Required | — | Required |
+| `stt` | Required | — | — |
+| `tts` | Required | — | — |
+| `realtimeProvider` | — | Required | — |
+| `systemPrompt` | Required | Required | Required |
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "id": "agent_new123",
+    "name": "Sales Bot",
+    "agentArchitecture": "pipeline",
+    "active": false,
+    "createdAt": "2024-01-15T10:30:00Z"
+  }
+}
+```
+
+---
+
+## Get Agent
+
+```bash
+GET /v1/agents/{id}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "id": "agent_abc123",
+    "name": "Customer Support",
+    "agentArchitecture": "pipeline",
+    "model": "gpt-4o",
+    "stt": "deepgram",
+    "tts": "cartesia",
+    "voiceId": "voice_xyz",
+    "systemPrompt": "You are a helpful customer support agent...",
+    "language": "en",
+    "mode": "public",
+    "active": true,
+    "temperature": 0.7,
+    "enabledFunctions": ["web_search"],
+    "enabledCustomFunctions": ["check_order_status"],
+    "createdAt": "2024-01-10T09:00:00Z",
+    "updatedAt": "2024-01-14T15:20:00Z"
+  }
+}
+```
+
+---
+
+## Update Agent
+
+```bash
+PATCH /v1/agents/{id}
+```
+
+Send only the fields you want to update:
+
+```json
+{
+  "systemPrompt": "Updated instructions...",
+  "temperature": 0.5,
+  "active": true
+}
+```
+
+<Note>
+  Only org owners/admins can update `public` or `commercial` agents. The agent creator can update their own `private` agents.
+</Note>
+
+---
+
+## Delete Agent
+
+```bash
+DELETE /v1/agents/{id}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "message": "Agent deleted successfully"
+  }
+}
+```
+
+<Warning>
+  Deleting an agent is permanent. Associated call logs and transcripts are retained for billing purposes, but the agent configuration is removed.
+</Warning>

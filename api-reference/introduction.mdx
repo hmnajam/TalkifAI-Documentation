@@ -1,0 +1,146 @@
+---
+title: "API Introduction"
+description: "TalkifAI REST API — build voice agent workflows programmatically."
+---
+
+## Base URL
+
+```
+https://api.talkifai.dev/v1
+```
+
+All API requests must be made over **HTTPS**. HTTP requests will be rejected.
+
+---
+
+## Authentication
+
+All endpoints require an API key passed in the `Authorization` header:
+
+```bash
+Authorization: Bearer YOUR_API_KEY
+```
+
+See [Authentication](/api-reference/authentication) for details on generating and managing API keys.
+
+---
+
+## Request Format
+
+- All request bodies must be **JSON** (`Content-Type: application/json`)
+- All timestamps are **ISO 8601** (e.g., `2024-01-15T10:30:00Z`)
+- Phone numbers must be in **E.164 format** (e.g., `+12025550123`)
+
+---
+
+## Response Format
+
+All responses follow this structure:
+
+```json
+// Success
+{
+  "success": true,
+  "data": { ... }
+}
+
+// Error
+{
+  "success": false,
+  "error": "Error message here",
+  "code": "ERROR_CODE"
+}
+```
+
+---
+
+## HTTP Status Codes
+
+| Code | Meaning |
+|------|---------|
+| `200` | Success |
+| `201` | Created |
+| `400` | Bad Request — missing or invalid fields |
+| `401` | Unauthorized — invalid or missing API key |
+| `403` | Forbidden — insufficient permissions |
+| `404` | Not Found — resource doesn't exist |
+| `429` | Rate Limited — too many requests |
+| `500` | Internal Server Error |
+
+---
+
+## Rate Limits
+
+| Tier | Requests per minute |
+|------|-------------------|
+| Free | 60 |
+| Pro | 300 |
+| Enterprise | 1,000+ (custom) |
+
+When rate limited, the response includes:
+```
+Retry-After: 30
+X-RateLimit-Limit: 60
+X-RateLimit-Remaining: 0
+X-RateLimit-Reset: 1705318260
+```
+
+---
+
+## Pagination
+
+List endpoints support pagination:
+
+```
+GET /v1/calls?page=2&limit=50
+```
+
+**Parameters:**
+
+| Param | Default | Max | Description |
+|-------|---------|-----|-------------|
+| `page` | 1 | — | Page number |
+| `limit` | 20 | 100 | Items per page |
+
+**Response includes:**
+```json
+{
+  "success": true,
+  "data": [...],
+  "pagination": {
+    "page": 2,
+    "limit": 50,
+    "total": 342,
+    "hasNext": true,
+    "hasPrev": true
+  }
+}
+```
+
+---
+
+## API Sections
+
+<CardGroup cols={2}>
+  <Card title="Authentication" icon="key" href="/api-reference/authentication">
+    API key management and org context.
+  </Card>
+  <Card title="Agents" icon="robot" href="/api-reference/agents">
+    Create, update, and manage agents (Pipeline, Realtime, Text).
+  </Card>
+  <Card title="Voice Call Sessions" icon="phone" href="/api-reference/call-sessions">
+    Initiate outbound calls, track sessions, get transcripts.
+  </Card>
+  <Card title="Text Chat API" icon="message" href="/api-reference/chat">
+    REST + SSE text chat sessions for website chatbots.
+  </Card>
+  <Card title="Phone Numbers" icon="phone-office" href="/api-reference/phone-numbers">
+    Register and configure phone numbers for inbound/outbound calls.
+  </Card>
+  <Card title="Custom Functions" icon="function" href="/api-reference/custom-functions">
+    Add custom API integrations that agents call during conversations.
+  </Card>
+  <Card title="Webhooks" icon="webhook" href="/api-reference/webhooks">
+    Receive real-time events when calls start, end, and more.
+  </Card>
+</CardGroup>

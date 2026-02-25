@@ -1,0 +1,176 @@
+---
+title: "Voice Agent Runtime"
+description: "Deep dive into the Python/LiveKit voice agent runtime backend."
+---
+
+## Overview
+
+The **Voice Agent Runtime** is a Python microservice that handles all real-time voice processing. It's separate from TalkifAI Studio (the web app) and runs on a dedicated Google Cloud VM for performance.
+
+**Repository:** `Livekit-Production-Agent`
+**Stack:** Python, FastAPI, LiveKit Agents SDK
+
+---
+
+## Key Responsibilities
+
+| Function | Implementation |
+|----------|---------------|
+| **LiveKit agent workers** | `entrypoint.py` — Agent entry point |
+| **STT/LLM/TTS orchestration** | `providers/` — Provider integrations |
+| **Session lifecycle** | `session/` — Session creation and management |
+| **Function calling** | `tools/` — Custom and built-in tools |
+| **Recordings** | `services/recording_service.py` → GCS |
+| **Transcripts** | `services/transcription_service.py` |
+| **Noise cancellation** | `rnnoise_wrapper.py` |
+| **Post-call analysis** | `services/analysis_service.py` |
+| **Billing** | `services/billing_service.py` |
+| **REST API** | `main.py` — FastAPI on port 8000 |
+
+---
+
+## Architecture
+
+```
+LiveKit Server
+      │
+      │  Agent Worker connects
+      ▼
+┌─────────────────────────────────┐
+│      entrypoint.py              │
+│      (LiveKit Agent Worker)     │
+│                                 │
+│  Session Factory                │
+│  ┌──────────────────────────┐   │
+│  │  VoiceSession            │   │
+│  │  ┌────────┐ ┌─────────┐  │   │
+│  │  │  STT   │ │  LLM    │  │   │
+│  │  └────────┘ └─────────┘  │   │
+│  │  ┌────────┐ ┌─────────┐  │   │
+│  │  │  TTS   │ │ Tools   │  │   │
+│  │  └────────┘ └─────────┘  │   │
+│  └──────────────────────────┘   │
+└─────────────────────────────────┘
+      │
+      ▼
+  FastAPI REST API (port 8000)
+  ├── /agent    — Agent config endpoints
+  ├── /chat     — Text-based chat
+  ├── /batch    — Batch calling system
+  ├── /sip      — BYOC/telephony
+  └── /recording — Recording management
+```
+
+---
+
+## Session Lifecycle
+
+```
+1. User joins LiveKit room
+         │
+         ▼
+2. Agent worker spawned (entrypoint.py)
+         │
+         ▼
+3. Agent fetches config from Studio API
+   (agent ID, prompt, providers, functions)
+         │
+         ▼
+4. Session initialized
+   ├── STT pipeline started
+   ├── LLM context loaded (with memory if configured)
+   ├── TTS provider initialized
+   └── Tools registered
+         │
+         ▼
+5. Live conversation loop
+   ├── STT: User audio → transcript
+   ├── LLM: Transcript → response (+ optional function calls)
+   └── TTS: Response → audio
+         │
+         ▼
+6. Session end (user hangs up / end_call tool)
+   ├── Recording uploaded to GCS
+   ├── Transcript saved to DB
+   ├── Post-call analysis triggered (if configured)
+   └── Billing event sent to Billing Service
+```
+
+---
+
+## Provider Integrations
+
+### STT Providers (`providers/stt.py`)
+
+| Provider | Model | Characteristics |
+|----------|-------|-----------------|
+| Deepgram | Nova 2 | Best real-time accuracy |
+| OpenAI | Whisper | High accuracy, slightly slower |
+| AssemblyAI | Universal 2 | Strong with accents |
+
+### LLM Providers (`providers/llm.py`)
+
+| Provider | Models |
+|----------|--------|
+| OpenAI | gpt-4o, gpt-4o-mini, gpt-4-turbo |
+| Google | gemini-1.5-pro, gemini-1.5-flash, gemini-2.0-flash |
+
+### TTS Providers (`providers/voice.py`)
+
+| Provider | Characteristics |
+|----------|-----------------|
+| Cartesia Sonic | Low latency, natural |
+| OpenAI TTS | High quality, multiple voices |
+| ElevenLabs | Most natural, emotion-aware |
+
+---
+
+## Batch Calling System
+
+The runtime includes a Redis-backed batch calling system (`batch_system/`):
+
+- **ARQ** for async job processing
+- **Two-level concurrency**: Org limit + Batch limit
+- **Auto-retry**: 3 attempts per call
+- **Scheduling**: IANA timezone support
+
+---
+
+## Environment Variables
+
+```bash
+# Core
+DATABASE_URL=            # PostgreSQL connection
+LIVEKIT_URL=             # LiveKit server WebSocket URL
+LIVEKIT_API_KEY=         # LiveKit API key
+LIVEKIT_API_SECRET=      # LiveKit API secret
+
+# AI Providers
+OPENAI_API_KEY=
+GOOGLE_API_KEY=
+DEEPGRAM_API_KEY=
+CARTESIA_API_KEY=
+
+# Storage
+GCS_BUCKET_NAME=         # Google Cloud Storage for recordings
+GOOGLE_APPLICATION_CREDENTIALS=
+
+# Billing
+BILLING_SERVICE_URL=     # Internal billing service URL
+
+# Redis (Batch Calling)
+REDIS_URL=
+```
+
+---
+
+## Deployment
+
+The runtime is deployed on a **Google Cloud VM** (not serverless) because:
+- LiveKit agent workers need persistent WebSocket connections
+- Low-latency audio processing benefits from dedicated compute
+- Batch calling workers need long-running processes
+
+**Scaling:** Deploy multiple VMs behind a load balancer. Each VM runs independent agent workers.
+
+See `Dockerfile` and `.github/workflows/` for CI/CD details.

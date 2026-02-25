@@ -1,0 +1,136 @@
+---
+title: "Quick Start"
+description: "Create your first AI voice agent in under 5 minutes."
+---
+
+## Prerequisites
+
+Before you begin, make sure you have:
+
+- A [TalkifAI account](https://studio.talkifai.dev/sign-up)
+- An OpenAI API key (or Google Gemini key)
+- A microphone-enabled browser (for testing)
+
+---
+
+## Step 1: Create an Organization
+
+When you first sign up, TalkifAI automatically creates a default organization for you.
+
+To create additional organizations:
+
+1. Go to **Settings → Organization**
+2. Click **Create Organization**
+3. Enter a name and unique slug (e.g., `my-company`)
+
+<Note>
+  All agents, phone numbers, and API keys are scoped to an organization. You can be a member of multiple organizations.
+</Note>
+
+---
+
+## Step 2: Add Your API Keys (Optional)
+
+By default, TalkifAI uses its own platform keys. To use your own:
+
+1. Go to **Settings → API Keys**
+2. Set your **Key Mode**:
+   - `Platform Keys` — Use TalkifAI's built-in keys (easiest)
+   - `My Keys` — Use your own keys (full control)
+   - `Hybrid` — Your keys with platform keys as fallback
+3. Enter your provider keys (OpenAI, Google, Deepgram, Cartesia)
+
+---
+
+## Step 3: Create Your First Agent
+
+<Steps>
+  <Step title="Open Agent Builder">
+    In the Studio sidebar, click **Agents → Create Agent**.
+  </Step>
+
+  <Step title="Choose Architecture">
+    Select the agent type:
+
+    | Type | Best For |
+    |------|----------|
+    | **Pipeline** | Mix-and-match providers |
+    | **Realtime** | Lowest latency (OpenAI/Gemini) |
+  </Step>
+
+  <Step title="Configure the Agent">
+    Fill in the basics:
+
+    - **Name**: e.g., "Customer Support Bot"
+    - **System Prompt**: Instructions for your agent's behavior
+    - **LLM Model**: GPT-4o, Gemini 1.5 Pro, etc.
+    - **Voice**: Choose a TTS voice (ElevenLabs, Cartesia, OpenAI TTS)
+    - **Language**: Select the spoken language
+  </Step>
+
+  <Step title="Test in Browser">
+    Click **Test Agent** to start a live voice conversation in your browser. No phone number required.
+  </Step>
+
+  <Step title="Deploy">
+    Click **Activate** to make the agent live. You can now embed it in your app, connect a phone number, or call it via API.
+  </Step>
+</Steps>
+
+---
+
+## Step 4: Make Your First API Call
+
+Once your agent is active, you can trigger it programmatically.
+
+### Get Your API Key
+
+1. Go to **Settings → Developer**
+2. Click **Generate API Key**
+3. Copy the key — you won't see it again
+
+### Start a Call Session
+
+```bash
+curl -X POST https://api.talkifai.dev/v1/calls \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "agent_id": "agent_your_agent_id",
+    "to": "+12025550123"
+  }'
+```
+
+### Response
+
+```json
+{
+  "success": true,
+  "data": {
+    "call_id": "call_abc123",
+    "status": "initiating",
+    "agent_id": "agent_your_agent_id",
+    "to": "+12025550123",
+    "created_at": "2024-01-15T10:30:00Z"
+  }
+}
+```
+
+---
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Connect a Phone Number" icon="phone" href="/platform/telephony">
+    Set up inbound and outbound calling with your carrier.
+  </Card>
+  <Card title="Add Custom Functions" icon="webhook" href="/guides/custom-functions">
+    Give your agent access to your APIs and databases.
+  </Card>
+  <Card title="Run Batch Campaigns" icon="layer-group" href="/guides/batch-calling">
+    Automate outbound calls at scale.
+  </Card>
+  <Card title="Explore the API" icon="code" href="/api-reference/introduction">
+    Full REST API reference for developers.
+  </Card>
+</CardGroup>

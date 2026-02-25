@@ -1,0 +1,322 @@
+---
+title: "Conversation Memory"
+description: "Enable long-term memory so your agent remembers users across multiple conversations using Graphiti's knowledge graph."
+---
+
+## Overview
+
+**Conversation Memory** allows your agent to remember information from previous conversations with each user. Instead of starting every session fresh, your agent can recall past interactions, preferences, and context — creating a truly personalized experience.
+
+TalkifAI uses **Graphiti** — a knowledge graph memory system — to store and retrieve conversational context across sessions.
+
+**Best for:**
+- Customer support (remember previous issues, account history)
+- Sales agents (track where each lead is in the pipeline)
+- Personal assistants (remember preferences, past requests)
+- Healthcare (maintain patient context across appointments)
+- Any use case where continuity matters
+
+---
+
+## How It Works
+
+```
+Session 1 (User: "My order #1234 is delayed")
+    │
+    ▼
+Agent handles conversation
+    │
+    ▼
+Session ends → Memory ingestion triggered
+    │
+    ▼
+Graphiti stores: User → had issue → Order #1234 (delayed)
+    │
+    ▼
+Session 2 (Same user returns)
+    │
+    ▼
+Memory retrieval → Agent knows about order #1234
+    │
+    ▼
+Agent: "Welcome back! I see you previously contacted us about order #1234. Was that resolved?"
+```
+
+---
+
+## Memory Architecture
+
+### Graphiti Knowledge Graph
+
+Memory is stored as a **knowledge graph** — not just raw conversation logs. The system extracts meaningful relationships:
+
+```
+User Node
+  ├── "prefers" → Email communication
+  ├── "has" → Account #ACCT-789
+  ├── "reported" → Issue: Login not working (resolved Jan 2024)
+  ├── "ordered" → Product: Wireless Headphones
+  └── "located in" → New York
+```
+
+This structured approach means the agent can answer contextual questions like "What has this user bought before?" or "What issues did they report last month?"
+
+### Memory Scoping
+
+Memory is scoped per **user + agent**:
+- Same user, different agents → separate memory graphs
+- Different users, same agent → isolated memory (no cross-user leakage)
+- All memory stored securely in your organization's data store
+
+---
+
+## Enable Conversation Memory
+
+### Via Studio
+
+1. Go to **Agent Settings → Advanced Configuration**
+2. Scroll to **Conversation Memory**
+3. Toggle **Enable Long-Term Memory** to ON
+4. Click **Save**
+
+### Via API
+
+```bash
+PUT /api/agents/{agentId}
+Authorization: Bearer YOUR_API_KEY
+Content-Type: application/json
+
+{
+  "graphitiEnabled": true
+}
+```
+
+---
+
+## Memory Lifecycle
+
+### During a Session
+
+When a conversation starts, the agent automatically:
+
+1. Checks if the user has previous memory
+2. Retrieves relevant context from the knowledge graph
+3. Injects context into the agent's awareness (not directly into the system prompt)
+
+The agent can then naturally reference past interactions without being explicitly told.
+
+### When a Session Ends
+
+After every conversation (voice or text), the system automatically:
+
+1. Processes the full conversation transcript
+2. Extracts entities, relationships, and facts
+3. Updates the user's knowledge graph
+4. New information is available in the next session
+
+**Ingestion time:** ~25 seconds (runs in background, doesn't delay session end)
+
+---
+
+## What Gets Remembered
+
+### Automatically Extracted
+
+The memory system automatically identifies and stores:
+
+| Category | Examples |
+|----------|---------|
+| **User Information** | Name, email, location, account numbers |
+| **Preferences** | Communication style, preferred products, language |
+| **Issues & Resolutions** | Support tickets, complaints, solutions provided |
+| **Orders & Transactions** | Purchase history, order numbers, amounts |
+| **Appointments** | Scheduled meetings, bookings, follow-ups |
+| **Decisions Made** | Choices made during previous conversations |
+
+### Not Stored
+
+- Credit card numbers or financial credentials
+- Passwords or sensitive authentication data
+- Content explicitly marked as confidential by your system prompt
+
+---
+
+## Memory in Your System Prompt
+
+You can guide the agent on how to use memory by including instructions in the system prompt:
+
+```
+## Memory Usage
+
+You have access to long-term memory about this user. When relevant:
+
+1. **Reference past interactions naturally:**
+   - "Last time you called, we resolved your billing issue."
+   - "I see you've ordered from us twice before."
+
+2. **Avoid repeating questions:**
+   - If you already know the user's account number, don't ask again.
+   - If they've stated their preference before, use it.
+
+3. **Show continuity:**
+   - If an issue was "in progress" last time, ask about its status.
+   - If they were considering an upgrade, follow up on that.
+
+4. **Respect privacy:**
+   - Don't mention sensitive details unless the user brings them up.
+   - Use memory to help, not to demonstrate surveillance.
+```
+
+---
+
+## Returning User Experience
+
+### Example Conversation
+
+**Without Memory:**
+```
+Agent: Hello! How can I help you today?
+User: I'm calling about my delayed shipment again.
+Agent: I'm sorry to hear that. Can you give me your order number?
+User: It's the same one from last week — #1234!
+Agent: I apologize, I don't have any record of that...
+```
+
+**With Memory:**
+```
+Agent: Welcome back, Sarah! I see your shipment #1234 was delayed last week.
+       Did that get resolved, or are you still experiencing issues?
+User: Still delayed!
+Agent: I'm so sorry. Since this is a recurring issue, let me escalate this
+       immediately and arrange priority shipping for you.
+```
+
+---
+
+## Privacy & Data Control
+
+### Data Retention
+
+- Memory is retained **indefinitely** by default
+- You can clear a user's memory via API at any time
+- Users can request memory deletion (GDPR compliance)
+
+### Clear User Memory
+
+```bash
+DELETE /api/agents/{agentId}/memory/{userId}
+Authorization: Bearer YOUR_API_KEY
+```
+
+### List User Memory
+
+```bash
+GET /api/agents/{agentId}/memory/{userId}
+Authorization: Bearer YOUR_API_KEY
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "memory": {
+    "userId": "user_abc123",
+    "entities": [
+      {
+        "type": "fact",
+        "content": "User prefers email communication over phone",
+        "createdAt": "2024-01-10T09:00:00Z"
+      },
+      {
+        "type": "event",
+        "content": "Reported issue with order #1234 (resolved)",
+        "createdAt": "2024-01-15T14:30:00Z"
+      }
+    ],
+    "totalFacts": 12,
+    "lastUpdated": "2024-01-20T10:00:00Z"
+  }
+}
+```
+
+---
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Prompt for Natural Recall" icon="comments">
+    Write system prompts that guide the agent to use memory naturally, not robotically. "I recall you..." sounds better than "According to my records..."
+  </Card>
+  <Card title="Don't Over-Rely on Memory" icon="balance-scale">
+    Memory enriches conversations — it doesn't replace good conversation design. Agents should still ask clarifying questions when needed.
+  </Card>
+  <Card title="Test with Returning Users" icon="flask">
+    After enabling memory, test by having the same user start two separate conversations. Verify the agent recalls context correctly.
+  </Card>
+  <Card title="Respect Sensitive Data" icon="shield">
+    Avoid storing sensitive PII in your system prompt. Memory is powerful, but user trust is more important.
+  </Card>
+</CardGroup>
+
+---
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Agent doesn't remember previous conversations">
+    **Check:**
+    1. Is `graphitiEnabled` set to `true` on the agent?
+    2. Did the previous session end properly (not abandoned)?
+    3. Is the same user identifier being used across sessions?
+
+    **Note:** Memory ingestion takes ~25 seconds after session end. Test with a wait between sessions.
+  </Accordion>
+
+  <Accordion title="Agent over-references old information">
+    **Problem:** Agent brings up outdated or irrelevant past context.
+
+    **Solution:** Add to system prompt:
+    ```
+    Use memory selectively — only reference past context when it's directly
+    relevant to the current conversation. Don't bring up old issues unless
+    the user mentions them first.
+    ```
+  </Accordion>
+
+  <Accordion title="Memory contains incorrect information">
+    **Problem:** The knowledge graph extracted wrong facts.
+
+    **Solution:**
+    - Clear user memory and let it rebuild from fresh conversations
+    - Be more explicit in conversations about key facts
+    - Contact support if systematic extraction errors occur
+  </Accordion>
+
+  <Accordion title="Memory not available for text chat sessions">
+    **Problem:** Text chat API sessions not ingesting memory.
+
+    **Solution:**
+    - Always call `POST /v1/chat/sessions/{id}/end` explicitly
+    - Avoid letting sessions expire via idle timeout (memory won't ingest)
+    - Verify `graphitiEnabled` is true on the agent
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Enable Memory" icon="toggle-on">
+    Turn on Graphiti memory in Agent Settings → Advanced Configuration.
+  </Card>
+  <Card title="Test Returning Users" icon="user-check">
+    Run two separate conversations with the same user to verify memory works.
+  </Card>
+  <Card title="Privacy Compliance" icon="shield-halved">
+    Review your memory retention policy and ensure GDPR compliance.
+  </Card>
+  <Card title="Text Chat API" icon="message">
+    Memory works with both voice and text chat sessions.
+  </Card>
+</CardGroup>

@@ -1,0 +1,100 @@
+---
+title: "Noise Cancellation"
+description: "Enable RNNoise-based audio noise cancellation for cleaner voice quality."
+---
+
+## Overview
+
+TalkifAI's voice agent runtime includes built-in **RNNoise** noise cancellation — a deep learning model that removes background noise from user audio in real time.
+
+This significantly improves STT accuracy in noisy environments (offices, call centers, outdoors).
+
+---
+
+## How It Works
+
+```
+User Microphone (raw audio)
+         │
+         ▼
+┌────────────────────────┐
+│   RNNoise Filter       │
+│   (real-time, <5ms)    │
+│   Removes: fans, AC,   │
+│   keyboard clicks,     │
+│   background voices    │
+└────────────┬───────────┘
+             │  Clean audio
+             ▼
+     STT Provider
+```
+
+RNNoise runs **before** the audio is sent to the STT provider, so you get cleaner transcripts without increasing STT costs.
+
+---
+
+## Enabling Noise Cancellation
+
+Noise cancellation is configured per-agent.
+
+### Via Dashboard
+
+1. Go to **Agent Settings → Audio**
+2. Toggle **Noise Cancellation** to enabled
+3. Save
+
+### Via API
+
+```bash
+PATCH /v1/agents/{agentId}
+```
+```json
+{
+  "noiseCancellation": true
+}
+```
+
+---
+
+## Performance
+
+| Metric | Value |
+|--------|-------|
+| Latency added | < 5ms |
+| CPU overhead | ~2% per concurrent call |
+| Noise reduction | 20-40 dB |
+| Supported sample rates | 8kHz, 16kHz, 48kHz |
+
+---
+
+## When to Enable
+
+**Enable noise cancellation when:**
+- Agents are accessed from offices or noisy environments
+- You're seeing high error rates in transcription
+- Users complain about having to repeat themselves
+
+**May not be needed when:**
+- Calls come from quiet, controlled environments
+- You're using a high-quality STT model that handles noise well
+
+---
+
+## Technical Details
+
+RNNoise is implemented as a native Python wrapper (`rnnoise_wrapper.py`) in the voice agent runtime. It processes audio frames before they reach the STT pipeline.
+
+The model is:
+- Pre-trained on a large corpus of noise types
+- Runs entirely on-device (no external API call)
+- Stateful per call session (maintains noise profile across frames)
+
+---
+
+## Troubleshooting
+
+**Issue**: Voice sounds robotic or distorted
+- **Fix**: Try disabling noise cancellation. Some voice types (very high-pitched) may be affected.
+
+**Issue**: Agent mishears words even with noise cancellation
+- **Fix**: Check your STT provider's confidence threshold. Also consider switching to Deepgram Nova 2 for better noise robustness.

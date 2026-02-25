@@ -1,0 +1,154 @@
+---
+title: "Telephony"
+description: "Connect phone numbers to your agents for inbound and outbound calling."
+---
+
+## Overview
+
+TalkifAI supports full telephony integration — connect a real phone number to your agent and start receiving or making calls immediately.
+
+**Supported carriers:**
+- Twilio
+- Telnyx
+- Plivo
+- Bandwidth
+- Vonage
+- SignalWire
+
+---
+
+## Inbound Calling
+
+Allow customers to call your agent on a real phone number.
+
+### How it works
+
+```
+Customer dials phone number
+        │
+        ▼
+   Carrier (Twilio/Telnyx/etc.)
+        │  SIP
+        ▼
+  LiveKit SIP Server
+        │
+        ▼
+  Voice Agent Runtime
+        │
+        ▼
+  AI Agent joins the call
+```
+
+### Setup with Twilio
+
+<Steps>
+  <Step title="Create a SIP Trunk">
+    - Go to [Twilio Console](https://console.twilio.com/) → **Elastic SIP Trunking → Trunks → Create Trunk**
+    - Set Friendly Name: e.g., `TalkifAI`
+    - Note the **Termination SIP URI** (e.g., `your-trunk.pstn.twilio.com`)
+  </Step>
+
+  <Step title="Set Origination URI">
+    In your trunk → **Origination** section, add:
+
+    ```
+    sip:livekit.talkifai.dev:5061;transport=tls
+    ```
+
+    <Note>
+      The `;transport=tls` suffix enables Secure SIP (TLS). Required for production.
+    </Note>
+  </Step>
+
+  <Step title="Add Phone Number in TalkifAI">
+    - Go to **Studio → Phone Numbers → Add Number**
+    - Enter your Twilio phone number
+    - Select the **inbound agent** to answer calls
+    - Save
+  </Step>
+
+  <Step title="Test">
+    Call your phone number. The agent should answer within 2-3 seconds.
+  </Step>
+</Steps>
+
+---
+
+## Outbound Calling
+
+Programmatically call any phone number from your agent.
+
+### Via Dashboard
+
+1. Go to **Studio → Phone Numbers**
+2. Select a number with an outbound agent configured
+3. Click **Make Call**
+4. Enter the destination number
+
+### Via API
+
+```bash
+POST /api/call-initiate
+Authorization: Bearer YOUR_API_KEY
+
+{
+  "destinationNumber": "+12025550123",
+  "agentId": "agent_abc123"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "callId": "call_xyz789",
+  "status": "initiating"
+}
+```
+
+---
+
+## BYOC (Bring Your Own Carrier)
+
+If you have an existing SIP infrastructure, use BYOC to connect it to TalkifAI without porting numbers.
+
+See the full guide: [BYOC Setup](/guides/byoc)
+
+---
+
+## Managing Phone Numbers
+
+### Assigning Agents
+
+Each phone number can have:
+- **Inbound Agent** — Handles incoming calls
+- **Outbound Agent** — Used for outgoing calls
+
+You can assign different agents to the same number for in/outbound.
+
+### Credential Security
+
+<Warning>
+  All SIP credentials (passwords, auth tokens) are encrypted using Fernet encryption before storage. Never share your raw credentials in logs or chat.
+</Warning>
+
+Credentials are stored encrypted in the `CarrierCredentials` table. The encryption key (`FERNET_KEY`) is set once and should **never be changed** after credentials are saved.
+
+---
+
+## Carrier-Specific Guides
+
+<CardGroup cols={2}>
+  <Card title="Twilio" icon="phone">
+    Elastic SIP Trunking — most widely used carrier.
+  </Card>
+  <Card title="Telnyx" icon="phone">
+    Competitive pricing, excellent SIP trunk reliability.
+  </Card>
+  <Card title="Plivo" icon="phone">
+    Global reach, good for international calling.
+  </Card>
+  <Card title="SignalWire" icon="phone">
+    Compatible Twilio alternative with lower pricing.
+  </Card>
+</CardGroup>

@@ -1,0 +1,530 @@
+---
+title: "Pronunciation Management"
+description: "Control how your agent pronounces specific words, brand names, and technical terms using custom phoneme dictionaries."
+---
+
+## Overview
+
+**Pronunciation Management** allows you to define custom pronunciations for words that your agent frequently mispronounces — brand names, product names, technical terms, acronyms, and industry-specific vocabulary.
+
+**Best for:**
+- Companies with unique brand/product names
+- Technical support with specialized terminology
+- Medical/legal professionals with industry jargon
+- Non-English words in English conversations
+- Acronyms and abbreviations
+
+---
+
+## Why Pronunciation Matters
+
+**Common Mispronunciation Problems:**
+
+| Word Type | Example | Common Error |
+|-----------|---------|--------------|
+| **Brand Names** | "Nike" | "Nike" (like spike) vs "Ni-key" |
+| **Acronyms** | "API" | "API" (as word) vs "A-P-I" |
+| **Technical Terms** | "MySQL" | "My-sequel" vs "My-S-Q-L" |
+| **Non-English** | "Hermès" | "Her-mez" vs "Her-mess" |
+| **Product Names** | "iPhone" | "i-Phone" vs "iPhone" |
+
+<Info>
+  **Impact:** Correct pronunciation builds credibility and trust. Mispronunciation can confuse customers and damage brand perception.
+</Info>
+
+---
+
+## How It Works
+
+```
+Agent needs to say "MySQL database"
+         │
+         ▼
+Check pronunciation dictionary
+         │
+         ▼
+Found: "MySQL" → "my-ess-que-ell"
+         │
+         ▼
+TTS uses custom phonemes
+         │
+         ▼
+User hears correct pronunciation
+```
+
+---
+
+## Step 1: Identify Problem Words
+
+### Common Categories
+
+**Brand & Product Names:**
+- Your company name
+- Product names
+- Competitor names (if mentioned)
+- Partner brands
+
+**Technical Terminology:**
+- Programming languages (Python, JavaScript)
+- Protocols (HTTP, TCP/IP)
+- Software names (Kubernetes, Docker)
+- Industry-specific terms
+
+**People & Places:**
+- Employee names
+- Office locations
+- Customer names (if in CRM)
+
+**Acronyms & Abbreviations:**
+- Company acronyms (CEO, CFO)
+- Technical acronyms (API, SDK, IDE)
+- Industry abbreviations
+
+### Testing for Mispronunciations
+
+1. **Test your agent** with a script containing key terms
+2. **Note any mispronunciations**
+3. **Prioritize** frequently used words
+4. **Create pronunciation entries** for each
+
+---
+
+## Step 2: Create Pronunciation Entry
+
+### Via Studio
+
+1. Go to **Agent Settings → Pronunciations**
+2. Click **Add Pronunciation**
+3. Fill in the details:
+
+| Field | Description | Example |
+|-------|-------------|---------|
+| **Word** | The word as it appears in text | `MySQL` |
+| **Phoneme** | How it should be pronounced (IPA or simplified) | `my-ess-que-ell` |
+
+4. Click **Save**
+
+### Via API
+
+```bash
+POST /api/pronunciations/{agentId}
+Authorization: Bearer YOUR_API_KEY
+Content-Type: application/json
+
+{
+  "word": "MySQL",
+  "phoneme": "my-ess-que-ell"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "pronunciation": {
+    "id": "pronun_abc123",
+    "word": "MySQL",
+    "phoneme": "my-ess-que-ell",
+    "agentId": "agent_xyz789",
+    "createdAt": "2024-01-15T10:00:00Z",
+    "updatedAt": "2024-01-15T10:00:00Z"
+  }
+}
+```
+
+---
+
+## Step 3: Writing Phonemes
+
+### Phoneme Formats
+
+**Format 1: Simplified Phonetic (Recommended)**
+
+Easy-to-read phonetic spelling:
+
+| Word | Phoneme | Explanation |
+|------|---------|-------------|
+| `Nike` | `ny-key` | Two syllables |
+| `MySQL` | `my-ess-que-ell` | Spell out each letter |
+| `Hermès` | `air-mez` | Approximate French |
+| `Kubernetes` | `koo-ber-net-eez` | Break into syllables |
+
+**Format 2: IPA (International Phonetic Alphabet)**
+
+For advanced users:
+
+| Word | IPA Phoneme |
+|------|-------------|
+| `Nike` | `ˈnaɪki` |
+| `MySQL` | `maɪ ɛs kju ɛl` |
+| `Hermès` | `ɛʁˈmɛz` |
+
+<Info>
+  **Recommendation:** Use simplified phonetic spelling unless you're familiar with IPA. It's easier to read and debug.
+</Info>
+
+### Phoneme Guidelines
+
+<CardGroup cols={2}>
+  <Card title="Use Hyphens for Syllables" icon="minus">
+    Break words into syllables: `koo-ber-net-eez` not `kooberneteez`
+  </Card>
+  <Card title="Spell Out Acronyms" icon="list-ol">
+    API → `ay-pee-eye`, not `api`
+  </Card>
+  <Card title="Indicate Stress" icon="arrow-up">
+    Capitalize stressed syllables: `kuh-LOO-dih` for "cloud"
+  </Card>
+  <Card title="Use Common Conventions" icon="book">
+    "ph" → "f" sound, "sh" → "sh" sound, "th" → "th" sound
+  </Card>
+  <Card title="Test Iteratively" icon="flask">
+    Create entry → Test → Adjust → Repeat until correct
+  </Card>
+  <Card title="Keep It Simple" icon="scissors">
+    Use familiar letter combinations. Avoid obscure symbols.
+  </Card>
+</CardGroup>
+
+### Examples by Category
+
+**Technology:**
+```json
+[
+  { "word": "API", "phoneme": "ay-pee-eye" },
+  { "word": "SQL", "phoneme": "ess-que-ell" },
+  { "word": "Linux", "phoneme": "LIN-ooks" },
+  { "word": "GIF", "phoneme": "jif" },
+  { "word": "Docker", "phoneme": "DAH-ker" },
+  { "word": "Kubernetes", "phoneme": "koo-ber-net-eez" }
+]
+```
+
+**Brand Names:**
+```json
+[
+  { "word": "Nike", "phoneme": "NY-key" },
+  { "word": "Adidas", "phoneme": "AH-dee-dahs" },
+  { "word": "Hermès", "phoneme": "air-MEZ" },
+  { "word": "Louis Vuitton", "phoneme": "LOO-ee vwee-TAHN" },
+  { "word": "Porsche", "phoneme": "POR-shuh" }
+]
+```
+
+**Company-Specific:**
+```json
+[
+  { "word": "AcmeCorp", "phoneme": "AK-mee-korp" },
+  { "word": "DataSync", "phoneme": "DAY-tuh-sink" },
+  { "word": "CloudFlex", "phoneme": "KLOWD-flex" },
+  { "word": "TechOps", "phoneme": "tek-OPS" }
+]
+```
+
+**People Names:**
+```json
+[
+  { "word": "Siobhan", "phoneme": "shih-VAWN" },
+  { "word": "Nguyen", "phoneme": "win" },
+  { "word": "Micheál", "phoneme": "mee-KAWL" },
+  { "word": "Saoirse", "phoneme": "SEER-shuh" }
+]
+```
+
+---
+
+## Step 4: Manage Pronunciations
+
+### List Pronunciations
+
+**Via Studio:**
+- Go to **Agent Settings → Pronunciations**
+- See all custom pronunciations
+
+**Via API:**
+```bash
+GET /api/pronunciations/{agentId}
+Authorization: Bearer YOUR_API_KEY
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "pronunciations": [
+    {
+      "id": "pronun_abc123",
+      "word": "MySQL",
+      "phoneme": "my-ess-que-ell",
+      "agentId": "agent_xyz789",
+      "createdAt": "2024-01-10T09:00:00Z",
+      "updatedAt": "2024-01-10T09:00:00Z"
+    },
+    {
+      "id": "pronun_def456",
+      "word": "API",
+      "phoneme": "ay-pee-eye",
+      "agentId": "agent_xyz789",
+      "createdAt": "2024-01-11T14:30:00Z",
+      "updatedAt": "2024-01-11T14:30:00Z"
+    }
+  ]
+}
+```
+
+### Update Pronunciation
+
+**Via Studio:**
+1. Go to **Agent Settings → Pronunciations**
+2. Click **Edit** (pencil icon)
+3. Modify word or phoneme
+4. Save changes
+
+**Via API:**
+```bash
+PUT /api/pronunciations/{agentId}
+Authorization: Bearer YOUR_API_KEY
+Content-Type: application/json
+
+{
+  "pronunciationId": "pronun_abc123",
+  "word": "MySQL",
+  "phoneme": "my-ess-que-ell"
+}
+```
+
+### Delete Pronunciation
+
+**Via Studio:**
+1. Go to **Agent Settings → Pronunciations**
+2. Click **Delete** (trash icon)
+3. Confirm deletion
+
+**Via API:**
+```bash
+DELETE /api/pronunciations/{agentId}?pronunciationId={pronunciationId}
+Authorization: Bearer YOUR_API_KEY
+```
+
+---
+
+## Advanced Features
+
+### Bulk Import
+
+Import multiple pronunciations at once:
+
+**Via API:**
+```bash
+POST /api/pronunciations/{agentId}/bulk
+Authorization: Bearer YOUR_API_KEY
+Content-Type: application/json
+
+{
+  "pronunciations": [
+    { "word": "API", "phoneme": "ay-pee-eye" },
+    { "word": "SQL", "phoneme": "ess-que-ell" },
+    { "word": "Linux", "phoneme": "LIN-ooks" },
+    { "word": "GIF", "phoneme": "jif" }
+  ]
+}
+```
+
+### Pronunciation Templates
+
+Use pre-built templates for common categories:
+
+**Available Templates:**
+- **Tech Startup**: Common tech terms and acronyms
+- **E-Commerce**: Product and brand name conventions
+- **Healthcare**: Medical terminology
+- **Legal**: Legal terms and Latin phrases
+- **Finance**: Financial terms and company types
+
+**Apply Template:**
+1. Go to **Agent Settings → Pronunciations**
+2. Click **Import Template**
+3. Select category
+4. Review and customize
+5. Click **Apply**
+
+### Case Sensitivity
+
+Pronunciations are **case-insensitive** by default:
+
+- Entry for "MySQL" applies to: `MySQL`, `mysql`, `MYSQL`
+- Entry for "API" applies to: `API`, `Api`, `api`
+
+<Note>
+  If you need different pronunciations for different cases (rare), create separate entries.
+</Note>
+
+---
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Start Small" icon="seedling">
+    Begin with 5-10 critical words. Add more as you identify issues during testing.
+  </Card>
+  <Card title="Test with Real Audio" icon="headphones">
+    Listen to actual agent output. Don't assume the phoneme is correct without testing.
+  </Card>
+  <Card title="Document Your Choices" icon="file-alt">
+    Keep a record of why certain words are pronounced a certain way (especially brand names).
+  </Card>
+  <Card title="Update Regularly" icon="rotate">
+    Add new product names, remove discontinued products, update as needed.
+  </Card>
+  <Card title="Consider Your Audience" icon="users">
+    Use pronunciations familiar to your target audience, not necessarily dictionary-correct.
+  </Card>
+  <Card title="Be Consistent" icon="equals">
+    Use the same phoneme conventions across all entries (e.g., always hyphenate syllables).
+  </Card>
+</CardGroup>
+
+---
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Pronunciation isn't changing">
+    **Check:**
+    1. Is the word spelled exactly as it appears in the script?
+    2. Is the pronunciation entry active (not deleted)?
+    3. Is the agent using the correct voice/TTS provider?
+
+    **Fix:** Some TTS providers have different phoneme formats. Check provider documentation.
+  </Accordion>
+
+  <Accordion title="Pronunciation sounds worse than before">
+    **Problem:** Phoneme format may be incompatible with TTS provider.
+
+    **Solution:**
+    - Try simplified phonetic spelling
+    - Use common letter combinations
+    - Test with shorter phonemes first
+  </Accordion>
+
+  <Accordion title="Only some words are fixed">
+    **Problem:** Some words may be pronounced correctly by default.
+
+    **Solution:** Focus on words that are actually mispronounced. Don't fix what isn't broken.
+  </Accordion>
+
+  <Accordion title="Agent says phoneme literally">
+    **Problem:** TTS is reading the phoneme text instead of using it.
+
+    **Solution:**
+    - Check phoneme format (may need provider-specific format)
+    - Ensure entry is saved correctly
+    - Contact support if issue persists
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## TTS Provider Differences
+
+### Cartesia
+
+**Format:** Simplified phonetic
+**Example:** `koo-ber-net-eez`
+**Notes:** Most flexible, handles simplified phonemes well
+
+### OpenAI TTS
+
+**Format:** Simplified phonetic with some IPA support
+**Example:** `ˈkuːbərˌnɛtiːz` or `koo-ber-net-eez`
+**Notes:** Prefers simpler phonemes
+
+### ElevenLabs
+
+**Format:** Context-aware (may not need explicit phonemes)
+**Example:** Often auto-corrects common words
+**Notes:** Best at inferring pronunciation from context
+
+### Deepgram
+
+**Format:** Simplified phonetic
+**Example:** `koo-ber-net-eez`
+**Notes:** Similar to Cartesia
+
+---
+
+## API Reference
+
+### List Pronunciations
+
+```bash
+GET /api/pronunciations/{agentId}
+Authorization: Bearer YOUR_API_KEY
+```
+
+### Create Pronunciation
+
+```bash
+POST /api/pronunciations/{agentId}
+Authorization: Bearer YOUR_API_KEY
+Content-Type: application/json
+
+{
+  "word": "string (required)",
+  "phoneme": "string (required)"
+}
+```
+
+### Update Pronunciation
+
+```bash
+PUT /api/pronunciations/{agentId}
+Authorization: Bearer YOUR_API_KEY
+Content-Type: application/json
+
+{
+  "pronunciationId": "string (required)",
+  "word": "string",
+  "phoneme": "string"
+}
+```
+
+### Delete Pronunciation
+
+```bash
+DELETE /api/pronunciations/{agentId}?pronunciationId={id}
+Authorization: Bearer YOUR_API_KEY
+```
+
+### Bulk Import
+
+```bash
+POST /api/pronunciations/{agentId}/bulk
+Authorization: Bearer YOUR_API_KEY
+Content-Type: application/json
+
+{
+  "pronunciations": [
+    {
+      "word": "string",
+      "phoneme": "string"
+    }
+  ]
+}
+```
+
+---
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Identify Problem Words" icon="search">
+    Test your agent and note any mispronunciations.
+  </Card>
+  <Card title="Create Pronunciations" icon="plus">
+    Add custom pronunciations for your key terms.
+  </Card>
+  <Card title="Test & Iterate" icon="flask">
+    Listen to output and adjust phonemes as needed.
+  </Card>
+</CardGroup>

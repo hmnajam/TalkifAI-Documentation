@@ -1,0 +1,179 @@
+---
+title: "Webhooks"
+description: "Receive real-time events when calls start, end, and more."
+---
+
+## Overview
+
+Webhooks let you receive **real-time notifications** from TalkifAI when events occur in your account.
+
+Configure a webhook URL and TalkifAI will send HTTP POST requests to your endpoint whenever subscribed events fire.
+
+---
+
+## Setup
+
+1. Go to **Studio → Settings → Webhooks**
+2. Click **Add Webhook**
+3. Enter your endpoint URL (must be HTTPS)
+4. Select events to subscribe to
+5. Copy the **Signing Secret** for verification
+
+---
+
+## Event Types
+
+| Event | When it fires |
+|-------|--------------|
+| `call.started` | Call connected, agent joined |
+| `call.ended` | Call completed |
+| `call.failed` | Call failed to connect |
+| `transcript.ready` | Transcript available after call |
+| `analysis.completed` | Post-call analysis finished |
+| `credit.low` | Credit balance below 20% |
+| `credit.depleted` | No credits remaining |
+
+---
+
+## Webhook Payload
+
+All events share the same envelope structure:
+
+```json
+{
+  "id": "evt_abc123",
+  "type": "call.ended",
+  "created": "2024-01-15T10:34:05Z",
+  "data": {
+    // Event-specific data
+  }
+}
+```
+
+### `call.started`
+
+```json
+{
+  "id": "evt_abc123",
+  "type": "call.started",
+  "created": "2024-01-15T10:30:00Z",
+  "data": {
+    "callId": "call_xyz",
+    "agentId": "agent_abc",
+    "direction": "inbound",
+    "from": "+12025550123",
+    "to": "+18885550100"
+  }
+}
+```
+
+### `call.ended`
+
+```json
+{
+  "id": "evt_def456",
+  "type": "call.ended",
+  "created": "2024-01-15T10:34:05Z",
+  "data": {
+    "callId": "call_xyz",
+    "agentId": "agent_abc",
+    "duration": 245,
+    "status": "completed",
+    "endReason": "user_hangup",
+    "recordingUrl": "https://storage.talkifai.dev/recordings/call_xyz.mp3"
+  }
+}
+```
+
+### `transcript.ready`
+
+```json
+{
+  "id": "evt_ghi789",
+  "type": "transcript.ready",
+  "created": "2024-01-15T10:34:30Z",
+  "data": {
+    "callId": "call_xyz",
+    "transcriptUrl": "https://api.talkifai.dev/v1/calls/call_xyz/transcript"
+  }
+}
+```
+
+---
+
+## Verifying Webhook Signatures
+
+TalkifAI signs every webhook request. Always verify the signature before processing:
+
+```python
+import hmac
+import hashlib
+
+def verify_webhook(payload: bytes, signature: str, secret: str) -> bool:
+    expected = hmac.new(
+        secret.encode(),
+        payload,
+        hashlib.sha256
+    ).hexdigest()
+    return hmac.compare_digest(f"sha256={expected}", signature)
+
+# In your webhook handler:
+signature = request.headers.get("X-TalkifAI-Signature")
+is_valid = verify_webhook(request.body, signature, WEBHOOK_SECRET)
+if not is_valid:
+    return Response(status=401)
+```
+
+```javascript Node.js
+const crypto = require('crypto');
+
+function verifyWebhook(payload, signature, secret) {
+  const expected = crypto
+    .createHmac('sha256', secret)
+    .update(payload)
+    .digest('hex');
+  return crypto.timingSafeEqual(
+    Buffer.from(`sha256=${expected}`),
+    Buffer.from(signature)
+  );
+}
+```
+
+---
+
+## Responding to Webhooks
+
+Your endpoint must respond with **HTTP 200** within **10 seconds**.
+
+If TalkifAI doesn't receive a 200 response, it will **retry** up to 3 times with exponential backoff:
+- Retry 1: after 30 seconds
+- Retry 2: after 5 minutes
+- Retry 3: after 30 minutes
+
+---
+
+## Custom Function Webhooks
+
+Beyond event notifications, agents can also call your APIs **during a live call** using Custom Functions.
+
+This is different from event webhooks — custom function webhooks are synchronous calls made by the agent to fetch data or trigger actions.
+
+See [Custom Functions Guide](/guides/custom-functions) for details.
+
+---
+
+## Testing Webhooks
+
+Use the **Webhook Tester** in the Studio dashboard:
+
+1. Go to **Settings → Webhooks**
+2. Click **Send Test Event** on your webhook
+3. Select an event type
+4. View the request/response in the test panel
+
+For local development, use a tunnel tool like **ngrok** to expose your local server:
+
+```bash
+ngrok http 3000
+# Use the https://xxxxx.ngrok.io URL as your webhook endpoint
+```

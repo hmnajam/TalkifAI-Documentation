@@ -1,0 +1,261 @@
+---
+title: "Agent Architectures"
+description: "Pipeline, Realtime, or Text — understand the three agent types and when to use each."
+---
+
+## Three Architectures — Which One Do You Need?
+
+TalkifAI agents come in three types:
+
+> **Pipeline** = voice agent — assembly line of STT → LLM → TTS
+>
+> **Realtime** = voice agent — one provider handles audio end-to-end
+>
+> **Text** = chat-only agent — no audio, REST API + streaming text
+
+### Voice vs Text — The Key Rule
+
+<Warning>
+  **Voice agents (Pipeline / Realtime) can do BOTH voice calls AND text chat.**
+
+  **Text agents can ONLY do text chat — they cannot handle voice calls.**
+</Warning>
+
+```
+Pipeline Agent  →  ✅ Voice calls  +  ✅ Text chat (Chat API)
+Realtime Agent  →  ✅ Voice calls  +  ✅ Text chat (Chat API)
+Text Agent      →  ❌ Voice calls  +  ✅ Text chat (Chat API) only
+```
+
+| Capability | Pipeline | Realtime | Text |
+|------------|:--------:|:--------:|:----:|
+| Inbound phone calls | ✅ | ✅ | ❌ |
+| Outbound calls | ✅ | ✅ | ❌ |
+| Browser voice test | ✅ | ✅ | ❌ |
+| Text Chat API | ✅ | ✅ | ✅ |
+| Website chat widget | ✅ | ✅ | ✅ |
+| Requires STT/TTS setup | ✅ | ❌ | ❌ |
+| Lowest cost | ❌ | ❌ | ✅ |
+
+<Info>
+  **Which to choose?** If you need voice calls, pick Pipeline or Realtime. If you only need a website chat widget or text API, pick Text — it's simpler and cheaper.
+</Info>
+
+---
+
+## Pipeline Architecture
+
+### How it works
+
+```
+User speaks  →  [Deepgram]    →  [GPT-4o]    →  [Cartesia]  →  User hears
+                (Audio to         (Thinks and    (Converts
+                 text)            responds)       to audio)
+                  STT               LLM             TTS
+```
+
+Three **separate, independently chosen** services form a chain. You pick the best provider for each step.
+
+### When to choose Pipeline
+
+<CardGroup cols={2}>
+  <Card title="Mix Providers" icon="shuffle">
+    Deepgram STT + Gemini LLM + Cartesia TTS — pick the best from each category.
+  </Card>
+  <Card title="Control Costs" icon="dollar-sign">
+    Use a cheaper STT + affordable LLM and keep the same quality at lower cost.
+  </Card>
+  <Card title="Specific Voice" icon="microphone">
+    A particular ElevenLabs voice you love? Only possible with Pipeline.
+  </Card>
+  <Card title="First Time Building" icon="star">
+    Pipeline is more forgiving. Better starting point for new users.
+  </Card>
+</CardGroup>
+
+### Provider Options
+
+<Tabs>
+  <Tab title="STT (Audio → Text)">
+    | Provider | Best For | Accuracy |
+    |----------|----------|----------|
+    | **Deepgram Nova 2** ⭐ | Real-time, most languages | Excellent |
+    | **OpenAI Whisper** | High accuracy, non-English | Excellent |
+    | **AssemblyAI** | Accents, noisy environments | Very Good |
+
+    <Tip>
+      Start with **Deepgram Nova 2** — fastest and most accurate for the majority of use cases.
+    </Tip>
+  </Tab>
+  <Tab title="LLM (The Brain)">
+    | Model | Speed | Best For | Cost |
+    |-------|-------|----------|------|
+    | **GPT-4o** | Fast | Complex reasoning, nuanced tasks | $$$ |
+    | **GPT-4o-mini** ⭐ | Very fast | Simple support, high volume | $ |
+    | **Gemini 1.5 Pro** | Fast | Long context, multilingual | $$ |
+    | **Gemini 1.5 Flash** | Very fast | Quick responses, cost-saving | $ |
+    | **Gemini 2.0 Flash** | Ultra fast | Latest Google model | $ |
+
+    <Tip>
+      **GPT-4o-mini** handles most customer support use cases perfectly. Only use GPT-4o when the task requires complex reasoning.
+    </Tip>
+  </Tab>
+  <Tab title="TTS (Text → Audio)">
+    | Provider | Quality | Latency | Best For |
+    |----------|---------|---------|----------|
+    | **Cartesia Sonic** ⭐ | Excellent | Very Low | Customer support, general use |
+    | **OpenAI TTS** | Very Good | Low | Natural conversation |
+    | **ElevenLabs** | Best | Medium | Premium, emotional voices |
+
+    <Tip>
+      **Cartesia Sonic** offers the best balance — low latency and natural sound. Start here.
+    </Tip>
+  </Tab>
+</Tabs>
+
+---
+
+## Realtime Architecture
+
+### How it works
+
+```
+User speaks ←→ [OpenAI Realtime / Gemini Live] ←→ User hears
+               (One provider handles everything —
+                no separate STT or TTS pipeline)
+```
+
+A **single provider** manages the entire audio loop. This is significantly faster and more natural.
+
+### When to choose Realtime
+
+<CardGroup cols={2}>
+  <Card title="Speed is Critical" icon="bolt">
+    Sub-300ms response time — the conversation feels completely natural.
+  </Card>
+  <Card title="Natural Interruptions" icon="hand">
+    Users can interrupt the agent mid-sentence — just like a real conversation.
+  </Card>
+  <Card title="Already Using OpenAI/Google" icon="key">
+    If you already have an OpenAI or Google key, Realtime delivers the best value.
+  </Card>
+  <Card title="Premium Experience" icon="crown">
+    The highest quality conversation — as close to human as current AI allows.
+  </Card>
+</CardGroup>
+
+### Realtime Providers
+
+| Provider | Model | What Makes It Special |
+|----------|-------|----------------------|
+| **OpenAI Realtime** | gpt-4o-realtime-preview | Best quality, full function calling support |
+| **Gemini Live** | gemini-2.0-flash | Google's latest, competitive pricing |
+
+<Warning>
+  Realtime requires **your own API key** (OpenAI or Google). TalkifAI platform keys are not supported here. Add your key under Settings → API Keys.
+</Warning>
+
+---
+
+## Text Architecture
+
+### How it works
+
+```
+User types  →  [LLM]  →  Response text  →  User reads
+               (No audio — pure text in, text out)
+```
+
+No STT, no TTS — just a language model responding to text messages. Accessed via the **Chat API** using REST + Server-Sent Events (SSE streaming).
+
+### When to choose Text
+
+<CardGroup cols={2}>
+  <Card title="Website Chat Widget" icon="message">
+    Embed a chatbot on any website. No microphone required — users type their messages.
+  </Card>
+  <Card title="Lowest Cost" icon="dollar-sign">
+    No STT or TTS costs. You only pay for LLM tokens — the cheapest option.
+  </Card>
+  <Card title="Mobile App Chat" icon="mobile">
+    Build in-app chat experiences where voice isn't appropriate (e.g., in a meeting).
+  </Card>
+  <Card title="API-First Integrations" icon="code">
+    Integrate AI into your own app, CRM, or support portal via REST API.
+  </Card>
+</CardGroup>
+
+### Text Agent Providers
+
+| Provider | Model | Best For |
+|----------|-------|----------|
+| **GPT-4o-mini** ⭐ | OpenAI | Most use cases — fast and affordable |
+| **GPT-4o** | OpenAI | Complex reasoning, nuanced responses |
+| **Gemini 2.0 Flash** | Google | Fast, cost-effective alternative |
+
+<Note>
+  Text agents support all the same features as voice agents: custom functions, knowledge base, subagents, memory (Graphiti), and post-call analysis — except anything audio-related.
+</Note>
+
+---
+
+## Decision Guide — Which One to Pick?
+
+```
+Do you need voice calls (phone / browser)?
+         │
+         ├── No → Use Text ✅ (cheapest, simplest)
+         │
+         └── Yes → Building your first agent?
+                      │
+                      ├── Yes → Use Pipeline ✅
+                      │
+                      └── No → How important is latency?
+                                   │
+                                   ├── Critical (sub-300ms) → Realtime
+                                   │
+                                   └── Flexible (500–800ms ok) → Pipeline
+```
+
+---
+
+## Side-by-Side Comparison
+
+| Feature | 🔧 Pipeline | ⚡ Realtime |
+|---------|-------------|-------------|
+| **Response time** | 500–800ms | 200–400ms |
+| **Provider choice** | Any combination | OpenAI or Google only |
+| **Voice variety** | Any TTS voice available | Provider's built-in voices |
+| **Cost control** | Fine-grained per component | Single provider pricing |
+| **Function calling** | ✅ Fully supported | ✅ Supported (OpenAI Realtime) |
+| **Interruption handling** | Good | Excellent |
+| **Own API key required** | Optional | Required |
+| **Recommended for beginners** | ✅ Yes | Not recommended |
+
+---
+
+## Switching Architecture Later
+
+You can change architecture after creation — nothing is locked in:
+
+1. Open **Studio → Agent Settings**
+2. Select the new architecture type
+3. Configure the required fields
+4. Save and re-activate
+
+<Warning>
+  Switching architecture resets your provider configuration. You will need to reconfigure all provider settings for the new architecture.
+</Warning>
+
+---
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Create an Agent" icon="plus" href="/platform/create-agent">
+    Now that you understand architectures, build your agent.
+  </Card>
+  <Card title="Choose a Voice" icon="microphone" href="/platform/voices">
+    TTS provider and voice selection guide.
+  </Card>
+</CardGroup>

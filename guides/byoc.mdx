@@ -1,0 +1,182 @@
+---
+title: "BYOC (Bring Your Own Carrier)"
+description: "Connect your existing SIP infrastructure to TalkifAI voice agents."
+---
+
+## Overview
+
+**BYOC (Bring Your Own Carrier)** lets you use your existing phone numbers and SIP trunks with TalkifAI — without porting numbers or changing carriers.
+
+This is useful if you:
+- Already have phone numbers with a carrier
+- Have existing SIP infrastructure
+- Need specific carrier features (e.g., local presence, number pools)
+
+---
+
+## How BYOC Works
+
+```
+Your Carrier (Twilio/Telnyx/etc.)
+         │
+         │  SIP Trunk
+         ▼
+  LiveKit SIP Server (TalkifAI)
+         │
+         ▼
+  Voice Agent Runtime
+         │
+         ▼
+  AI Agent handles call
+```
+
+TalkifAI connects to your carrier's SIP trunk. You point your carrier's inbound calls to TalkifAI's SIP endpoint and configure outbound calling credentials.
+
+---
+
+## Phone Number Setup
+
+### Create a Phone Number
+
+```bash
+POST /v1/byoc/phone-numbers
+```
+
+```json
+{
+  "phoneNumber": "+19876543210",
+  "inboundAgentId": "agent_support",
+  "outboundAgentId": "agent_sales",
+  "sipUsername": "your_sip_username",
+  "sipPassword": "your_sip_password",
+  "terminationUri": "your-trunk.pstn.twilio.com",
+  "friendlyName": "Main Support Line"
+}
+```
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `phoneNumber` | Yes | E.164 format phone number |
+| `terminationUri` | Yes | Your carrier's SIP termination URI |
+| `inboundAgentId` | No | Agent for incoming calls |
+| `outboundAgentId` | No | Agent for outgoing calls |
+| `sipUsername` | No | SIP authentication username |
+| `sipPassword` | No | SIP authentication password |
+
+<Warning>
+  SIP credentials are encrypted with Fernet before storage. They are never stored in plain text.
+</Warning>
+
+### Update a Phone Number
+
+```bash
+PUT /v1/byoc/phone-numbers/{phoneNumber}
+```
+
+```json
+{
+  "inboundAgentId": "agent_new_support",
+  "sipPassword": "updated_password"
+}
+```
+
+### Delete a Phone Number
+
+```bash
+DELETE /v1/byoc/phone-numbers/{phoneNumber}
+```
+
+This removes the phone number and all associated SIP trunks from TalkifAI.
+
+---
+
+## Trunk Management
+
+### Refresh Trunks for One Number
+
+If a trunk has issues, recreate it:
+
+```bash
+POST /v1/byoc/trunks/refresh
+```
+```json
+{
+  "phoneNumber": "+19876543210"
+}
+```
+
+### Refresh All Trunks (Bulk)
+
+For system-wide maintenance or after SIP credential rotation:
+
+```bash
+POST /v1/byoc/trunks/refresh-all
+```
+
+<Warning>
+  Refreshing all trunks causes a brief interruption in call handling (typically under 30 seconds). Do this during off-peak hours.
+</Warning>
+
+---
+
+## Carrier Setup Guides
+
+### Twilio
+
+<Steps>
+  <Step title="Create Elastic SIP Trunk">
+    - Go to Twilio Console → **Elastic SIP Trunking → Trunks → Create Trunk**
+    - Name it (e.g., `TalkifAI`)
+  </Step>
+  <Step title="Set Origination URI">
+    Add TalkifAI's SIP endpoint:
+    ```
+    sip:livekit.talkifai.dev:5061;transport=tls
+    ```
+  </Step>
+  <Step title="Set Termination URI">
+    Note your Termination URI (e.g., `your-trunk.pstn.twilio.com`)
+    Use this as `terminationUri` when creating the phone number in TalkifAI.
+  </Step>
+  <Step title="Add Credentials">
+    Create a Credential List with username/password for outbound authentication.
+  </Step>
+</Steps>
+
+### Telnyx
+
+<Steps>
+  <Step title="Create SIP Connection">
+    - Go to Telnyx Portal → **Voice → SIP Connections → Create**
+  </Step>
+  <Step title="Point to TalkifAI">
+    Set the SIP URI to:
+    ```
+    livekit.talkifai.dev:5061
+    ```
+    Enable **TLS/SRTP** for secure media.
+  </Step>
+  <Step title="Assign Phone Number">
+    In Telnyx Portal, assign your phone number to the SIP Connection.
+  </Step>
+</Steps>
+
+---
+
+## Security Best Practices
+
+1. **Always use TLS** — Add `;transport=tls` to your SIP URIs
+2. **Rotate SIP passwords** regularly
+3. **IP ACL** — Whitelist TalkifAI's IP ranges in your carrier settings
+4. **Use SRTP** — Encrypt media streams, not just signaling
+
+---
+
+## Troubleshooting
+
+| Problem | Likely Cause | Fix |
+|---------|-------------|-----|
+| Calls not connecting | Wrong Origination URI | Verify SIP endpoint in carrier settings |
+| Authentication failed | Wrong SIP credentials | Update credentials in TalkifAI BYOC settings |
+| Audio quality issues | No TLS/SRTP | Enable secure transport |
+| Agent not answering | No inbound agent assigned | Set `inboundAgentId` for the phone number |

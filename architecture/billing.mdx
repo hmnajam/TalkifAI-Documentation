@@ -1,0 +1,167 @@
+---
+title: "Billing System"
+description: "Credit-based billing architecture — how usage is tracked and charged."
+---
+
+## Overview
+
+TalkifAI uses a **credit-based billing system**. Organizations purchase credits, which are consumed as voice sessions run.
+
+The billing system is a separate **FastAPI microservice** running on Google Cloud Run.
+
+---
+
+## Architecture
+
+```
+┌───────────────────────────────────────────────────────┐
+│                   Frontend (Studio)                    │
+│              Display balances, usage, payments         │
+└────────────────────────┬──────────────────────────────┘
+                         │ REST API
+                         ▼
+┌───────────────────────────────────────────────────────┐
+│              Voice Agent Runtime (VM)                  │
+│  ┌────────────────────────────────────────────────┐   │
+│  │  Lemon Squeezy Service                         │   │
+│  │  • Webhook: POST /lemon-squeezy/webhook        │   │
+│  │  • Verifies signature                          │   │
+│  │  • Processes subscriptions & orders            │   │
+│  │  • Adds credits on payment                     │   │
+│  └────────────────────────────────────────────────┘   │
+└────────────────────────┬──────────────────────────────┘
+                         │
+                         ▼
+┌───────────────────────────────────────────────────────┐
+│              Billing Service (Cloud Run)               │
+│                                                        │
+│  API Endpoints:                                        │
+│  • /billing/sessions  — Start/end session tracking    │
+│  • /billing/credits   — Check/consume/add credits     │
+│  • /billing/auto-topup — Configure auto-recharge      │
+│  • /billing/dashboard  — Usage analytics              │
+│                                                        │
+│  Services:                                             │
+│  • SessionService   — Track call lifecycle             │
+│  • CreditService    — Credit balance management       │
+│  • PricingService   — Cost calculation                │
+│  • AutoTopUpService — Automatic recharge              │
+│  • NotificationService — Low credit alerts            │
+│                                                        │
+│  Background Workers:                                   │
+│  • CostCalculatorWorker — Async cost processing       │
+│                                                        │
+│  Redis Cache (30s TTL):                                │
+│  • Credit balance caching                             │
+│  • Quota caching                                      │
+└───────────────────────────────────────────────────────┘
+```
+
+---
+
+## Credit System
+
+### How Credits Work
+
+| 1 credit | = 1 minute of voice conversation |
+|----------|----------------------------------|
+
+Credits are:
+- Purchased via Lemon Squeezy (payment processor)
+- Stored per organization
+- Consumed at session end (not during)
+- Cached in Redis (30-second TTL) for fast quota checks
+
+### Credit Flow
+
+```
+1. Pre-call: Check credits available
+         │
+         ├── Insufficient → Reject call
+         └── OK → Allow call
+                   │
+                   ▼
+         2. Call runs (credits NOT deducted yet)
+                   │
+                   ▼
+         3. Call ends → Duration calculated
+                   │
+                   ▼
+         4. CostCalculatorWorker (async)
+            calculates cost based on:
+            • Duration
+            • Provider rates (OpenAI vs Deepgram vs etc.)
+            • Plan tier
+                   │
+                   ▼
+         5. Credits deducted from org balance
+                   │
+                   ▼
+         6. Notification if balance < 20%
+```
+
+---
+
+## Pricing Model
+
+Costs depend on the agent architecture and providers used:
+
+| Component | Approximate Cost |
+|-----------|-----------------|
+| Pipeline STT (Deepgram) | ~$0.003/min |
+| Pipeline LLM (GPT-4o) | ~$0.015/min |
+| Pipeline TTS (Cartesia) | ~$0.005/min |
+| Realtime (OpenAI Realtime) | ~$0.06/min |
+
+<Note>
+  Platform credits abstract away provider pricing differences. You pay one credit per minute regardless of which providers your agent uses.
+</Note>
+
+---
+
+## Auto Top-Up
+
+Organizations can configure automatic credit recharging:
+
+1. Go to **Settings → Billing → Auto Top-Up**
+2. Set trigger balance (e.g., "Recharge when below 100 credits")
+3. Set recharge amount (e.g., "Add 500 credits")
+4. Save payment method
+
+When the balance drops below the trigger, the billing service automatically:
+1. Initiates a payment via Lemon Squeezy
+2. Adds credits on successful payment
+3. Sends a notification email
+
+---
+
+## Developer Quotas (Free Tier)
+
+Users on the free tier have **monthly minute limits** instead of credit-based billing:
+
+| Setting | Default |
+|---------|---------|
+| Monthly limit | 3,000 minutes |
+| Scope | Per user, per organization |
+| Reset | 1st of every month |
+
+Quota is checked before every call. Calls that would exceed the quota are rejected with:
+```json
+{
+  "error": "Monthly quota exceeded",
+  "code": "QUOTA_EXCEEDED",
+  "minutesUsed": 3000,
+  "minutesLimit": 3000
+}
+```
+
+---
+
+## Payment Processing
+
+TalkifAI uses **Lemon Squeezy** for payment processing:
+
+- Credit packages available in the Studio dashboard
+- Subscriptions for monthly credit allocations
+- One-time purchases for credit top-ups
+- Webhook-based credit addition (automatic after payment)

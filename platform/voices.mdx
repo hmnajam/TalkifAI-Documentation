@@ -1,0 +1,201 @@
+---
+title: "Voice Selection"
+description: "The right voice makes your agent sound professional and trustworthy from the first word."
+---
+
+## Why Voice Matters
+
+The voice is your agent's **first impression**. Research consistently shows:
+- Users form an opinion about an AI agent within seconds
+- The wrong voice makes even a well-configured agent feel unprofessional
+- The right voice builds trust instantly
+
+---
+
+## TTS Providers at a Glance
+
+| Provider | Quality | Latency | Cost | Best For |
+|----------|---------|---------|------|----------|
+| **Cartesia Sonic** | ⭐⭐⭐⭐⭐ | Very Low | $$ | Most use cases — best overall balance |
+| **OpenAI TTS** | ⭐⭐⭐⭐ | Low | $$ | Natural, conversational feel |
+| **ElevenLabs** | ⭐⭐⭐⭐⭐ | Medium | $$$ | Premium quality, emotional range |
+
+<Info>
+  **Short answer:** Start with Cartesia. If you need a premium, highly realistic voice, use ElevenLabs.
+</Info>
+
+---
+
+## Cartesia Voices
+
+Cartesia is the **most popular choice** among TalkifAI users — lowest latency with a natural, clear sound.
+
+### Popular Cartesia Voices
+
+| Voice | Gender | Tone | Best For |
+|-------|--------|------|----------|
+| **Sonic English** | Neutral | Clear, professional | Customer support, general purpose |
+| **Barbadian Man** | Male | Warm, friendly | Sales, outbound calls |
+| **British Lady** | Female | Polished, formal | Finance, legal, insurance |
+| **Australian Man** | Male | Casual, approachable | Tech support, startups |
+| **French Conversational** | Female | Smooth, elegant | Luxury brands, premium services |
+| **Indian Man** | Male | Clear, professional | Business, enterprise |
+
+<Tip>
+  Visit [cartesia.ai/voices](https://cartesia.ai/voices) to preview voices live in the browser. Copy the Voice ID from there and paste it into your agent settings.
+</Tip>
+
+---
+
+## OpenAI TTS Voices
+
+Simple, consistent, and natural — OpenAI's built-in voices require no external account.
+
+| Voice ID | Character | Best For |
+|----------|-----------|----------|
+| `alloy` | Neutral, clear | General purpose |
+| `echo` | Male, deep | Professional, authoritative |
+| `fable` | Male, warm | Friendly, storytelling |
+| `onyx` | Male, deep rich | Premium, formal contexts |
+| `nova` | Female, warm | Support, approachable interactions |
+| `shimmer` | Female, soft | Calm, gentle conversations |
+
+---
+
+## ElevenLabs Voices
+
+ElevenLabs delivers the **highest quality** — the most human-like voices available. The tradeoff is slightly higher latency and cost.
+
+### When to Use ElevenLabs
+
+- You need a premium brand image
+- Emotional range matters (sympathy, enthusiasm, warmth)
+- Realism is more important than speed
+- You can tolerate an extra 100–200ms of latency
+
+### Popular ElevenLabs Voices
+
+| Voice | Type | Description |
+|-------|------|-------------|
+| **Rachel** | Female | Natural, conversational, US accent |
+| **Adam** | Male | Deep, authoritative, articulate |
+| **Bella** | Female | Soft, warm, friendly |
+| **Antoni** | Male | Professional, neutral |
+| **Josh** | Male | Young, energetic |
+
+<Note>
+  Find your Voice ID in the ElevenLabs dashboard under Voice Library. Paste it into the Voice ID field in your agent settings.
+</Note>
+
+---
+
+## Choose by Use Case
+
+<AccordionGroup>
+  <Accordion title="🛒 Customer Support / E-Commerce">
+    **Recommended:** Cartesia Sonic or OpenAI `nova`
+
+    **Why:** Warm, approachable, and clearly articulated. Soothing when customers are frustrated.
+
+    **Settings:**
+    - Speed: 1.0x (default)
+  </Accordion>
+
+  <Accordion title="📞 Sales / Outbound Calling">
+    **Recommended:** Cartesia Barbadian Man or ElevenLabs Josh
+
+    **Why:** Energetic and engaging — holds attention. Lower disconnect rates on cold calls.
+
+    **Settings:**
+    - Speed: 1.05x — slightly faster projects confidence
+  </Accordion>
+
+  <Accordion title="🏥 Medical / Healthcare">
+    **Recommended:** OpenAI `shimmer` or a calm Cartesia female voice
+
+    **Why:** Calm, reassuring tone. Patients are often anxious — a soothing voice genuinely helps.
+
+    **Settings:**
+    - Speed: 0.95x — slightly slower for clarity
+  </Accordion>
+
+  <Accordion title="🏦 Finance / Legal / Insurance">
+    **Recommended:** OpenAI `onyx` or Cartesia British Lady
+
+    **Why:** Deep, authoritative voices build trust in high-stakes financial conversations.
+
+    **Settings:**
+    - Speed: 0.95x — deliberate pacing conveys professionalism
+  </Accordion>
+
+  <Accordion title="🚀 Tech / Startup">
+    **Recommended:** Cartesia Australian Man or OpenAI `echo`
+
+    **Why:** Casual and modern — matches a startup's brand voice without being too formal.
+
+    **Settings:**
+    - Speed: 1.0x
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Voice Settings
+
+### Speed (0.5x – 2.0x)
+
+| Speed | Use Case |
+|-------|----------|
+| `0.8x – 0.9x` | Medical, elderly users, complex information |
+| `1.0x` | General use (recommended default) |
+| `1.1x – 1.2x` | Sales, energetic conversations |
+
+<Warning>
+  Avoid going above 1.3x — the agent sounds robotic and users disconnect.
+</Warning>
+
+### Stability (ElevenLabs Only)
+
+- **High (0.8+):** Consistent, less expressive — good for formal contexts
+- **Low (0.3–0.5):** More expressive, natural variation — good for emotional conversations
+
+### Style (ElevenLabs Only)
+
+- `0.0` = Neutral
+- `0.5` = Moderate expression
+- `1.0` = Maximum style and emotion
+
+---
+
+## How to Test Your Voice
+
+After saving the agent:
+
+1. Go to **Studio → Agent → Test**
+2. Speak a few sentences and listen carefully
+3. Check:
+   - Is pronunciation correct?
+   - Does the speed feel natural?
+   - Does the tone match the use case?
+4. Adjust → save → test again
+
+**Test these sentences:**
+```
+"Hello, my name is Aria. How can I help you today?"
+"Could you please provide me with your order number?"
+"Let me check that for you — just one moment."
+"Your issue has been resolved. Is there anything else I can help with?"
+```
+
+---
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Create Your Agent" icon="plus" href="/platform/create-agent">
+    Voice selected — go complete your agent setup.
+  </Card>
+  <Card title="Test Your Agent" icon="flask" href="/platform/agent-testing">
+    Test the voice properly before going live.
+  </Card>
+</CardGroup>

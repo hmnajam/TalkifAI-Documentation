@@ -1,0 +1,153 @@
+{
+  "$schema": "https://mintlify.com/schema.json",
+  "name": "TalkifAI",
+  "logo": {
+    "dark": "/logo/dark.svg",
+    "light": "/logo/light.svg",
+    "width": 160
+  },
+  "favicon": "/favicon.svg",
+  "colors": {
+    "primary": "#6366F1",
+    "light": "#818CF8",
+    "dark": "#4F46E5",
+    "background": {
+      "dark": "#0F0F1A"
+    },
+    "anchors": {
+      "from": "#6366F1",
+      "to": "#818CF8"
+    }
+  },
+  "topbarLinks": [
+    {
+      "name": "Support",
+      "url": "mailto:support@talkifai.dev"
+    }
+  ],
+  "topbarCtaButton": {
+    "name": "Get Started",
+    "url": "https://studio.talkifai.dev/agents"
+  },
+  "tabs": [
+    {
+      "name": "API Reference",
+      "url": "api-reference"
+    },
+    {
+      "name": "Architecture",
+      "url": "architecture"
+    }
+  ],
+  "anchors": [
+    {
+      "name": "Dashboard",
+      "icon": "gauge",
+      "url": "https://studio.talkifai.dev/agents"
+    },
+    {
+      "name": "LinkedIn",
+      "icon": "linkedin",
+      "url": "https://www.linkedin.com/company/talkifai-dev/"
+    },
+    {
+      "name": "Status",
+      "icon": "signal",
+      "url": "https://status.talkifai.dev/"
+    }
+  ],
+  "navigation": [
+    {
+      "group": "Getting Started",
+      "pages": [
+        "introduction",
+        "quickstart"
+      ]
+    },
+    {
+      "group": "Platform Guide",
+      "pages": [
+        "platform/overview",
+        "platform/create-agent",
+        "platform/agent-architectures",
+        "platform/system-prompt-guide",
+        "platform/voices",
+        "platform/agent-testing",
+        "platform/telephony",
+        "platform/knowledge-base",
+        "platform/memory",
+        "platform/subagents",
+        "platform/pronunciation",
+        "platform/post-call-analysis",
+        "platform/analytics",
+        "platform/marketplace",
+        "platform/organization",
+        "platform/api-keys",
+        "platform/billing",
+        "platform/advanced-configuration"
+      ]
+    },
+    {
+      "group": "How-To Guides",
+      "pages": [
+        "guides/custom-functions",
+        "guides/chat-api",
+        "guides/batch-calling",
+        "guides/byoc",
+        "guides/noise-cancellation"
+      ]
+    },
+    {
+      "group": "Getting Started",
+      "pages": [
+        "api-reference/introduction",
+        "api-reference/authentication"
+      ]
+    },
+    {
+      "group": "Agents",
+      "pages": [
+        "api-reference/agents"
+      ]
+    },
+    {
+      "group": "Voice Calls",
+      "pages": [
+        "api-reference/call-sessions",
+        "api-reference/phone-numbers"
+      ]
+    },
+    {
+      "group": "Text Chat",
+      "pages": [
+        "api-reference/chat"
+      ]
+    },
+    {
+      "group": "Agent Features",
+      "pages": [
+        "api-reference/custom-functions"
+      ]
+    },
+    {
+      "group": "Events",
+      "pages": [
+        "api-reference/webhooks"
+      ]
+    },
+    {
+      "group": "Architecture",
+      "pages": [
+        "architecture/overview",
+        "architecture/voice-runtime",
+        "architecture/billing",
+        "architecture/security"
+      ]
+    }
+  ],
+  "footerSocials": {
+    "website": "https://studio.talkifai.dev",
+    "linkedin": "https://www.linkedin.com/company/talkifai-dev/",
+    "github": "https://github.com/XponentialAI-dev"
+  }
+}

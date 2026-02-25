@@ -1,0 +1,118 @@
+---
+title: "Architecture Overview"
+description: "High-level technical architecture of the TalkifAI platform."
+---
+
+## System Architecture
+
+TalkifAI is composed of four independently deployed services:
+
+```
+                    ┌──────────────────────────────┐
+                    │       End User Browser        │
+                    │   or Phone (via SIP carrier)  │
+                    └──────────────┬───────────────┘
+                                   │
+                    ┌──────────────▼───────────────┐
+                    │       TalkifAI Studio         │
+                    │    (Next.js 15 - App Router)  │
+                    │                               │
+                    │  • User authentication        │
+                    │  • Agent configuration UI     │
+                    │  • Organization management    │
+                    │  • LiveKit token generation   │
+                    │  • Call session tracking      │
+                    │  • Telephony webhooks         │
+                    └──────────────┬───────────────┘
+                                   │
+              ┌────────────────────┼────────────────────┐
+              │                    │                    │
+              ▼                    ▼                    ▼
+  ┌───────────────────┐  ┌─────────────────┐  ┌────────────────────┐
+  │  Voice Agent      │  │  Billing        │  │  Marketing Site    │
+  │  Runtime          │  │  Service        │  │  (Next.js)         │
+  │  (Python/FastAPI  │  │  (Python/FastAPI│  │                    │
+  │   + LiveKit)      │  │   + Redis)      │  │  • Landing pages   │
+  │                   │  │                 │  │  • Public demo     │
+  │  • STT/LLM/TTS    │  │  • Credits      │  │  • Marketing       │
+  │  • Session mgmt   │  │  • Usage track  │  └────────────────────┘
+  │  • Function calls │  │  • Auto top-up  │
+  │  • Recordings     │  │  • Cost calc    │
+  │  • Transcripts    │  └─────────────────┘
+  └───────────────────┘
+              │
+              ▼
+  ┌───────────────────┐
+  │   LiveKit Server  │
+  │   (WebRTC/SIP)    │
+  └───────────────────┘
+```
+
+---
+
+## Services
+
+<CardGroup cols={2}>
+  <Card title="TalkifAI Studio" icon="window" href="/architecture/voice-runtime">
+    Main Next.js app — dashboard, agent builder, auth, API endpoints.
+  </Card>
+  <Card title="Voice Agent Runtime" icon="microphone" href="/architecture/voice-runtime">
+    Python service running the actual voice agents on LiveKit.
+  </Card>
+  <Card title="Billing Service" icon="credit-card" href="/architecture/billing">
+    FastAPI service managing credits, usage, and payments.
+  </Card>
+  <Card title="Security" icon="shield" href="/architecture/security">
+    Authentication, encryption, and multi-tenant isolation.
+  </Card>
+</CardGroup>
+
+---
+
+## Database Architecture
+
+All services share a **PostgreSQL** database (Neon serverless) via Prisma ORM.
+
+**Key tables:**
+
+| Table | Purpose |
+|-------|---------|
+| `user` | User accounts |
+| `organization` | Tenant workspaces |
+| `member` | User-org relationships + roles |
+| `Agent` | Voice agent configurations |
+| `PhoneNumber` | BYOC phone numbers |
+| `CarrierCredentials` | Encrypted SIP credentials |
+| `UserVoiceSession` | Call session records |
+| `DeveloperQuota` | Monthly usage limits |
+| `ApiKeys` | Organization API keys (encrypted) |
+| `CustomFunction` | Custom webhook functions |
+| `PostCallAnalysisForm` | QA form definitions |
+
+---
+
+## Infrastructure
+
+| Component | Technology | Hosting |
+|-----------|-----------|---------|
+| Studio Frontend/Backend | Next.js 15 | Vercel |
+| Voice Agent Runtime | Python + FastAPI | Google Cloud VM |
+| Billing Service | Python + FastAPI | Google Cloud Run |
+| Database | PostgreSQL (Neon) | Neon Cloud |
+| Cache | Redis | Google Cloud Memorystore |
+| Recordings | GCS Buckets | Google Cloud Storage |
+| LiveKit Server | LiveKit Cloud | LiveKit Cloud |
+| Status Page | BetterStack | BetterStack |
+
+---
+
+## Scale Characteristics
+
+| Metric | Value |
+|--------|-------|
+| LiveKit rooms per node | 3,000 |
+| Participants per node | 6,000 |
+| Concurrent users (horizontal) | 10,000+ |
+| Batch calls per day | 100,000+ |
+| DB connection pool | 5 (Neon limit) |
+| Redis cache TTL | 30 seconds (credits) |

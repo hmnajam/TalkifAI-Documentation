@@ -1,0 +1,369 @@
+---
+title: "Create an Agent"
+description: "Step-by-step guide — build your first AI voice agent in under 10 minutes."
+---
+
+## Before You Start
+
+Have these ready:
+
+<Steps>
+  <Step title="Open the Studio">
+    Go to [studio.talkifai.dev/agents](https://studio.talkifai.dev/agents) and click **Create Agent**.
+  </Step>
+  <Step title="Decide on a use case">
+    What should this agent do? Customer support? Appointments? Sales? Decide first — everything else follows from this.
+  </Step>
+</Steps>
+
+---
+
+## Step 1: Choose an Architecture
+
+The most important decision — it determines whether your agent can handle voice, text, or both.
+
+<Warning>
+  **Voice agents (Pipeline / Realtime) work for both voice calls AND text chat.**
+  **Text agents work for text chat ONLY — no voice calls.**
+</Warning>
+
+<Tabs>
+  <Tab title="🔧 Pipeline (Recommended for Voice)">
+    **Best when:** You need voice calls with full provider flexibility.
+
+    How it works:
+    ```
+    User speaks → [STT] → text → [LLM] → response → [TTS] → User hears
+    ```
+
+    Each component uses a separate provider — you choose which:
+    - **STT:** Deepgram, OpenAI Whisper
+    - **LLM:** GPT-4o, Gemini 1.5 Pro, etc.
+    - **TTS:** Cartesia, ElevenLabs, OpenAI TTS
+
+    ✅ **Pros:** Flexible, cost-effective, provider-independent, supports voice + text
+    ❌ **Cons:** Slightly higher latency (500–800ms)
+  </Tab>
+  <Tab title="⚡ Realtime">
+    **Best when:** You need the fastest, most natural voice conversation possible.
+
+    How it works:
+    ```
+    User speaks ←→ [OpenAI Realtime / Gemini Live] ←→ User hears
+    ```
+
+    One provider handles everything — no separate STT/TTS pipeline.
+
+    ✅ **Pros:** Ultra-low latency (200–400ms), natural interruptions, supports voice + text
+    ❌ **Cons:** Locked to OpenAI or Gemini only
+
+    <Warning>
+      Realtime mode requires your own OpenAI or Google API key. Platform keys do not work here.
+    </Warning>
+  </Tab>
+  <Tab title="💬 Text (Chat Only)">
+    **Best when:** You only need a text chat widget — no voice calls needed.
+
+    How it works:
+    ```
+    User types → [LLM] → Response text → User reads
+    (No audio — pure text in, text out)
+    ```
+
+    Accessed via the Chat API using standard REST + SSE streaming.
+
+    ✅ **Pros:** Simplest setup, lowest cost (no STT/TTS), easy website embed
+    ❌ **Cons:** Cannot handle voice calls or phone numbers
+
+    <Info>
+      Text agents support custom functions, knowledge base, subagents, and long-term memory — everything except audio.
+    </Info>
+  </Tab>
+</Tabs>
+
+<Info>
+  **First time building?** If you need voice → choose Pipeline. If you only need a website chatbot → choose Text.
+</Info>
+
+---
+
+## Step 2: Basic Information
+
+| Field | Required | Tips |
+|-------|----------|------|
+| **Name** | ✅ | Keep it clear — e.g., "Customer Support Bot", "Sales Agent" |
+| **Description** | ❌ | Internal notes — not visible to users |
+| **Language** | ✅ | The language the agent will speak |
+| **Visibility** | ✅ | Start with **Private**, test, then change |
+
+---
+
+## Step 3: System Prompt — The Most Important Part
+
+The system prompt is the agent's **soul**. It defines:
+- Who the agent is
+- What it should do
+- How it should speak
+- What it should never do
+
+### Starter Template
+
+```
+You are [AGENT_NAME], the [ROLE] at [COMPANY].
+
+## Your Job
+- [PRIMARY_TASK_1]
+- [PRIMARY_TASK_2]
+- [PRIMARY_TASK_3]
+
+## Personality
+- Tone: [Professional / Friendly / Formal]
+- Keep responses short — 1 to 2 sentences maximum
+- Always address the customer respectfully
+
+## What NOT to Do
+- [RESTRICTION_1]
+- [RESTRICTION_2]
+
+## When You Don't Know Something
+Say: "I don't have that information right now. Let me connect you with a specialist."
+Then use the end_call tool.
+```
+
+### Ready-Made Examples
+
+<AccordionGroup>
+  <Accordion title="🛒 E-Commerce Customer Support">
+    ```
+    You are Aria, a customer support agent for ShopEasy.
+
+    ## Your Job
+    - Check order status using the check_order tool
+    - Process return and refund requests
+    - Provide product information
+    - Resolve delivery issues
+
+    ## Personality
+    - Friendly and patient
+    - Keep every response under 2 sentences
+    - Use the customer's name if you know it
+
+    ## Escalation
+    If the issue is complex or the customer is frustrated, say:
+    "Let me connect you with a senior support agent."
+    Then use the end_call tool.
+    ```
+  </Accordion>
+  <Accordion title="📅 Appointment Booking">
+    ```
+    You are the scheduling assistant for City Dental Clinic.
+
+    ## Your Job
+    - Check available slots using the check_slots tool
+    - Book appointments using the book_appointment tool
+    - Confirm, reschedule, or cancel existing appointments
+    - Provide clinic location and directions
+
+    ## Rules
+    - Only book appointments within the next 30 days
+    - For dental emergencies, provide the direct number: 555-0100
+    - Do not give dental advice — refer to the dentist directly
+
+    ## Clinic Info
+    - Address: 123 Main St, Downtown
+    - Hours: Monday–Saturday, 10am–8pm
+    - Closed on Sundays
+    ```
+  </Accordion>
+  <Accordion title="📞 Sales / Lead Qualification">
+    ```
+    You are a sales assistant for TechSolutions.
+
+    ## Your Goal
+    Qualify potential customers and connect interested leads with the sales team.
+
+    ## Conversation Flow
+    1. Greet and introduce yourself
+    2. Ask about their current solution
+    3. Identify their biggest challenge
+    4. Ask about budget and timeline
+    5. If qualified: schedule a meeting using the schedule_meeting tool
+    6. If not interested: thank them and end the call politely
+
+    ## What NOT to Do
+    - Never commit to a price — say "Our sales team will give you an exact quote"
+    - Never make promises about features
+    - Do not pressure — one follow-up question maximum
+
+    ## Tone
+    Confident but not pushy. Professional but human.
+    ```
+  </Accordion>
+  <Accordion title="🏥 Medical / Healthcare Triage">
+    ```
+    You are the initial triage assistant for City Hospital.
+
+    ## Your Job
+    - Listen to the patient's symptoms
+    - Assess urgency level
+    - Direct to the appropriate department
+    - Schedule appointments for non-emergency cases
+
+    ## CRITICAL Rules
+    - Never give a medical diagnosis
+    - For emergency symptoms (chest pain, severe bleeding, breathing issues):
+      Say: "This sounds like an emergency. Please call 911 or go to the nearest ER immediately."
+    - Never recommend medication
+
+    ## Departments
+    - Emergency: Direct to ER
+    - General: Book OPD appointment
+    - Specialist: Route to relevant department
+    ```
+  </Accordion>
+</AccordionGroup>
+
+### System Prompt Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Keep it Short" icon="scissors">
+    Under 500 words. Long prompts confuse the agent and produce inconsistent responses.
+  </Card>
+  <Card title="Be Specific" icon="list-check">
+    "Be friendly" is vague. "Start every response with the customer's name" is actionable.
+  </Card>
+  <Card title="Cover Edge Cases" icon="triangle-exclamation">
+    What happens when the agent doesn't know? When the user is angry? Define it explicitly.
+  </Card>
+  <Card title="Test and Iterate" icon="rotate">
+    Write → Test → Fix → Repeat. 3–5 iterations is completely normal.
+  </Card>
+</CardGroup>
+
+Full guide: [System Prompt Guide →](/platform/system-prompt-guide)
+
+---
+
+## Step 4: Choose an LLM Model (Pipeline Only)
+
+| Model | Best For | Speed | Cost |
+|-------|----------|-------|------|
+| **GPT-4o** | Complex conversations, reasoning | Fast | $$$ |
+| **GPT-4o-mini** | Simple tasks, high volume | Very fast | $ |
+| **Gemini 1.5 Pro** | Long context, multilingual | Fast | $$ |
+| **Gemini 1.5 Flash** | Fast responses, cost-saving | Very fast | $ |
+
+<Tip>
+  For most customer support use cases, **GPT-4o-mini** or **Gemini Flash** is more than enough. Use GPT-4o only when complex reasoning is required.
+</Tip>
+
+**Temperature:**
+
+| Value | Effect | Use When |
+|-------|--------|----------|
+| `0.0 – 0.3` | Precise, consistent | Support, factual queries |
+| `0.4 – 0.7` | Balanced | General use |
+| `0.8 – 1.0` | Creative, varied | Sales, casual conversation |
+
+---
+
+## Step 5: Choose a Voice
+
+The right voice makes your agent sound trustworthy and professional.
+
+Full guide: [Voice Selection →](/platform/voices)
+
+**Quick picks:**
+
+| Use Case | Recommended |
+|----------|-------------|
+| Customer Support | Cartesia — warm, clear |
+| Sales | ElevenLabs — confident, engaging |
+| Medical / Legal | Cartesia — calm, professional |
+| Casual / Friendly | OpenAI TTS — natural |
+
+---
+
+## Step 6: Add Functions (Optional)
+
+Give your agent the ability to take real actions during calls.
+
+**Built-in functions** (enable with one click):
+
+| Function | What it does |
+|----------|--------------|
+| `web_search` | Searches the internet in real time |
+| `end_call` | Programmatically ends the conversation |
+
+**Custom functions** — connect your own APIs:
+- Check order status
+- Fetch data from your database
+- Book a calendar slot
+- Update your CRM
+
+Full guide: [Custom Functions →](/guides/custom-functions)
+
+---
+
+## Step 7: Test Before Going Live
+
+**Always test before activating!**
+
+1. Click **Test Agent** in the Studio
+2. Talk to it directly in the browser — no phone number needed
+3. Try different scenarios:
+   - Normal conversation
+   - Edge cases (unknown info, angry user)
+   - All functions working correctly?
+
+Full testing guide: [Agent Testing →](/platform/agent-testing)
+
+---
+
+## Step 8: Activate
+
+Once testing passes — click **Activate**.
+
+Your agent is now live. You can:
+
+<CardGroup cols={2}>
+  <Card title="Browser Test" icon="globe" href="/platform/agent-testing">
+    Talk to your agent live in the Studio.
+  </Card>
+  <Card title="Connect a Phone Number" icon="phone" href="/platform/telephony">
+    Receive real phone calls on your agent.
+  </Card>
+  <Card title="Call via API" icon="code" href="/api-reference/call-sessions">
+    Programmatically trigger outbound calls.
+  </Card>
+  <Card title="Embed on Website" icon="window" href="/guides/custom-functions">
+    Add a voice widget to your website.
+  </Card>
+</CardGroup>
+
+<Warning>
+  **An inactive agent cannot receive calls.** Make sure to click Activate before going to production.
+</Warning>
+
+---
+
+## Common Mistakes to Avoid
+
+<AccordionGroup>
+  <Accordion title="❌ System prompt is too long">
+    **Problem:** Agent becomes inconsistent and confused.
+    **Fix:** Keep it under 500 words. Include only essential instructions.
+  </Accordion>
+  <Accordion title="❌ Skipping tests">
+    **Problem:** Agent behaves unexpectedly in production.
+    **Fix:** Run at least 20 test conversations across different scenarios.
+  </Accordion>
+  <Accordion title="❌ No edge cases defined">
+    **Problem:** Agent doesn't know what to do when it's confused.
+    **Fix:** Add explicit instructions: "If X happens, do Y."
+  </Accordion>
+  <Accordion title="❌ Temperature too high">
+    **Problem:** Support agent gives "creative" but incorrect answers.
+    **Fix:** For factual/support tasks, keep temperature at 0.2–0.4.
+  </Accordion>
+</AccordionGroup>

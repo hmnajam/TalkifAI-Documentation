@@ -1,0 +1,215 @@
+---
+title: "Call Sessions"
+description: "Initiate calls, track sessions, and retrieve call logs via API."
+---
+
+## Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/v1/calls` | Initiate an outbound call |
+| `GET` | `/v1/calls` | List all call sessions |
+| `GET` | `/v1/calls/{id}` | Get call details |
+| `GET` | `/v1/calls/{id}/transcript` | Get call transcript |
+| `GET` | `/v1/calls/check-usage` | Check usage quota |
+
+---
+
+## Initiate a Call
+
+```bash
+POST /v1/calls
+```
+
+**Request body:**
+
+```json
+{
+  "agentId": "agent_abc123",
+  "to": "+12025550123",
+  "metadata": {
+    "customerId": "cust_xyz",
+    "campaignId": "campaign_001"
+  }
+}
+```
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `agentId` | Yes | The agent that will handle the call |
+| `to` | Yes | Destination phone number (E.164) |
+| `metadata` | No | Custom key-value pairs attached to this call |
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "callId": "call_abc123",
+    "sessionId": "sess_xyz789",
+    "status": "initiating",
+    "agentId": "agent_abc123",
+    "to": "+12025550123",
+    "createdAt": "2024-01-15T10:30:00Z"
+  }
+}
+```
+
+**Call status values:**
+
+| Status | Meaning |
+|--------|---------|
+| `initiating` | Call being set up |
+| `ringing` | Destination phone ringing |
+| `in_progress` | Call connected, agent active |
+| `completed` | Call ended normally |
+| `failed` | Call failed to connect |
+| `no_answer` | Destination did not answer |
+
+---
+
+## List Call Sessions
+
+```bash
+GET /v1/calls
+```
+
+**Query parameters:**
+
+| Param | Type | Description |
+|-------|------|-------------|
+| `agentId` | string | Filter by agent |
+| `status` | string | Filter by call status |
+| `from` | ISO date | Filter calls after this date |
+| `to_date` | ISO date | Filter calls before this date |
+| `page` | number | Page number |
+| `limit` | number | Items per page (max 100) |
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "callId": "call_abc123",
+      "agentId": "agent_xyz",
+      "direction": "outbound",
+      "to": "+12025550123",
+      "duration": 245,
+      "status": "completed",
+      "startTime": "2024-01-15T10:30:00Z",
+      "endTime": "2024-01-15T10:34:05Z"
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "total": 48,
+    "hasNext": true
+  }
+}
+```
+
+---
+
+## Get Call Details
+
+```bash
+GET /v1/calls/{callId}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "callId": "call_abc123",
+    "sessionId": "sess_xyz789",
+    "agentId": "agent_abc",
+    "direction": "outbound",
+    "to": "+12025550123",
+    "from": "+18885550100",
+    "duration": 245,
+    "status": "completed",
+    "startTime": "2024-01-15T10:30:00Z",
+    "endTime": "2024-01-15T10:34:05Z",
+    "recordingUrl": "https://storage.talkifai.dev/recordings/call_abc123.mp3",
+    "metadata": {
+      "customerId": "cust_xyz"
+    },
+    "postCallAnalysis": {
+      "resolved": true,
+      "sentiment": "positive",
+      "followUpRequired": false
+    }
+  }
+}
+```
+
+---
+
+## Get Transcript
+
+```bash
+GET /v1/calls/{callId}/transcript
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "callId": "call_abc123",
+    "transcript": [
+      {
+        "speaker": "agent",
+        "text": "Hello! How can I help you today?",
+        "timestamp": 0.0
+      },
+      {
+        "speaker": "user",
+        "text": "I need help with my account.",
+        "timestamp": 2.4
+      },
+      {
+        "speaker": "agent",
+        "text": "Of course! Can I get your account number?",
+        "timestamp": 4.1
+      }
+    ]
+  }
+}
+```
+
+---
+
+## Check Usage Quota
+
+```bash
+GET /v1/calls/check-usage
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "minutesUsed": 142,
+    "minutesLimit": 3000,
+    "minutesRemaining": 2858,
+    "percentUsed": 4.7,
+    "resetDate": "2024-02-01"
+  }
+}
+```
+
+<Warning>
+  If `minutesRemaining` is 0, new calls will be rejected with `403 Quota Exceeded`. Add credits or wait for the monthly reset.
+</Warning>
+
+---
+
+## Tracking Session Lifecycle (Webhook)
+
+For real-time updates on call status, set up a webhook. See [Webhooks](/api-reference/webhooks).
+
+Or poll the call details endpoint every few seconds during an active call.

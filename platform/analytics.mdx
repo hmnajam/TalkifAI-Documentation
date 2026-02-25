@@ -1,0 +1,145 @@
+---
+title: "Analytics & Monitoring"
+description: "Track call performance, usage, and agent quality with TalkifAI's built-in analytics."
+---
+
+## Dashboard Overview
+
+The TalkifAI analytics dashboard gives you real-time visibility into your voice agents' performance.
+
+Navigate to **Studio → Analytics** to access your metrics.
+
+---
+
+## Call Logs
+
+Every voice session is automatically logged with:
+
+| Field | Description |
+|-------|-------------|
+| **Session ID** | Unique identifier for the call |
+| **Agent** | Which agent handled the call |
+| **Duration** | Total call length in seconds |
+| **Start Time** | When the call began |
+| **End Time** | When the call ended |
+| **Direction** | Inbound or outbound |
+| **Phone Number** | Caller/destination number |
+| **Status** | Completed, failed, no-answer |
+
+### Filtering Logs
+
+Filter your call logs by:
+- Date range
+- Agent
+- Direction (inbound/outbound)
+- Duration range
+- Status
+
+---
+
+## Usage & Quotas
+
+### Developer Quotas
+
+Users with the **Developer** role have monthly minute limits to prevent runaway costs.
+
+| Setting | Default |
+|---------|---------|
+| Monthly limit | 3,000 minutes |
+| Quota scope | Per user, per organization |
+| Reset | 1st of each month |
+
+Check current usage:
+
+```bash
+GET /api/call-logs/check-usage
+Authorization: Bearer YOUR_API_KEY
+```
+
+**Response:**
+```json
+{
+  "used": 142,
+  "limit": 3000,
+  "remaining": 2858,
+  "resetDate": "2024-02-01"
+}
+```
+
+### Organization Usage
+
+Organization owners can view aggregate usage across all members in **Settings → Usage**.
+
+---
+
+## Transcripts
+
+All calls are transcribed automatically (when transcription is enabled on the agent).
+
+**Accessing transcripts:**
+1. Go to **Call Logs → select a call → View Transcript**
+2. Or via API: `GET /api/transcripts/{sessionId}`
+
+Transcripts are stored in full with speaker labels:
+```
+[Agent] Hello! How can I help you today?
+[User] I need help with my billing.
+[Agent] Of course. Can you give me your account number?
+```
+
+---
+
+## Recordings
+
+Call recordings are stored in **Google Cloud Storage** and accessible from the call log detail view.
+
+<Note>
+  Recordings must be enabled per-agent in **Agent Settings → Recording**. Ensure compliance with local recording consent laws before enabling.
+</Note>
+
+---
+
+## Post-Call Analysis
+
+Configure custom QA forms to automatically analyze calls after they end.
+
+### Setting Up Forms
+
+1. Go to **Agent Settings → Post-Call Analysis**
+2. Click **Add Question**
+3. Configure:
+   - Question text
+   - Type: Text, Yes/No, Rating (1-5), Multiple choice
+   - Required or optional
+
+**Example form:**
+```
+1. Was the customer's issue resolved? (Yes/No)
+2. Customer sentiment: (Positive / Neutral / Negative)
+3. Follow-up required? (Yes/No)
+4. Notes: (Text)
+```
+
+### Viewing Results
+
+Results are available per-call in the call log view, or exported via API:
+
+```bash
+GET /api/post-call-analysis/{agentId}/results
+Authorization: Bearer YOUR_API_KEY
+```
+
+---
+
+## Alerts & Notifications
+
+TalkifAI sends automatic notifications for:
+
+| Event | Notification |
+|-------|-------------|
+| Credit balance low | Email alert at 20% remaining |
+| Credit depleted | Email + dashboard banner |
+| Monthly quota at 80% | Email warning |
+| Agent error rate high | Dashboard alert |
+
+Configure notification preferences in **Settings → Notifications**.

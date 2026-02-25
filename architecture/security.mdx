@@ -1,0 +1,156 @@
+---
+title: "Security Architecture"
+description: "Authentication, encryption, multi-tenant isolation, and security best practices."
+---
+
+## Authentication
+
+TalkifAI Studio uses **Better Auth** for authentication.
+
+### Supported Methods
+
+| Method | Description |
+|--------|-------------|
+| Email/Password | Standard email authentication with verification |
+| OAuth — GitHub | Sign in with GitHub account |
+| OAuth — Google | Sign in with Google account |
+| Email OTP | One-time password via email |
+| API Key | For programmatic access (developer accounts) |
+
+### Email Normalization
+
+To prevent duplicate accounts, all emails are normalized on registration:
+
+```python
+# Normalization rules:
+# 1. Trim whitespace
+# 2. Lowercase
+# 3. Gmail: Remove dots and plus-addressing
+
+"John.Doe+spam@gmail.com" → "johndoe@gmail.com"
+"user@Company.COM"        → "user@company.com"
+```
+
+---
+
+## Multi-Tenant Isolation
+
+TalkifAI is a multi-tenant SaaS. Every data operation is scoped to an organization.
+
+### Isolation Model
+
+```
+user
+ └── belongs to → organization (via member table)
+                      └── owns → agents, phone numbers, API keys,
+                                  call logs, billing data
+```
+
+**Critical rules:**
+1. Every DB query **must** filter by `organizationId`
+2. Session context includes `activeOrganizationId`
+3. API keys are scoped to a single organization
+4. Cross-tenant data leaks are prevented at the query level
+
+### Role-Based Access Control
+
+| Role | Capabilities |
+|------|-------------|
+| **Owner** | Everything — edit org, manage billing, all agent ops, invite/remove members |
+| **Admin** | Invite members, manage public and commercial agents |
+| **Member** | View/use public agents, manage own private agents |
+
+---
+
+## Credential Encryption
+
+All sensitive credentials are encrypted with **Fernet symmetric encryption** before database storage.
+
+### What's encrypted
+
+| Data | Table | Encrypted Field(s) |
+|------|-------|-------------------|
+| Telephony auth tokens | `CarrierCredentials` | `authToken`, `apiKey`, `sipPassword` |
+| Organization API keys | `ApiKeys` | `openaiKey`, `googleKey`, `deepgramKey`, `cartesiaKey` |
+
+### Fernet Encryption
+
+```python
+# Encryption
+from cryptography.fernet import Fernet
+
+def encrypt(plaintext: str) -> str:
+    f = Fernet(FERNET_KEY)
+    return f.encrypt(plaintext.encode()).decode()
+
+def decrypt(ciphertext: str) -> str:
+    f = Fernet(FERNET_KEY)
+    return f.decrypt(ciphertext.encode()).decode()
+```
+
+<Warning>
+  **Never rotate the `FERNET_KEY` after it's been set.** If the key changes, all stored encrypted credentials become unreadable. If you must rotate, you must re-encrypt all stored credentials first.
+</Warning>
+
+---
+
+## API Security
+
+### API Key Authentication
+
+- Keys are stored as **hashed values** in the database (not plain text)
+- Keys use `sk_live_` prefix for production, `sk_test_` for sandbox
+- Invalid or revoked keys immediately return `401 Unauthorized`
+
+### Rate Limiting
+
+All API endpoints are rate-limited:
+
+| Tier | Requests/minute |
+|------|----------------|
+| Free | 60 |
+| Pro | 300 |
+| Enterprise | Custom |
+
+### CORS
+
+The Studio API has strict CORS configuration:
+- Only requests from `studio.talkifai.dev` are allowed by default
+- Marketing site API has additional API key + origin validation (dual authentication)
+
+---
+
+## LiveKit Token Security
+
+When generating LiveKit tokens for voice sessions:
+
+```typescript
+// Token generation rules
+1. Validate roomName format:
+   - Valid: "agent_{agentId}_{timestamp}_{random}"
+   - Valid: "demo_{identifier}"
+   - Invalid: anything else → rejected
+
+2. Check organization membership before granting token
+
+3. Token TTL: 5 minutes (short-lived)
+
+4. Permissions granted:
+   - roomJoin: true
+   - canPublish: true (user can send audio)
+   - canSubscribe: true (user can receive audio)
+```
+
+---
+
+## Security Checklist for Developers
+
+When building integrations with TalkifAI:
+
+- Store API keys in environment variables, never in code
+- Use HTTPS for all webhook endpoints
+- Verify webhook signatures before processing events
+- Rotate API keys every 90 days
+- Use the test environment (`sk_test_`) for development
+- Never log API keys, SIP passwords, or credentials
+- Monitor API key activity for unusual patterns
