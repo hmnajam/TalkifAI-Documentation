@@ -5,9 +5,9 @@ description: "Master advanced agent settings including webhooks, farewell messag
 
 ## Overview
 
-This guide covers six advanced agent configuration options that give you fine-grained control over your agent's behavior:
+This guide covers advanced agent configuration options that give you fine-grained control over your agent's behavior:
 
-1. **Webhook Configuration** — Real-time event notifications
+1. **Webhook Configuration** — Real-time event notifications to your server
 2. **Last Message / Farewell** — Professional conversation closing
 3. **Function Calling API** — Programmatic function management
 4. **Multi-language Support** — Serve customers in multiple languages
@@ -20,31 +20,21 @@ This guide covers six advanced agent configuration options that give you fine-gr
 
 ## Overview
 
-**Webhooks** send real-time HTTP notifications to your server when specific agent events occur. Use webhooks to:
+**Webhooks** send real-time HTTP POST notifications to your server when agent events occur. Use webhooks to:
 
-- Trigger actions in your systems
+- Trigger actions in your external systems
 - Log call events for compliance
 - Update CRM records in real-time
 - Send notifications to your team
-- Sync data with external systems
-
-## Supported Events
-
-| Event | Trigger | Payload |
-|-------|---------|---------|
-| `call.started` | User joins the call | Call ID, user info, timestamp |
-| `call.ended` | Call disconnects | Call ID, duration, transcript URL |
-| `function.called` | Agent calls a function | Function name, arguments, result |
-| `escalation.triggered` | Agent escalates to human | Reason, call context |
-| `transcript.available` | Transcript ready | Transcript URL, call ID |
+- Sync data with external databases
 
 ## Setup Webhook
 
 ### Via Studio
 
-1. Go to **Agent Settings → Webhook**
-2. Enter your **Webhook URL** (HTTPS required)
-3. Select **Events** to subscribe to
+1. Go to your agent → **Settings** → **Webhook**
+2. Click **Configure Webhook**
+3. Enter your **Webhook URL** (HTTPS required)
 4. Click **Save**
 
 ### Via API
@@ -55,81 +45,58 @@ Authorization: Bearer YOUR_API_KEY
 Content-Type: application/json
 
 {
-  "webhookUrl": "https://your-api.com/webhooks/talkifai",
-  "events": ["call.started", "call.ended", "function.called"]
+  "webhookUrl": "https://your-api.com/webhooks/talkifai"
 }
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Webhook URL updated successfully",
+  "webhookUrl": "https://your-api.com/webhooks/talkifai"
+}
+```
+
+### Remove Webhook
+
+```bash
+DELETE /api/agents/{agentId}/webhook
+Authorization: Bearer YOUR_API_KEY
 ```
 
 ## Webhook Payload
 
-### Call Started
-
-```json
-{
-  "event": "call.started",
-  "timestamp": "2024-01-15T10:30:00Z",
-  "data": {
-    "callId": "call_abc123",
-    "roomName": "agent_xyz_1705320000_user123",
-    "agentId": "agent_xyz",
-    "agentName": "Customer Support Bot",
-    "userId": "user_123",
-    "organizationId": "org_456",
-    "direction": "inbound",
-    "phoneNumber": "+12025550123"
-  }
-}
-```
-
-### Call Ended
+Webhooks send JSON POST requests with the following structure:
 
 ```json
 {
   "event": "call.ended",
   "timestamp": "2024-01-15T10:35:00Z",
   "data": {
+    "agentId": "agent_xyz",
+    "agentName": "Customer Support Bot",
     "callId": "call_abc123",
     "roomName": "agent_xyz_1705320000_user123",
-    "agentId": "agent_xyz",
     "duration": 300,
-    "transcriptUrl": "https://storage.talkifai.dev/transcripts/call_abc123.txt",
-    "recordingUrl": "https://storage.talkifai.dev/recordings/call_abc123.mp3",
-    "status": "completed",
-    "outcome": "resolved"
+    "status": "completed"
   }
 }
 ```
 
-### Function Called
+<Note>
+  **Webhook events are currently in beta.** The payload structure may evolve. For critical integrations, log all webhook payloads for debugging.
+</Note>
 
-```json
-{
-  "event": "function.called",
-  "timestamp": "2024-01-15T10:32:00Z",
-  "data": {
-    "callId": "call_abc123",
-    "functionName": "check_order_status",
-    "arguments": {
-      "order_id": "ORD-12345"
-    },
-    "result": {
-      "status": "shipped",
-      "eta": "2024-01-18"
-    },
-    "success": true
-  }
-}
-```
+## Verify Webhook Signature (Coming Soon)
 
-## Verify Webhook Signature
-
-All webhook requests include a signature header for security:
+All webhook requests will include a signature header for security:
 
 ```
 X-TalkifAI-Signature: sha256=abc123def456...
 ```
 
-### Verify in Node.js
+### Verify in Node.js (Example)
 
 ```javascript
 const crypto = require('crypto');
@@ -139,7 +106,7 @@ function verifyWebhookSignature(payload, signature, secret) {
     .createHmac('sha256', secret)
     .update(payload)
     .digest('hex');
-  
+
   return `sha256=${expectedSignature}` === signature;
 }
 
@@ -151,11 +118,11 @@ app.post('/webhooks/talkifai', (req, res) => {
     signature,
     process.env.TALKIFAI_WEBHOOK_SECRET
   );
-  
+
   if (!isValid) {
     return res.status(401).send('Invalid signature');
   }
-  
+
   // Process webhook
   console.log('Webhook event:', req.body.event);
   res.status(200).send('OK');
@@ -168,14 +135,14 @@ app.post('/webhooks/talkifai', (req, res) => {
   <Card title="Respond Quickly" icon="bolt">
   Return 200 OK within 5 seconds. Process heavy tasks asynchronously.
   </Card>
-  <Card title="Handle Retries" icon="rotate">
-  Webhooks retry up to 3 times on failure. Make your endpoint idempotent.
+  <Card title="Use HTTPS" icon="lock">
+  Webhook URLs must use HTTPS for security. HTTP URLs will be rejected.
   </Card>
   <Card title="Log Everything" icon="file-alt">
   Log all webhook events for debugging and audit trails.
   </Card>
-  <Card title="Use HTTPS" icon="lock">
-  Webhook URLs must use HTTPS for security.
+  <Card title="Validate Payload" icon="circle-check">
+  Always validate the webhook payload structure before processing.
   </Card>
 </CardGroup>
 
@@ -186,17 +153,19 @@ app.post('/webhooks/talkifai', (req, res) => {
     **Check:**
     1. Is webhook URL accessible from public internet?
     2. Is HTTPS enabled?
-    3. Is webhook enabled on the agent?
-    4. Check webhook logs in Studio → Analytics → Webhook Logs
+    3. Is webhook configured on the agent?
+    4. Check your server logs for incoming POST requests
+
+    **Test:** Use a service like webhook.site to test webhook delivery.
   </Accordion>
 
-  <Accordion title="Signature verification failing">
-    **Problem:** Secret mismatch or payload modification.
+  <Accordion title="Invalid URL format error">
+    **Problem:** URL format validation failed.
 
     **Solution:**
-    - Ensure you're using the correct webhook secret
-    - Verify payload isn't modified before verification
-    - Check encoding (use raw JSON string, not parsed object)
+    - Ensure URL starts with `https://`
+    - Include full domain (e.g., `https://api.example.com/webhook`)
+    - No trailing spaces or special characters
   </Accordion>
 </AccordionGroup>
 
@@ -226,7 +195,7 @@ The **Last Message** (farewell message) is a closing statement your agent says w
 
 ### Via Studio
 
-1. Go to **Agent Settings → Conversation**
+1. Go to your agent → **Settings** → **Conversation**
 2. Find **Last Message** field
 3. Enter your farewell message (max 100 characters)
 4. Click **Save**
@@ -300,7 +269,7 @@ Content-Type: application/json
 
 {
   "functionCallingEnabled": true,
-  "enabledFunctions": ["web_search", "end_call", "check_order_status"]
+  "enabledFunctions": ["web_search", "end_call"]
 }
 ```
 
@@ -311,11 +280,18 @@ Content-Type: application/json
   "agent": {
     "id": "agent_xyz",
     "functionCallingEnabled": true,
-    "enabledFunctions": ["web_search", "end_call", "check_order_status"]
+    "enabledFunctions": ["web_search", "end_call"]
   },
   "message": "Function calling enabled successfully"
 }
 ```
+
+### Parameters
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `functionCallingEnabled` | boolean | ✅ | Enable or disable function calling |
+| `enabledFunctions` | string[] | ❌ | Array of function IDs to enable |
 
 ### Add/Remove Individual Functions
 
@@ -369,13 +345,6 @@ Authorization: Bearer YOUR_API_KEY
           "type": "string",
           "description": "The search query",
           "required": true
-        },
-        {
-          "name": "max_results",
-          "type": "number",
-          "description": "Maximum results to return",
-          "required": false,
-          "default": 5
         }
       ]
     },
@@ -476,25 +445,19 @@ Configure your agent to understand and respond in **multiple languages**. The ag
 
 | Language | Code | Best For |
 |----------|------|----------|
-| **English** | `en` | Default, global |
-| **Urdu** | `ur` | Pakistan, South Asia |
-| **Sindhi** | `sd` | Sindh region, Pakistan |
-| **Spanish** | `es` | Latin America, Spain |
-| **French** | `fr` | France, Canada, Africa |
-| **German** | `de` | Germany, Austria |
-| **Mandarin** | `zh` | China, Taiwan |
-| **Hindi** | `hi` | India |
-| **Arabic** | `ar` | Middle East, North Africa |
+| **English** | `english` | Default, global |
+| **Urdu** | `urdu` | Pakistan, South Asia |
+| **Sindhi** | `sindhi` | Sindh region, Pakistan |
 
-<Info>
-  **Coming Soon:** Portuguese, Italian, Japanese, Korean, and 20+ additional languages.
-</Info>
+<Note>
+  **Language validation:** The API validates language codes against the supported list. Invalid languages will return a 400 error.
+</Note>
 
 ## Configure Languages
 
 ### Via Studio
 
-1. Go to **Agent Settings → Languages**
+1. Go to your agent → **Settings** → **Languages**
 2. Select **Primary Language** (default response language)
 3. Add **Secondary Languages** (auto-detected)
 4. Click **Save**
@@ -507,23 +470,25 @@ Authorization: Bearer YOUR_API_KEY
 Content-Type: application/json
 
 {
-  "languages": ["english", "urdu", "spanish"]
+  "languages": ["english", "urdu", "sindhi"]
 }
 ```
+
+**Note:** Languages are stored in the `AgentLanguage` table and linked to the agent.
 
 ## How It Works
 
 ```
-User speaks in Spanish
+User speaks in Urdu
          │
          ▼
 Language detection (automatic)
          │
          ▼
-Switch to Spanish model/STT/TTS
+Switch to Urdu model/STT/TTS
          │
          ▼
-Agent responds in Spanish
+Agent responds in Urdu
 ```
 
 ## Best Practices
@@ -607,7 +572,7 @@ Agent responds
 
 ### Via Studio
 
-1. Go to **Agent Settings → Conversation**
+1. Go to your agent → **Settings** → **Conversation**
 2. Select **Greeting Type**:
    - **AI speaks first** (Agent First)
    - **User speaks first** (User First)
@@ -657,6 +622,10 @@ Use variables in greeting messages:
 "Good {time_of_day}! Thank you for calling Acme Corp. My name is {agent_name}. How can I help you today?"
 ```
 
+<Note>
+  **Variable support is coming soon.** Currently, greeting messages are static text.
+</Note>
+
 ---
 
 # 6. Inactivity Timeout
@@ -685,7 +654,7 @@ Timer starts (default: 30 seconds)
 
 ### Via Studio
 
-1. Go to **Agent Settings → Conversation**
+1. Go to your agent → **Settings** → **Conversation**
 2. Find **Inactivity Timeout** slider
 3. Set value (10-60 seconds)
 4. Click **Save**
@@ -712,21 +681,22 @@ Content-Type: application/json
 }
 ```
 
+**Validation:**
+- Minimum: 10 seconds
+- Maximum: 60 seconds
+- Default: 30 seconds
+
 ## Timeout Behavior
 
 When timeout expires:
 
-1. **Warning message** (optional, coming soon):
-   "I haven't heard anything. Are you still there?"
+1. Call ends automatically
+2. Session marked as `abandoned` (not `completed`)
+3. Billing session ends with actual duration
 
-2. **Wait 5 seconds** for response
-
-3. **If still no response:**
-   "I'll end this call now. Please call back if you need further assistance. Goodbye!"
-
-4. **Call disconnects**
-
-5. **Session marked** as `abandoned` (not `completed`)
+<Note>
+  **No warning message:** Currently, the call ends silently without a warning message. This behavior may change in future updates.
+</Note>
 
 ## Best Practices
 
@@ -785,3 +755,12 @@ When timeout expires:
   Serve customers in their preferred language.
   </Card>
 </CardGroup>
+
+---
+
+## Related Documentation
+
+- [Agent Settings](/platform/agent-settings) — Complete agent configuration guide
+- [Function Calling](/guides/function-calling) — Build custom functions
+- [API Reference](/api-reference/agents) — Full agents API documentation
+- [Multi-language Agents](/guides/multi-language) — Detailed language setup

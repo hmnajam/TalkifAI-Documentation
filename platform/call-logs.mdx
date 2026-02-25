@@ -1,0 +1,455 @@
+---
+title: "Call Logs"
+description: "View detailed call history, access transcripts, listen to recordings, and analyze individual session performance."
+---
+
+## Overview
+
+The **Call Logs** page provides a comprehensive view of all voice sessions, including transcripts, recordings, and detailed session analytics.
+
+Navigate to **Studio → Call Logs** to access your call history.
+
+<Note>
+  **Call Logs vs Analytics:** Call Logs shows detailed session-by-session data with transcripts and recordings. For high-level usage metrics and quotas, go to [Analytics](/platform/analytics).
+</Note>
+
+---
+
+## Call Logs Dashboard
+
+### Summary Cards
+
+At the top of the Call Logs page, you'll see four key metrics:
+
+| Card | Description | Formula |
+|------|-------------|---------|
+| **Total Calls** | Total number of voice sessions | Count of all sessions |
+| **Successful Calls** | Calls that completed normally | Sessions with `endTime` recorded |
+| **Success Rate** | Percentage of successful calls | `(Successful / Total) × 100` |
+| **Avg Duration** | Average call length | `Total Duration / Total Calls` |
+| **Active Agents** | Unique agents that handled calls | Count of distinct agent IDs |
+
+---
+
+## Session List
+
+The main table displays all voice sessions with the following information:
+
+| Column | Description |
+|--------|-------------|
+| **Session ID** | Unique identifier (click to view details) |
+| **Agent** | Which agent handled the call |
+| **Direction** | Inbound 📞 or Outbound 📳 |
+| **Phone Number** | Caller or destination number |
+| **Duration** | Call length in seconds |
+| **Start Time** | When the call began |
+| **End Time** | When the call ended |
+| **Status** | Completed, Failed, No Answer, Abandoned |
+
+### Session Detail Panel
+
+Click on any session to open the detail panel, which shows:
+
+**Call Information:**
+- Full session metadata
+- Caller/callee details
+- Call flow timeline
+- Transfer history (if any)
+
+**Transcript:**
+- Full conversation transcript with speaker labels
+- Timestamp for each utterance
+- Search within transcript
+
+**Recording:**
+- Audio player to listen to the call
+- Download recording button
+- Recording metadata (format, size, quality)
+
+**Post-Call Analysis:**
+- QA form results (if configured)
+- Agent performance scores
+- Notes and tags
+
+---
+
+## Filtering Call Logs
+
+Narrow down your call logs using these filters:
+
+### Date Range Filter
+
+Select a start and end date to view calls within a specific period.
+
+**Presets:**
+- Last 7 days
+- Last 30 days
+- This month
+- Last month
+- Custom range
+
+### Agent Filter
+
+Filter calls by specific agent:
+- Select an agent from the dropdown
+- See only calls handled by that agent
+- Useful for agent performance reviews
+
+### Direction Filter
+
+Filter by call direction:
+- **All** — Both inbound and outbound
+- **Inbound** — Incoming calls only
+- **Outbound** — Outgoing calls only
+
+### Status Filter
+
+Filter by call outcome:
+- **All** — All statuses
+- **Completed** — Successful calls
+- **Failed** — Calls that failed to connect
+- **No Answer** — Unanswered calls
+- **Abandoned** — Calls dropped before completion
+
+### Duration Filter
+
+Filter by call length:
+- **All durations**
+- **Short** (< 1 minute)
+- **Medium** (1-5 minutes)
+- **Long** (> 5 minutes)
+- **Custom range**
+
+### Search
+
+Search across:
+- Session ID
+- Phone numbers
+- Agent names
+- Transcript content (full-text search)
+
+---
+
+## Transcripts
+
+All calls are automatically transcribed when transcription is enabled on the agent.
+
+### Accessing Transcripts
+
+1. Go to **Call Logs**
+2. Click on a session to open the detail panel
+3. Scroll to the **Transcript** section
+
+### Transcript Format
+
+Transcripts include:
+```
+[00:00] Agent: Hello! How can I help you today?
+[00:03] User: I need help with my billing.
+[00:05] Agent: Of course. Can you give me your account number?
+[00:08] User: It's ACCT-123456.
+```
+
+**Features:**
+- Speaker labels (Agent / User)
+- Timestamps for each utterance
+- Searchable text
+- Copy to clipboard
+
+### Transcript Accuracy
+
+Transcription accuracy depends on:
+- Audio quality
+- Speaker clarity
+- Background noise
+- Language and accent
+
+<Tip>
+  For better transcription accuracy, ensure your agent uses a high-quality STT provider like Deepgram or Gemini.
+</Tip>
+
+---
+
+## Recordings
+
+Call recordings are stored in **Google Cloud Storage** and accessible from the call detail panel.
+
+<Warning>
+  **Legal Compliance:** Before enabling recordings, ensure compliance with local recording consent laws (e.g., two-party consent states in the US, GDPR in Europe). Consult your legal team.
+</Warning>
+
+### Enabling Recordings
+
+1. Go to **Agent Settings → Recording**
+2. Toggle **Enable Recording** to ON
+3. Configure retention policy
+4. Save changes
+
+### Accessing Recordings
+
+1. Go to **Call Logs**
+2. Click on a session
+3. In the detail panel, find the **Recording** section
+4. Click **Play** to listen or **Download** to save
+
+### Recording Player
+
+The built-in player supports:
+- ▶️ Play / Pause
+- ⏩ Skip forward/backward
+- 🔊 Volume control
+- 📥 Download button
+- 🔄 Playback speed (0.5x - 2x)
+
+### Recording Retention
+
+By default, recordings are retained for:
+- **Free tier:** 7 days
+- **Developer tier:** 30 days
+- **Enterprise:** Custom retention
+
+Contact support to extend retention periods.
+
+---
+
+## Post-Call Analysis
+
+Configure custom QA forms to automatically analyze calls after they end.
+
+### Setting Up Forms
+
+1. Go to **Agent Settings → Post-Call Analysis**
+2. Click **Add Question**
+3. Configure each question:
+   - Question text
+   - Type: Text, Yes/No, Rating (1-5), Multiple choice
+   - Required or optional
+
+**Example form:**
+```
+1. Was the customer's issue resolved? (Yes/No) ✅ Required
+2. Customer sentiment: (Positive / Neutral / Negative) ✅ Required
+3. Follow-up required? (Yes/No)
+4. Notes: (Text)
+```
+
+### Viewing Results
+
+Results are available per-call:
+
+1. Go to **Call Logs**
+2. Click on a session
+3. Scroll to **Post-Call Analysis** section
+4. View completed form responses
+
+### Analysis Types
+
+**Automated Analysis:**
+- Sentiment analysis
+- Keyword detection
+- Compliance checks
+- Talk time ratio
+
+**Manual Review:**
+- Supervisor QA forms
+- Quality scoring
+- Coaching notes
+
+---
+
+## Pagination
+
+Call logs are paginated for performance:
+
+| Setting | Options |
+|---------|---------|
+| **Items per page** | 10, 25, 50, 100 |
+| **Navigation** | Previous / Next buttons |
+| **Page numbers** | Jump to specific page |
+
+**Default:** 10 sessions per page
+
+---
+
+## Export Call Logs
+
+Click **Export Logs** to download your call data as a CSV file.
+
+**Export includes:**
+- Session ID
+- Agent name
+- Direction
+- Phone number
+- Start time
+- End time
+- Duration
+- Status
+- Recording URL (if available)
+
+<Note>
+  Transcripts are not included in the CSV export. Download individual transcripts from the session detail panel, or use the API for bulk transcript export.
+</Note>
+
+---
+
+## Real-Time Updates
+
+Call logs automatically refresh every **30 seconds** to show new sessions.
+
+**Auto-refresh behavior:**
+- ✅ New sessions appear automatically
+- ✅ Session status updates in real-time
+- ✅ Transcripts appear as they're generated
+- ⏸️ Refresh pauses when you're viewing a detail panel
+
+<Info>
+  Manual refresh: Click the refresh button or press F5 to force-refresh the data.
+</Info>
+
+---
+
+## Session Statuses
+
+Understanding call statuses:
+
+| Status | Description | Common Causes |
+|--------|-------------|---------------|
+| **Completed** | Call ended normally | User hung up, agent completed task |
+| **Failed** | Call failed to connect | Invalid number, carrier rejection |
+| **No Answer** | Call wasn't answered | User didn't pick up, voicemail |
+| **Abandoned** | Call dropped mid-session | Network issue, browser closed |
+| **Timeout** | Call exceeded time limit | Inactivity timeout reached |
+
+---
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Transcript not available">
+    **Possible causes:**
+    1. Transcription was disabled on the agent
+    2. Call was too short (< 3 seconds)
+    3. Transcription service was temporarily unavailable
+    4. Audio quality was too poor for transcription
+
+    **Fix:** Check agent settings and verify transcription is enabled.
+  </Accordion>
+
+  <Accordion title="Recording not playing">
+    **Check:**
+    1. Is the recording still within retention period?
+    2. Is your browser supported? (Chrome, Firefox, Edge)
+    3. Is the recording file corrupted?
+
+    **Fix:** Try downloading the recording and playing it locally.
+  </Accordion>
+
+  <Accordion title="Session shows 'Failed' status">
+    **Common causes:**
+    1. Invalid phone number format
+    2. Insufficient credits/quota
+    3. Carrier rejected the call
+    4. Network connectivity issues
+
+    **Fix:** Check the error message in the session detail panel for specifics.
+  </Accordion>
+
+  <Accordion title="Can't find a specific call">
+    **Try:**
+    1. Expand your date range
+    2. Clear all filters
+    3. Search by session ID or phone number
+    4. Check if the call was in a different organization
+
+    **Note:** Calls are retained for 90 days in the UI. Older calls require API access.
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## API Access
+
+For programmatic access to call logs:
+
+### List Call Logs
+
+```bash
+GET /api/call-logs/user
+Authorization: Bearer YOUR_API_KEY
+Query Parameters:
+  - startDate: ISO 8601 date (optional)
+  - endDate: ISO 8601 date (optional)
+  - agentId: string (optional)
+  - page: number (optional)
+  - limit: number (optional)
+```
+
+### Get Session Details
+
+```bash
+GET /api/call-logs/{sessionId}
+Authorization: Bearer YOUR_API_KEY
+```
+
+### Get Transcript
+
+```bash
+GET /api/transcripts/{sessionId}
+Authorization: Bearer YOUR_API_KEY
+```
+
+### Get Recording
+
+```bash
+GET /api/recordings/{sessionId}
+Authorization: Bearer YOUR_API_KEY
+```
+
+### Export Call Logs
+
+```bash
+POST /api/call-logs/export
+Authorization: Bearer YOUR_API_KEY
+Content-Type: application/json
+
+{
+  "startDate": "2024-01-01",
+  "endDate": "2024-01-31",
+  "agentId": "agent_abc123",
+  "format": "csv"
+}
+```
+
+---
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Regular Quality Reviews" icon="clipboard-check">
+    Review a sample of calls weekly to ensure agent quality and identify training opportunities.
+  </Card>
+  <Card title="Monitor Failed Calls" icon="triangle-exclamation">
+    Check failed calls regularly to identify technical issues or user experience problems.
+  </Card>
+  <Card title="Use Filters Effectively" icon="filter">
+    Filter by agent, date, or status to quickly find the calls you need for analysis.
+  </Card>
+  <Card title="Export for Analysis" icon="download">
+    Export call logs monthly for trend analysis and reporting to stakeholders.
+  </Card>
+  <Card title="Compliance First" icon="shield">
+    Ensure recording consent is obtained and retention policies comply with regulations.
+  </Card>
+  <Card title="Tag Important Calls" icon="tag">
+    Use post-call analysis to tag calls for training, compliance, or escalation review.
+  </Card>
+</CardGroup>
+
+---
+
+## Related Documentation
+
+- [Analytics](/platform/analytics) — High-level usage metrics and quotas
+- [Post-Call Analysis](/platform/post-call-analysis) — Configure QA forms
+- [Recording Compliance](/guides/recording-compliance) — Legal requirements for call recording
+- [API Reference](/api-reference/call-logs) — Full call logs API documentation

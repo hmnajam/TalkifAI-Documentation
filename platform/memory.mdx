@@ -7,7 +7,7 @@ description: "Enable long-term memory so your agent remembers users across multi
 
 **Conversation Memory** allows your agent to remember information from previous conversations with each user. Instead of starting every session fresh, your agent can recall past interactions, preferences, and context — creating a truly personalized experience.
 
-TalkifAI uses **Graphiti** — a knowledge graph memory system — to store and retrieve conversational context across sessions.
+TalkifAI uses **Graphiti** — a knowledge graph memory system backed by FalkorDB — to store and retrieve conversational context across sessions.
 
 **Best for:**
 - Customer support (remember previous issues, account history)
@@ -15,6 +15,10 @@ TalkifAI uses **Graphiti** — a knowledge graph memory system — to store and 
 - Personal assistants (remember preferences, past requests)
 - Healthcare (maintain patient context across appointments)
 - Any use case where continuity matters
+
+<Warning>
+  **Memory is a global setting** — when enabled, it applies to ALL agents in your deployment. There is currently no per-agent toggle in the Studio UI.
+</Warning>
 
 ---
 
@@ -27,7 +31,7 @@ Session 1 (User: "My order #1234 is delayed")
 Agent handles conversation
     │
     ▼
-Session ends → Memory ingestion triggered
+Session ends → Memory ingestion triggered (background task)
     │
     ▼
 Graphiti stores: User → had issue → Order #1234 (delayed)
@@ -63,33 +67,104 @@ This structured approach means the agent can answer contextual questions like "W
 
 ### Memory Scoping
 
-Memory is scoped per **user + agent**:
+Memory is scoped per **user + agent + organization**:
+
+```
+group_id = "org_{orgId}_agent_{agentId}_user_{userId}"
+```
+
 - Same user, different agents → separate memory graphs
 - Different users, same agent → isolated memory (no cross-user leakage)
-- All memory stored securely in your organization's data store
+- Different organizations → completely isolated (multi-tenant)
+- All memory stored securely in FalkorDB
+
+### Infrastructure Requirements
+
+<Tabs>
+  <Tab title="FalkorDB">
+    Graphiti requires **FalkorDB** (RedisGraph fork) for graph storage.
+
+    **Environment variables:**
+    ```bash
+    FALKORDB_HOST=localhost
+    FALKORDB_PORT=6379
+    FALKORDB_PASSWORD=your_password  # Optional
+    ```
+
+    **Docker:**
+    ```bash
+    docker run -p 6379:6379 falkordb/falkordb:latest
+    ```
+  </Tab>
+  <Tab title="Redis">
+    FalkorDB uses Redis as its underlying storage. You can also use Redis directly for simpler deployments.
+
+    **Environment variables:**
+    ```bash
+    REDIS_HOST=localhost
+    REDIS_PORT=6379
+    ```
+  </Tab>
+</Tabs>
 
 ---
 
 ## Enable Conversation Memory
 
-### Via Studio
+### Via Environment Variables (Backend)
 
-1. Go to **Agent Settings → Advanced Configuration**
-2. Scroll to **Conversation Memory**
-3. Toggle **Enable Long-Term Memory** to ON
-4. Click **Save**
-
-### Via API
+Memory is enabled globally via environment variables in your backend service:
 
 ```bash
-PUT /api/agents/{agentId}
-Authorization: Bearer YOUR_API_KEY
-Content-Type: application/json
+# .env file in Livekit-Production-Agent
+GRAPHITI_ENABLED=true
+GRAPHITI_LLM_MODEL=gpt-4o-mini
+GRAPHITI_EMBEDDING_MODEL=text-embedding-3-small
+FALKORDB_HOST=localhost
+FALKORDB_PORT=6379
+FALKORDB_PASSWORD=your_password  # Optional
+```
 
+**Configuration options:**
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `GRAPHITI_ENABLED` | `true` | Enable/disable memory system globally |
+| `GRAPHITI_LLM_MODEL` | `gpt-4o-mini` | LLM for entity extraction |
+| `GRAPHITI_EMBEDDING_MODEL` | `text-embedding-3-small` | Embeddings for semantic search |
+| `FALKORDB_HOST` | `localhost` | FalkorDB/Redis host |
+| `FALKORDB_PORT` | `6379` | FalkorDB/Redis port |
+| `FALKORDB_PASSWORD` | — | Optional authentication |
+
+<Warning>
+  **No Studio UI toggle exists** — Memory configuration is done via environment variables only. Per-agent memory settings are planned for a future release.
+</Warning>
+
+### Verify Memory is Enabled
+
+Check the system health endpoint:
+
+```bash
+GET /health
+```
+
+**Response:**
+```json
 {
-  "graphitiEnabled": true
+  "components": {
+    "graphiti": {
+      "status": "healthy",
+      "message": "FalkorDB connected"
+    }
+  }
 }
 ```
+
+| Status | Meaning |
+|--------|---------|
+| `healthy` | Graphiti is enabled and FalkorDB is connected |
+| `skipped` | Graphiti is disabled (`GRAPHITI_ENABLED=false`) |
+| `unhealthy` | Graphiti is enabled but FalkorDB connection failed |
 
 ---
 
@@ -97,24 +172,48 @@ Content-Type: application/json
 
 ### During a Session
 
-When a conversation starts, the agent automatically:
+When a conversation starts, the system automatically:
 
-1. Checks if the user has previous memory
-2. Retrieves relevant context from the knowledge graph
-3. Injects context into the agent's awareness (not directly into the system prompt)
+1. Constructs the user's graph ID: `org_{orgId}_agent_{agentId}_user_{sanitizedUserId}`
+2. Connects to the user's memory graph in FalkorDB
+3. Searches for relevant facts using multiple queries:
+   - "user personal information age name preferences"
+   - "what the user told me about themselves"
+   - "facts about the user"
+   - "user mentioned said told"
+4. Formats retrieved facts into a memory context string
+5. Appends memory context to the agent's system prompt
 
-The agent can then naturally reference past interactions without being explicitly told.
+**Example memory context injected:**
+```
+## Memory Context
+
+Relevant facts about this user from previous conversations:
+- User prefers email communication over phone calls
+- User has account number ACCT-789
+- User previously reported login issues (resolved in January 2024)
+- User ordered Wireless Headphones last month
+```
 
 ### When a Session Ends
 
 After every conversation (voice or text), the system automatically:
 
-1. Processes the full conversation transcript
-2. Extracts entities, relationships, and facts
-3. Updates the user's knowledge graph
-4. New information is available in the next session
+1. Buffers all conversation messages during the session
+2. When session ends, starts a background ingestion task
+3. Formats messages as an episode:
+   ```
+   User: My order #1234 is delayed
+   Assistant: I apologize for the delay. Let me check the status...
+   ```
+4. Calls `client.add_episode()` to extract entities and relationships
+5. Updates the user's knowledge graph in FalkorDB
 
-**Ingestion time:** ~25 seconds (runs in background, doesn't delay session end)
+**Ingestion time:** ~18-25 seconds (runs in background, doesn't delay session end)
+
+<Warning>
+  **Important:** Always call the session end API explicitly. If sessions expire via idle timeout, memory ingestion may not complete.
+</Warning>
 
 ---
 
@@ -135,7 +234,7 @@ The memory system automatically identifies and stores:
 
 ### Not Stored
 
-- Credit card numbers or financial credentials
+- Credit card numbers or financial credentials (automatically filtered)
 - Passwords or sensitive authentication data
 - Content explicitly marked as confidential by your system prompt
 
@@ -197,47 +296,44 @@ Agent: I'm so sorry. Since this is a recurring issue, let me escalate this
 
 ### Data Retention
 
-- Memory is retained **indefinitely** by default
-- You can clear a user's memory via API at any time
+- Memory is retained **indefinitely** by default (until manually deleted)
+- Each user's data is isolated in their own graph
 - Users can request memory deletion (GDPR compliance)
 
-### Clear User Memory
+### Clear User Memory (Manual)
 
-```bash
-DELETE /api/agents/{agentId}/memory/{userId}
-Authorization: Bearer YOUR_API_KEY
-```
+<Warning>
+  There is currently no API endpoint to delete individual user memory. This feature is planned for a future release.
 
-### List User Memory
+  **Workaround:** Directly delete the user's graph from FalkorDB:
+  ```bash
+  # Connect to FalkorDB/Redis
+  redis-cli -h localhost -p 6379
 
-```bash
-GET /api/agents/{agentId}/memory/{userId}
-Authorization: Bearer YOUR_API_KEY
-```
+  # Delete the user's graph database
+  SELECT {graph_number}
+  FLUSHALL
+  ```
 
-**Response:**
-```json
-{
-  "success": true,
-  "memory": {
-    "userId": "user_abc123",
-    "entities": [
-      {
-        "type": "fact",
-        "content": "User prefers email communication over phone",
-        "createdAt": "2024-01-10T09:00:00Z"
-      },
-      {
-        "type": "event",
-        "content": "Reported issue with order #1234 (resolved)",
-        "createdAt": "2024-01-15T14:30:00Z"
-      }
-    ],
-    "totalFacts": 12,
-    "lastUpdated": "2024-01-20T10:00:00Z"
-  }
-}
-```
+  **Caution:** This is a destructive operation. Use with care.
+</Warning>
+
+### List User Memory (Manual)
+
+<Warning>
+  There is currently no API endpoint to view individual user memory. This feature is planned for a future release.
+
+  **Workaround:** Query FalkorDB directly:
+  ```bash
+  redis-cli -h localhost -p 6379
+
+  # List all nodes
+  GRAPH.QUERY {graph_name} "MATCH (n) RETURN n"
+
+  # List all relationships
+  GRAPH.QUERY {graph_name} "MATCH ()-[r]->() RETURN r"
+  ```
+</Warning>
 
 ---
 
@@ -256,6 +352,12 @@ Authorization: Bearer YOUR_API_KEY
   <Card title="Respect Sensitive Data" icon="shield">
     Avoid storing sensitive PII in your system prompt. Memory is powerful, but user trust is more important.
   </Card>
+  <Card title="Wait Between Test Sessions" icon="clock">
+    Memory ingestion takes 18-25 seconds. Wait at least 30 seconds between test conversations to ensure ingestion completes.
+  </Card>
+  <Card title="Monitor FalkorDB Storage" icon="database">
+    Graph storage grows over time. Monitor your FalkorDB instance and implement retention policies for production deployments.
+  </Card>
 </CardGroup>
 
 ---
@@ -265,11 +367,30 @@ Authorization: Bearer YOUR_API_KEY
 <AccordionGroup>
   <Accordion title="Agent doesn't remember previous conversations">
     **Check:**
-    1. Is `graphitiEnabled` set to `true` on the agent?
-    2. Did the previous session end properly (not abandoned)?
-    3. Is the same user identifier being used across sessions?
+    1. Is `GRAPHITI_ENABLED=true` in your backend environment?
+    2. Is FalkorDB running and accessible? (`GET /health` → check `graphiti.status`)
+    3. Did the previous session end properly (not abandoned)?
+    4. Is the same user identifier being used across sessions?
+    5. Wait at least 30 seconds between sessions for ingestion to complete
 
-    **Note:** Memory ingestion takes ~25 seconds after session end. Test with a wait between sessions.
+    **Debug:**
+    ```bash
+    # Check health endpoint
+    curl http://localhost:8000/health
+
+    # Check FalkorDB connection
+    redis-cli -h localhost -p 6379 PING
+    ```
+  </Accordion>
+
+  <Accordion title="Graphiti health check shows 'unhealthy'">
+    **Cause:** FalkorDB is not running or connection failed.
+
+    **Fix:**
+    1. Start FalkorDB: `docker run -p 6379:6379 falkordb/falkordb:latest`
+    2. Verify `FALKORDB_HOST` and `FALKORDB_PORT` environment variables
+    3. Check firewall/network connectivity
+    4. Restart the backend service
   </Accordion>
 
   <Accordion title="Agent over-references old information">
@@ -287,9 +408,9 @@ Authorization: Bearer YOUR_API_KEY
     **Problem:** The knowledge graph extracted wrong facts.
 
     **Solution:**
-    - Clear user memory and let it rebuild from fresh conversations
+    - Clear user memory from FalkorDB and let it rebuild from fresh conversations
     - Be more explicit in conversations about key facts
-    - Contact support if systematic extraction errors occur
+    - Adjust `GRAPHITI_LLM_MODEL` to a more capable model if extraction is poor
   </Accordion>
 
   <Accordion title="Memory not available for text chat sessions">
@@ -298,25 +419,91 @@ Authorization: Bearer YOUR_API_KEY
     **Solution:**
     - Always call `POST /v1/chat/sessions/{id}/end` explicitly
     - Avoid letting sessions expire via idle timeout (memory won't ingest)
-    - Verify `graphitiEnabled` is true on the agent
+    - Verify `GRAPHITI_ENABLED=true` in backend environment
+  </Accordion>
+
+  <Accordion title="Ingestion takes too long or times out">
+    **Problem:** Memory ingestion exceeds the worker shutdown timeout.
+
+    **Solution:**
+    - The backend already runs ingestion in parallel with transcription/analysis
+    - Ingestion timeout is set to 18 seconds by default
+    - If consistently timing out, check LLM API latency (Graphiti uses GPT-4o-mini by default)
+    - Consider using a faster LLM for entity extraction
   </Accordion>
 </AccordionGroup>
+
+---
+
+## Technical Details
+
+### Group ID Format
+
+Each user's memory is stored in a separate FalkorDB graph with this ID format:
+
+```
+org_{orgId}_agent_{agentId}_user_{sanitizedUserId}
+```
+
+**Sanitization rules:**
+- Phone numbers: `+923136488867` → `p923136488867` (replaces `+` with `p`)
+- Special characters: Replaced with underscore `_`
+- Only alphanumeric, dashes, and underscores allowed
+
+### Memory Search Queries
+
+When retrieving context, Graphiti searches with multiple queries:
+
+```python
+search_queries = [
+    "user personal information age name preferences",
+    "what the user told me about themselves",
+    "facts about the user",
+    "user mentioned said told",
+]
+```
+
+If user name is available, it's prepended to improve recall.
+
+### Ingestion Process
+
+```python
+await client.add_episode(
+    name=f"session_{session_id}_{timestamp}",
+    episode_body="User: ...\nAssistant: ...",
+    source=EpisodeType.message,
+    source_description="Voice/Chat conversation",
+    reference_time=datetime.now(timezone.utc),
+    group_id="org_{orgId}_agent_{agentId}_user_{userId}"
+)
+```
+
+Graphiti's LLM client extracts entities and relationships from the episode body.
 
 ---
 
 ## Next Steps
 
 <CardGroup cols={2}>
-  <Card title="Enable Memory" icon="toggle-on">
-    Turn on Graphiti memory in Agent Settings → Advanced Configuration.
+  <Card title="Enable Graphiti" icon="toggle-on">
+    Set `GRAPHITI_ENABLED=true` in your backend environment and ensure FalkorDB is running.
+  </Card>
+  <Card title="Verify Health" icon="heart-pulse">
+    Check `GET /health` endpoint to confirm Graphiti status is "healthy".
   </Card>
   <Card title="Test Returning Users" icon="user-check">
-    Run two separate conversations with the same user to verify memory works.
+    Run two separate conversations with the same user (wait 30s between) to verify memory works.
   </Card>
-  <Card title="Privacy Compliance" icon="shield-halved">
-    Review your memory retention policy and ensure GDPR compliance.
-  </Card>
-  <Card title="Text Chat API" icon="message">
-    Memory works with both voice and text chat sessions.
+  <Card title="Monitor Storage" icon="database">
+    Set up monitoring for FalkorDB storage growth in production.
   </Card>
 </CardGroup>
+
+---
+
+## Related Documentation
+
+- [System Health API](/api-reference/health) — Monitor Graphiti status
+- [Environment Configuration](/platform/environment-variables) — All backend environment variables
+- [FalkorDB Documentation](https://falkordb.com/) — Graph database documentation
+- [Graphiti GitHub](https://github.com/graphiti-orchestrator/graphiti) — Graphiti source code
