@@ -29,17 +29,19 @@ For setup instructions, see [Custom Functions Guide →](/guides/custom-function
 
 | Method | Path | Description |
 |--------|------|-------------|
-| `GET` | `/v1/agents/{agentId}/functions` | List all functions for an agent |
-| `POST` | `/v1/agents/{agentId}/functions` | Add a function to an agent |
-| `PUT` | `/v1/agents/{agentId}/functions` | Update an existing function |
-| `DELETE` | `/v1/agents/{agentId}/functions?functionId={id}` | Remove a function |
+| `GET` | `/api/custom-functions?agentId={id}` | List functions for an agent |
+| `POST` | `/api/custom-functions/{agentId}` | Create a function for an agent |
+| `PUT` | `/api/custom-functions/{agentId}` | Update an existing function |
+| `DELETE` | `/api/custom-functions/{agentId}?functionId={id}` | Remove a function |
 
 ---
 
 ## List Functions
 
+### For a Specific Agent
+
 ```bash
-GET /v1/agents/{agentId}/functions
+GET /api/custom-functions?agentId={agentId}
 Authorization: Bearer YOUR_API_KEY
 ```
 
@@ -47,7 +49,6 @@ Authorization: Bearer YOUR_API_KEY
 
 ```json
 {
-  "success": true,
   "functions": [
     {
       "id": "func_abc123",
@@ -56,6 +57,9 @@ Authorization: Bearer YOUR_API_KEY
       "description": "Looks up the current status of a customer's order",
       "endpoint": "https://api.yourcompany.com/orders/status",
       "method": "POST",
+      "headers": {
+        "Authorization": "Bearer secret-key"
+      },
       "parameters": {
         "type": "object",
         "properties": {
@@ -66,19 +70,73 @@ Authorization: Bearer YOUR_API_KEY
         },
         "required": ["order_id"]
       },
-      "createdAt": "2024-01-10T09:00:00Z"
+      "agentId": "agent_xyz",
+      "createdAt": "2024-01-10T09:00:00Z",
+      "updatedAt": "2024-01-10T09:00:00Z"
+    }
+  ]
+}
+```
+
+### For All User's Agents
+
+```bash
+GET /api/custom-functions
+Authorization: Bearer YOUR_API_KEY
+```
+
+**Response:**
+
+```json
+{
+  "functions": [
+    {
+      "id": "func_abc123",
+      "name": "check_order_status",
+      "label": "Check Order Status",
+      "endpoint": "https://api.yourcompany.com/orders/status",
+      "agent": {
+        "id": "agent_xyz",
+        "name": "Customer Support Bot",
+        "organizationId": "org_123"
+      }
+    }
+  ]
+}
+```
+
+### For Organization
+
+```bash
+GET /api/custom-functions?organizationId={orgId}
+Authorization: Bearer YOUR_API_KEY
+```
+
+**Response:**
+
+```json
+{
+  "functions": [
+    {
+      "id": "func_abc123",
+      "name": "check_order_status",
+      "agent": {
+        "id": "agent_xyz",
+        "name": "Customer Support Bot",
+        "organizationId": "org_123"
+      }
     }
   ],
-  "canEdit": true
+  "role": "admin"
 }
 ```
 
 ---
 
-## Add a Function
+## Create a Function
 
 ```bash
-POST /v1/agents/{agentId}/functions
+POST /api/custom-functions/{agentId}
 Authorization: Bearer YOUR_API_KEY
 Content-Type: application/json
 ```
@@ -111,13 +169,13 @@ Content-Type: application/json
 
 | Field | Required | Description |
 |-------|----------|-------------|
-| `name` | Yes | Function identifier (snake_case, used in system prompt) |
-| `label` | Yes | Human-readable name shown in Studio |
-| `description` | No | What the function does — the agent uses this to decide when to call it |
-| `endpoint` | Yes | Your API endpoint URL (must be HTTPS) |
-| `method` | No | HTTP method: `POST` (default), `GET`, `PUT`, `PATCH` |
-| `headers` | No | Custom headers sent with every call (for auth, etc.) |
-| `parameters` | No | JSON Schema defining the function's input parameters |
+| `name` | ✅ | Function identifier (snake_case, used in system prompt) |
+| `label` | ✅ | Human-readable name shown in Studio |
+| `description` | ❌ | What the function does — the agent uses this to decide when to call it |
+| `endpoint` | ✅ | Your API endpoint URL (must be HTTPS) |
+| `method` | ❌ | HTTP method: `POST` (default), `GET`, `PUT`, `PATCH` |
+| `headers` | ❌ | Custom headers sent with every call (for auth, etc.) |
+| `parameters` | ❌ | JSON object defining the function's input parameters |
 
 **Response:**
 
@@ -126,8 +184,25 @@ Content-Type: application/json
   "id": "func_new789",
   "name": "check_order_status",
   "label": "Check Order Status",
+  "description": "Looks up the current status of a customer order by order ID",
+  "endpoint": "https://api.yourcompany.com/orders/status",
+  "method": "POST",
+  "headers": {
+    "Authorization": "Bearer your-internal-api-key"
+  },
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "order_id": {
+        "type": "string",
+        "description": "The order ID to check"
+      }
+    },
+    "required": ["order_id"]
+  },
   "agentId": "agent_abc123",
-  "createdAt": "2024-01-15T10:30:00Z"
+  "createdAt": "2024-01-15T10:30:00Z",
+  "updatedAt": "2024-01-15T10:30:00Z"
 }
 ```
 
@@ -140,7 +215,7 @@ Content-Type: application/json
 ## Update a Function
 
 ```bash
-PUT /v1/agents/{agentId}/functions
+PUT /api/custom-functions/{agentId}
 Authorization: Bearer YOUR_API_KEY
 Content-Type: application/json
 ```
@@ -162,7 +237,7 @@ Content-Type: application/json
 ## Delete a Function
 
 ```bash
-DELETE /v1/agents/{agentId}/functions?functionId={functionId}
+DELETE /api/custom-functions/{agentId}?functionId={functionId}
 Authorization: Bearer YOUR_API_KEY
 ```
 
@@ -175,7 +250,7 @@ Authorization: Bearer YOUR_API_KEY
 ```
 
 <Warning>
-  Deleting a function immediately stops the agent from calling it. If your system prompt references the function by name, update the prompt too.
+  Deleting a function immediately stops the agent from calling it. The function ID is also removed from the agent's `enabledCustomFunctions` array automatically.
 </Warning>
 
 ---
@@ -211,9 +286,9 @@ The agent receives your response and uses it in its reply to the user. Return an
 
 ---
 
-## Parameters JSON Schema
+## Parameters Format
 
-Parameters follow **JSON Schema** format (same as OpenAI function calling):
+Parameters are stored as a JSON object following **JSON Schema** format:
 
 ```json
 {
@@ -243,4 +318,17 @@ Parameters follow **JSON Schema** format (same as OpenAI function calling):
 |------|----------|------------------------|
 | Owner | ✅ | ✅ |
 | Admin | ✅ | ✅ |
-| Member | ✅ (public agents only) | ❌ |
+| Member | ✅ (own agents only) | ❌ |
+
+**Notes:**
+- Owners and Admins can manage functions for all agents in their organization
+- Members can only view functions for agents they created
+- Commercial agents: Only Owners/Admins can manage functions
+
+---
+
+## Related Documentation
+
+- [Custom Functions Guide](/guides/custom-functions) — Step-by-step setup tutorial
+- [Function Calling API](/platform/advanced-configuration#3-function-calling-api) — Enable/disable functions
+- [Agent Settings](/platform/agent-settings) — Configure functions in Studio

@@ -64,17 +64,21 @@ Content-Type: application/json
 
 ```json
 {
+  "conversation_id": "chat_5b710eca_user123_1705312800000",
   "session_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "conversation_id": "conv_abc123xyz",
-  "greeting": "Hello! How can I help you today?"
+  "agent_name": "Support Agent",
+  "greeting": "Hello! How can I help you today?",
+  "agent_model": "gpt-4o-mini"
 }
 ```
 
 | Field | Description |
 |-------|-------------|
-| `session_token` | JWT for authenticating subsequent messages (24h expiry) |
 | `conversation_id` | Unique session ID — use in all subsequent calls |
-| `greeting` | Agent's opening message — display immediately in chat UI |
+| `session_token` | JWT for authenticating subsequent messages (24h expiry) |
+| `agent_name` | Name of the agent |
+| `greeting` | Agent's opening message — display immediately in chat UI. `null` if agent uses `userFirst` greeting mode |
+| `agent_model` | LLM model the agent is using |
 
 <Warning>
   Make this call from your **backend server only**. Never expose your API key in frontend JavaScript.
@@ -102,24 +106,39 @@ Content-Type: application/json
 |-------|----------|-------------|
 | `message` | Yes | User's message text (max 10,000 characters) |
 
-**Response:** Server-Sent Events (SSE) stream
+**Response:** Server-Sent Events (SSE) stream (`Content-Type: text/event-stream`)
+
+Each SSE event has a named `event:` field followed by a `data:` line, separated by a blank line:
 
 ```
-data: {"type":"chunk","delta":"Our business "}
-data: {"type":"chunk","delta":"hours are 9am–6pm EST."}
-data: {"type":"stream_end"}
+event: stream_start
+data: {"agent_name": "Support Agent"}
+
+event: chunk
+data: {"delta": "Our business "}
+
+event: chunk
+data: {"delta": "hours are 9am–6pm EST."}
+
+event: stream_end
+data: {"usage": {"input_tokens": 12, "output_tokens": 18}, "end_session": false}
 ```
 
 ### SSE Event Types
 
-| Event Type | Fields | Description |
-|------------|--------|-------------|
+| Event | Data fields | Description |
+|-------|-------------|-------------|
+| `stream_start` | `agent_name` | Streaming has started |
 | `chunk` | `delta` | Incremental text of the response |
-| `stream_end` | — | Response is complete |
-| `tool_call` | `tool`, `status` | Agent is executing a tool (web search, KB lookup) |
-| `agent_handoff` | `target_agent` | Multi-agent handoff in progress |
+| `tool_call` | `name`, `status: "executing"` | Agent started executing a tool |
+| `tool_result` | `name`, `status: "completed"` | Tool execution finished |
+| `handoff` | subagent details | Multi-agent handoff in progress |
+| `stream_end` | `usage` (input/output tokens), `end_session` | Response is complete |
+| `error` | `error` | An error occurred mid-stream |
 
 ### Parsing the Stream
+
+SSE events are separated by blank lines (`\n\n`). Each event block contains `event:` and `data:` lines. Parse them together — do **not** rely on the `data:` line alone to determine event type.
 
 ```javascript
 const response = await fetch(
@@ -137,19 +156,40 @@ const response = await fetch(
 const reader = response.body.getReader();
 const decoder = new TextDecoder();
 let fullText = '';
+let buffer = '';
 
 while (true) {
   const { done, value } = await reader.read();
   if (done) break;
 
-  const lines = decoder.decode(value).split('\n');
-  for (const line of lines) {
-    if (line.startsWith('data: ')) {
-      const data = JSON.parse(line.slice(6));
-      if (data.type === 'chunk') {
-        fullText += data.delta;
-        // update your UI
+  buffer += decoder.decode(value, { stream: true });
+
+  // SSE events are separated by blank lines
+  const blocks = buffer.split('\n\n');
+  buffer = blocks.pop(); // keep any incomplete trailing block
+
+  for (const block of blocks) {
+    let eventType = '';
+    let dataStr = '';
+
+    for (const line of block.split('\n')) {
+      if (line.startsWith('event: ')) eventType = line.slice(7).trim();
+      else if (line.startsWith('data: ')) dataStr = line.slice(6);
+    }
+
+    if (!dataStr) continue;
+    const data = JSON.parse(dataStr);
+
+    if (eventType === 'chunk') {
+      fullText += data.delta;
+      // update your UI
+    } else if (eventType === 'stream_end') {
+      console.log('Tokens used:', data.usage);
+      if (data.end_session) {
+        // Agent requested the session be closed
       }
+    } else if (eventType === 'error') {
+      console.error('Stream error:', data.error);
     }
   }
 }
@@ -168,34 +208,34 @@ Authorization: Bearer {session_token}
 
 | Param | Default | Description |
 |-------|---------|-------------|
-| `limit` | 20 | Number of messages to return |
+| `limit` | 50 | Number of messages to return |
 | `offset` | 0 | Pagination offset |
 
 **Response:**
 
 ```json
 {
-  "success": true,
   "messages": [
     {
-      "id": "msg_001",
       "role": "assistant",
       "content": "Hello! How can I help you today?",
-      "createdAt": "2024-01-15T10:00:00Z"
+      "timestamp": "2024-01-15T10:00:00+00:00",
+      "token_count": null
     },
     {
-      "id": "msg_002",
       "role": "user",
       "content": "What are your business hours?",
-      "createdAt": "2024-01-15T10:00:08Z"
+      "timestamp": "2024-01-15T10:00:08+00:00",
+      "token_count": null
     },
     {
-      "id": "msg_003",
       "role": "assistant",
       "content": "Our business hours are 9am–6pm EST, Monday through Friday.",
-      "createdAt": "2024-01-15T10:00:09Z"
+      "timestamp": "2024-01-15T10:00:09+00:00",
+      "token_count": 18
     }
-  ]
+  ],
+  "count": 3
 }
 ```
 
@@ -211,7 +251,7 @@ Authorization: Bearer {session_token}
 ```
 
 **What happens:**
-1. Conversation saved to database
+1. Billing session closed and credits consumed
 2. Memory ingested into Graphiti (for returning user context)
 3. Post-call analysis triggered (if configured on agent)
 4. Webhook fired (if agent has webhook configured)
@@ -221,7 +261,7 @@ Authorization: Bearer {session_token}
 ```json
 {
   "success": true,
-  "message": "Session ended"
+  "message": "Session ended successfully"
 }
 ```
 
@@ -236,11 +276,14 @@ Authorization: Bearer {session_token}
 | Status | Code | Cause | Fix |
 |--------|------|-------|-----|
 | `400` | `not_text_agent` | Agent is Pipeline or Realtime (not Text) | Create a Text architecture agent |
+| `400` | `message_too_long` | Message exceeds 10,000 characters | Trim the message |
 | `401` | `invalid_api_key` | API key missing, invalid, or expired | Check `X-API-Key` header |
 | `401` | `invalid_token` | Session JWT expired or invalid | Create a new session |
+| `402` | `insufficient_credits` | Organization has insufficient credits | Top up credits in billing settings |
+| `403` | `conversation_mismatch` | `conversation_id` in URL does not match the session token | Use the correct `conversation_id` returned from session creation |
 | `404` | `session_not_found` | Session expired (idle >30 min) or wrong ID | Create a new session |
-| `409` | `message_in_progress` | Previous message not yet complete | Wait for current stream to finish |
-| `429` | `rate_limit_exceeded` | API key rate limit reached | Add delay or increase key limit |
+| `500` | — | Unexpected server error | Retry or contact support |
+| `503` | — | Billing service temporarily unavailable | Retry after a short delay |
 
 ---
 
@@ -251,7 +294,7 @@ POST /sessions          → session_token + conversation_id
         ↓
 POST /messages          → SSE stream (repeatable)
         ↓
-POST /end               → cleanup + memory + webhooks
+POST /end               → billing cleanup + memory + webhooks
 ```
 
-Sessions expire automatically after **30 minutes of inactivity**, even without calling `/end`. However, calling `/end` is required to trigger memory ingestion and post-call analysis.
+Sessions expire automatically after **30 minutes of inactivity**, even without calling `/end`. However, calling `/end` is required to trigger billing finalization, memory ingestion, and post-call analysis.

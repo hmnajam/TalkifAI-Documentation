@@ -42,7 +42,7 @@ The most important decision — it determines whether your agent can handle voic
     Each component uses a separate provider — you choose which:
     - **STT:** Deepgram, OpenAI Whisper, Cartesia, Gemini
     - **LLM:** GPT-4o, GPT-4o-mini, Gemini models, etc.
-    - **TTS:** Cartesia, ElevenLabs, OpenAI TTS
+    - **TTS:** Cartesia, OpenAI TTS, Gemini, Deepgram
 
     ✅ **Pros:** Flexible, cost-effective, provider-independent, supports voice + text
     ❌ **Cons:** Slightly higher latency (500–800ms)
@@ -108,13 +108,13 @@ The most important decision — it determines whether your agent can handle voic
 |-------|----------|------|
 | **Name** | ✅ | Keep it clear — e.g., "Customer Support Bot", "Sales Agent" (max 50 characters) |
 | **Description** | ✅ | Internal notes — not visible to end users (max 200 characters) |
-| **Languages** | ✅ | The language(s) the agent will understand and speak |
-| **Agent Mode** | ✅ | Start with **Private** for testing, then change to Public or Commercial |
+| **Languages** | ✅ | The language(s) the agent will understand and speak. Supported: **English, Urdu, Sindhi** |
+| **Agent Mode** | ✅ | Defaults to **Public**. Switch to **Private** for testing before sharing with your team |
 
 <Info>
   **Agent Modes:**
   - **Private:** Only visible to you and organization admins
-  - **Public:** Visible to all members of your organization
+  - **Public:** Visible to all members of your organization (default)
   - **Commercial:** Listed in the marketplace (requires owner/admin permissions)
 </Info>
 
@@ -335,12 +335,12 @@ Full guide: [Voice Selection →](/platform/voices)
 | Use Case | Recommended |
 |----------|-------------|
 | Customer Support | Cartesia — warm, clear |
-| Sales | ElevenLabs — confident, engaging |
+| Sales | OpenAI TTS — confident, engaging |
 | Medical / Legal | Cartesia — calm, professional |
 | Casual / Friendly | OpenAI TTS — natural |
 
 <Info>
-  Voice availability depends on your organization's API keys and configured providers.
+  Supported voice providers: **Cartesia, OpenAI TTS, Gemini, Deepgram**. Availability depends on your organization's API keys and configured providers.
 </Info>
 
 ---

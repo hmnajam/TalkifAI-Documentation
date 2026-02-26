@@ -7,12 +7,19 @@ description: "Run automated outbound call campaigns at scale with Redis-backed j
 
 TalkifAI's Batch Calling system lets you run large-scale outbound campaigns. Built on **Redis + ARQ**, it supports 100k+ calls/day with automatic retry, timezone-aware scheduling, and two-level concurrency control.
 
+**Best for:**
+- Appointment reminders
+- Payment collection
+- Customer satisfaction surveys
+- Lead follow-ups
+- Renewal notifications
+
 ---
 
 ## How It Works
 
 ```
-Batch Job Created
+Batch Job Created (CSV upload)
       │
       ▼
 Jobs stored in Redis queue
@@ -21,7 +28,7 @@ Jobs stored in Redis queue
 ARQ Worker picks up jobs
       │
       ├── Check Org concurrency limit (default: 5 concurrent)
-      ├── Check Batch concurrency limit (default: 3 concurrent)
+      ├── Check Batch concurrency limit (default: 5 concurrent)
       │
       ▼
    Call initiated
@@ -41,73 +48,106 @@ Level 1: Organization Limit
          └─ Max concurrent calls across ALL batches in your org (default: 5)
 
 Level 2: Batch Limit
-         └─ Max concurrent calls within a single batch (default: 3)
+         └─ Max concurrent calls within a single batch (default: 5)
 ```
 
 **Example:**
 - Your org limit: `5`
-- Batch A limit: `3`
-- Batch B limit: `4`
+- Batch A limit: `5`
+- Batch B limit: `5`
 
-At any moment, your org can run max **5** concurrent calls total — not 7.
+At any moment, your org can run max **5** concurrent calls total — not 10.
 
 ---
 
 ## Create a Batch
 
+### Via CSV Upload (Recommended)
+
 ```bash
-POST /v1/batch-calls
+POST /batch/create
+Content-Type: multipart/form-data
+
+file: [CSV file]
+fromPhoneNumberId: phone_abc123
+name: January Renewal Campaign
+concurrentCallLimit: 5
+maxAttempts: 3
+scheduledStartTime: 2024-01-20T09:00:00 (optional)
+timezone: America/New_York (optional, default: UTC)
 ```
 
-```json
-{
-  "name": "January Renewal Campaign",
-  "agentId": "agent_abc123",
-  "concurrentCallLimit": 3,
-  "scheduledTime": "2024-01-20T09:00:00",
-  "timezone": "America/New_York",
-  "contacts": [
-    {
-      "phoneNumber": "+12025550101",
-      "variables": {
-        "customerName": "John Smith",
-        "renewalDate": "Feb 1"
-      }
-    },
-    {
-      "phoneNumber": "+12025550102",
-      "variables": {
-        "customerName": "Jane Doe",
-        "renewalDate": "Feb 5"
-      }
-    }
-  ]
-}
+**CSV Format:**
+
+```csv
+phone,name,customerName,renewalDate
++12025550101,John Smith,John Smith,Feb 1
++12025550102,Jane Doe,Jane Doe,Feb 5
 ```
 
-| Field | Required | Description |
-|-------|----------|-------------|
-| `name` | Yes | Batch identifier |
-| `agentId` | Yes | Agent that handles calls |
-| `contacts` | Yes | List of phone numbers + variables |
-| `concurrentCallLimit` | No | Max parallel calls (default: 3) |
-| `scheduledTime` | No | When to start (omit for immediate) |
-| `timezone` | No | IANA timezone (default: UTC) |
+| Column | Required | Description |
+|--------|----------|-------------|
+| `phone` | ✅ | Phone number in E.164 format (+12025550101) |
+| `name` | ❌ | Contact name (stored as custom field) |
+| *any other* | ❌ | Additional columns stored as custom fields |
 
 **Response:**
 ```json
 {
   "success": true,
-  "data": {
-    "batchId": "batch_xyz789",
-    "name": "January Renewal Campaign",
-    "status": "scheduled",
-    "totalCalls": 2,
-    "scheduledTime": "2024-01-20T14:00:00Z",
-    "createdAt": "2024-01-15T10:30:00Z"
-  }
+  "batchJobId": "batch_xyz789",
+  "totalContacts": 2,
+  "estimatedDuration": "2 minutes",
+  "estimatedCost": "$0.50",
+  "status": "scheduled",
+  "scheduledStartTime": "2024-01-20T14:00:00Z",
+  "message": "Batch job created successfully"
 }
 ```
+
+### Via API (Programmatic)
+
+```bash
+POST /batch/create
+Content-Type: application/json
+
+{
+  "fromPhoneNumberId": "phone_abc123",
+  "name": "January Renewal Campaign",
+  "contacts": [
+    {
+      "phone": "+12025550101",
+      "name": "John Smith",
+      "customerName": "John Smith",
+      "renewalDate": "Feb 1"
+    },
+    {
+      "phone": "+12025550102",
+      "name": "Jane Doe",
+      "customerName": "Jane Doe",
+      "renewalDate": "Feb 5"
+    }
+  ],
+  "concurrentCallLimit": 5,
+  "maxAttempts": 3,
+  "scheduledStartTime": "2024-01-20T09:00:00",
+  "timezone": "America/New_York"
+}
+```
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `fromPhoneNumberId` | ✅ | Phone number ID to call from |
+| `name` | ✅ | Batch identifier |
+| `contacts` | ✅ | List of phone numbers + custom fields |
+| `concurrentCallLimit` | ❌ | Max parallel calls (default: 5, max: 50) |
+| `maxAttempts` | ❌ | Max retry attempts (default: 3, max: 10) |
+| `scheduledStartTime` | ❌ | When to start (omit for immediate) |
+| `timezone` | ❌ | IANA timezone (default: UTC) |
+
+<Note>
+  **Limits:** Maximum 10,000 contacts per batch. For larger campaigns, split into multiple batches.
+</Note>
 
 ---
 
@@ -123,6 +163,12 @@ Greet them by name and confirm the renewal date.
 
 Variables from the batch contact are automatically substituted at call time.
 
+**Custom fields** (any extra CSV columns) are available as variables:
+- `{{name}}` — Contact name
+- `{{customerName}}` — Custom field from CSV
+- `{{renewalDate}}` — Custom field from CSV
+- Any other column name as `{{columnName}}`
+
 ---
 
 ## Managing Batches
@@ -130,62 +176,167 @@ Variables from the batch contact are automatically substituted at call time.
 ### Get Batch Status
 
 ```bash
-GET /v1/batch-calls/{batchId}
+GET /batch/{batchId}
 ```
 
 ```json
 {
-  "success": true,
-  "data": {
-    "batchId": "batch_xyz789",
-    "status": "running",
-    "progress": {
-      "total": 100,
-      "completed": 42,
-      "failed": 3,
-      "pending": 55,
-      "running": 3
-    },
-    "startedAt": "2024-01-20T14:00:05Z"
+  "id": "batch_xyz789",
+  "name": "January Renewal Campaign",
+  "status": "running",
+  "organizationId": "org_123",
+  "agentId": "agent_abc123",
+  "fromPhoneNumberId": "phone_def456",
+  "totalContacts": 100,
+  "contactsProcessed": 42,
+  "successfulCalls": 35,
+  "failedCalls": 7,
+  "statusBreakdown": {
+    "pending": 55,
+    "running": 3,
+    "completed": 35,
+    "failed": 7
+  },
+  "scheduledStartTime": "2024-01-20T14:00:00Z",
+  "actualStartTime": "2024-01-20T14:00:05Z",
+  "completedAt": null,
+  "estimatedCompletionTime": "2024-01-20T14:25:00Z",
+  "createdAt": "2024-01-15T10:30:00Z",
+  "concurrentCallLimit": 5,
+  "retryPolicy": {
+    "maxAttempts": 3,
+    "retryableStatuses": ["no_answer", "busy", "timeout"]
   }
+}
+```
+
+### Get Batch Contacts
+
+```bash
+GET /batch/{batchId}/contacts?page=1&pageSize=50
+```
+
+```json
+{
+  "contacts": [
+    {
+      "id": "contact_001",
+      "phoneNumber": "+12025550101",
+      "contactData": {
+        "name": "John Smith",
+        "customerName": "John Smith",
+        "renewalDate": "Feb 1"
+      },
+      "status": "completed",
+      "errorCode": null,
+      "attemptCount": 1,
+      "maxAttempts": 3,
+      "lastAttemptAt": "2024-01-20T14:05:00Z",
+      "nextRetryAt": null,
+      "completedAt": "2024-01-20T14:05:30Z",
+      "roomName": "outbound_agent_abc_12025550101_1705320000",
+      "failureReason": null,
+      "callDuration": 120
+    }
+  ],
+  "contactsTotal": 100,
+  "contactsPage": 1,
+  "contactsPageSize": 50,
+  "contactsHasMore": true
 }
 ```
 
 ### Pause a Batch
 
 ```bash
-POST /v1/batch-calls/{batchId}/pause
+POST /batch/{batchId}/pause
 ```
+
+Stops new calls from being initiated. Running calls complete normally.
 
 ### Resume a Batch
 
 ```bash
-POST /v1/batch-calls/{batchId}/resume
+POST /batch/{batchId}/resume
 ```
+
+Resumes processing paused batch.
 
 ### Cancel a Batch
 
 ```bash
-POST /v1/batch-calls/{batchId}/cancel
+POST /batch/{batchId}/cancel
 ```
+
+Cancels batch permanently. Running calls complete, pending calls are not processed.
 
 ### Start Immediately (Override Schedule)
 
 ```bash
-POST /v1/batch-calls/{batchId}/start-now
+POST /batch/{batchId}/start-now
 ```
+
+Starts a scheduled batch immediately, ignoring the scheduled time.
 
 ---
 
 ## Retry Behavior
 
-Failed calls are automatically retried:
-- **Attempt 1**: Immediate
-- **Attempt 2**: After 5 minutes
-- **Attempt 3**: After 30 minutes
-- **After 3 failures**: Call marked as `permanently_failed`
+Failed calls are automatically retried based on the retry policy:
 
-Common failure reasons: no answer, busy, network error.
+| Attempt | Timing | Retryable Statuses |
+|---------|--------|-------------------|
+| **Attempt 1** | Immediate | — |
+| **Attempt 2** | After 5 minutes | `no_answer`, `busy`, `timeout` |
+| **Attempt 3** | After 30 minutes | `no_answer`, `busy`, `timeout` |
+| **After 3 failures** | Marked as `permanently_failed` | — |
+
+**Common failure reasons:**
+- `no_answer` — Call not answered
+- `busy` — Line busy
+- `timeout` — Call timed out
+- `invalid_number` — Invalid phone number (not retried)
+- `carrier_blocked` — Carrier blocked the call (not retried)
+
+---
+
+## Scheduling
+
+### Timezone Support
+
+Schedule batches in any timezone:
+
+```json
+{
+  "scheduledStartTime": "2024-01-20T09:00:00",
+  "timezone": "America/New_York"
+}
+```
+
+The system converts to UTC and starts at the correct time.
+
+**Supported timezones:**
+- `UTC` — Coordinated Universal Time
+- `America/New_York` — Eastern Time
+- `America/Los_Angeles` — Pacific Time
+- `Europe/London` — GMT/BST
+- `Asia/Karachi` — Pakistan Standard Time
+- `Asia/Dubai` — Gulf Standard Time
+- [Full IANA timezone database](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones)
+
+### Calling Hours Compliance
+
+<Warning>
+  **Legal compliance is your responsibility.** Most jurisdictions prohibit automated calls before 8 AM or after 9 PM local time. Use scheduling to ensure compliance with TCPA (US), GDPR (EU), and local regulations.
+</Warning>
+
+**Best practice:** Schedule batches with timezone-aware start times:
+```json
+{
+  "scheduledStartTime": "2024-01-20T09:00:00",
+  "timezone": "America/New_York"
+}
+```
 
 ---
 
@@ -194,14 +345,131 @@ Common failure reasons: no answer, busy, network error.
 <AccordionGroup>
   <Accordion title="Start with a small test batch">
     Before running 10,000 calls, test with 10-20 contacts to verify your agent handles the conversations correctly.
+    
+    **Test checklist:**
+    - ✅ Agent greeting sounds natural
+    - ✅ Variables are substituted correctly
+    - ✅ Call flow completes successfully
+    - ✅ Retry behavior works as expected
   </Accordion>
+
   <Accordion title="Respect calling hours">
     Use `scheduledTime` + `timezone` to ensure calls are made during business hours in the recipient's timezone. Most jurisdictions prohibit calls before 8 AM or after 9 PM local time.
+    
+    **Example:** For a US nationwide campaign:
+    ```json
+    {
+      "scheduledStartTime": "2024-01-20T10:00:00",
+      "timezone": "America/New_York"
+    }
+    ```
   </Accordion>
+
   <Accordion title="Set appropriate concurrency">
-    Higher concurrency = faster campaign completion but more load on your systems. Start with 3 and increase based on your infrastructure.
+    Higher concurrency = faster campaign completion but more load on your systems. Start with 5 and increase based on your infrastructure.
+    
+    **Recommended starting points:**
+    - Small campaigns (<100 contacts): 3-5 concurrent
+    - Medium campaigns (100-1,000 contacts): 5-10 concurrent
+    - Large campaigns (1,000+ contacts): 10-20 concurrent
   </Accordion>
+
   <Accordion title="Monitor failed calls">
     Check your batch status regularly. A high failure rate (>20%) may indicate a carrier issue or incorrect phone numbers.
+    
+    **Common issues:**
+    - Invalid phone numbers → Clean your contact list
+    - Carrier blocking → Rotate phone numbers
+    - No answers → Adjust calling hours
+  </Accordion>
+
+  <Accordion title="Use descriptive batch names">
+    Name batches clearly for easy identification:
+    - ✅ `2024-01-Renewal-Campaign`
+    - ✅ `Payment-Reminder-Week3`
+    - ❌ `Test-Batch-1`
   </Accordion>
 </AccordionGroup>
+
+---
+
+## API Reference
+
+### Create Batch
+
+```bash
+POST /batch/create
+Content-Type: multipart/form-data
+
+file: [CSV file]
+fromPhoneNumberId: string (required)
+name: string (required)
+description: string (optional)
+concurrentCallLimit: number (default: 5)
+maxAttempts: number (default: 3)
+scheduledStartTime: string (optional, ISO 8601)
+timezone: string (default: UTC)
+```
+
+### Get Batch
+
+```bash
+GET /batch/{batchId}
+```
+
+### Get Batch Contacts
+
+```bash
+GET /batch/{batchId}/contacts
+Query Parameters:
+  - page: number (default: 1)
+  - pageSize: number (default: 50, max: 100)
+```
+
+### Pause Batch
+
+```bash
+POST /batch/{batchId}/pause
+```
+
+### Resume Batch
+
+```bash
+POST /batch/{batchId}/resume
+```
+
+### Cancel Batch
+
+```bash
+POST /batch/{batchId}/cancel
+```
+
+### Start Scheduled Batch Now
+
+```bash
+POST /batch/{batchId}/start-now
+```
+
+---
+
+## Error Codes
+
+| Status | Code | Cause |
+|--------|------|-------|
+| 400 | `invalid_csv` | CSV file missing or invalid format |
+| 400 | `missing_phone_column` | CSV missing required 'phone' column |
+| 400 | `no_valid_contacts` | CSV contains no valid phone numbers |
+| 400 | `too_many_contacts` | Exceeds 10,000 contact limit |
+| 400 | `invalid_timezone` | Invalid IANA timezone |
+| 400 | `past_scheduled_time` | Scheduled time is in the past |
+| 404 | `batch_not_found` | Batch ID doesn't exist |
+| 409 | `batch_already_running` | Batch is already running |
+| 409 | `batch_already_completed` | Batch is already completed/cancelled |
+
+---
+
+## Related Documentation
+
+- [Telephony](/platform/telephony) — Configure phone numbers for outbound calling
+- [Agent Configuration](/platform/agent-settings) — Set up agents for batch calling
+- [Analytics](/platform/analytics) — Monitor batch campaign performance

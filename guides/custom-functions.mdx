@@ -7,7 +7,7 @@ description: "Give your voice agent access to your own APIs using custom functio
 
 Custom Functions let your agent **call external APIs during a live conversation** — fetching data, triggering actions, or integrating with your systems.
 
-When the LLM decides a function is needed, TalkifAI makes an HTTP POST to your webhook URL and injects the result back into the conversation.
+When the LLM decides a function is needed, TalkifAI makes an HTTP request to your webhook URL and injects the result back into the conversation.
 
 ---
 
@@ -21,8 +21,8 @@ User: "What's my order status?"
          │
          ▼
    TalkifAI → POST https://your-api.com/check-order
-              Body: { "arguments": { "order_id": "ORD-123" } }
-              Headers: X-User-ID, X-Org-ID (auto-injected)
+              Body: { "order_id": "ORD-123" }
+              Headers: Content-Type, custom headers
          │
          ▼
    Your API returns: { "status": "shipped", "eta": "tomorrow" }
@@ -37,15 +37,18 @@ User: "What's my order status?"
 
 ### Step 1: Define the function in Studio
 
-1. Go to **Studio → Functions → Custom Functions**
+1. Go to your agent → **Settings** → **Functions** → **Custom Functions**
 2. Click **Create Function**
 3. Fill in:
 
 | Field | Description |
 |-------|-------------|
 | **Name** | Snake_case identifier (e.g., `check_order_status`) |
+| **Label** | Human-readable name shown in Studio |
 | **Description** | What the function does (LLM reads this to decide when to call it) |
-| **Webhook URL** | Your HTTPS endpoint |
+| **Endpoint** | Your HTTPS endpoint URL |
+| **Method** | HTTP method: `POST` (default), `GET`, `PUT`, `PATCH` |
+| **Headers** | Custom headers sent with every call (JSON format) |
 | **Parameters** | JSON Schema defining the input |
 
 ### Step 2: Define parameters (JSON Schema)
@@ -67,31 +70,40 @@ User: "What's my order status?"
 }
 ```
 
+<Note>
+  **Parameter types:** `string`, `number`, `boolean`, `array`, `object` are all supported.
+</Note>
+
 ### Step 3: Implement your webhook
 
-Your endpoint receives:
+Your endpoint receives a POST request with the function arguments:
 
-```json
+**Request from TalkifAI:**
+
+```http
+POST https://your-api.com/check-order
+Content-Type: application/json
+
 {
-  "function_name": "check_order_status",
-  "arguments": {
-    "order_id": "ORD-123",
-    "customer_email": "user@example.com"
-  },
-  "call_id": "call_abc123",
-  "session_id": "sess_xyz789"
+  "order_id": "ORD-123",
+  "customer_email": "user@example.com"
 }
 ```
 
-**Headers sent by TalkifAI:**
+**Headers:**
+- `Content-Type: application/json` (always included)
+- Your custom headers (from function configuration)
 
-| Header | Value |
-|--------|-------|
-| `X-User-ID` | Authenticated user's ID |
-| `X-Org-ID` | Active organization ID |
-| `Content-Type` | `application/json` |
+<Warning>
+  **No automatic user context headers:** Unlike some documentation suggests, TalkifAI does NOT automatically inject `X-User-ID` or `X-Org-ID` headers into custom function calls. If you need user context, you must:
+  
+  1. Include user ID as a function parameter, OR
+  2. Use internal endpoints (`/internal/*`) which DO receive context headers
+</Warning>
 
 ### Step 4: Return a response
+
+Your API must respond within **30 seconds** with a JSON response:
 
 ```python
 # Flask example
@@ -102,29 +114,48 @@ app = Flask(__name__)
 @app.route('/check-order', methods=['POST'])
 def check_order():
     data = request.json
-    order_id = data['arguments']['order_id']
+    order_id = data.get('order_id')
+    customer_email = data.get('customer_email')
 
     # Your business logic
     order = db.get_order(order_id)
 
+    # Return result in one of these formats:
     return jsonify({
         "result": f"Order {order_id} is {order.status}. Expected delivery: {order.eta}."
     })
+    
+    # OR return data directly:
+    # return jsonify({
+    #     "status": order.status,
+    #     "eta": order.eta,
+    #     "carrier": order.carrier
+    # })
 ```
 
+**Response formats recognized:**
+- `{ "result": "..." }` — Used directly as agent response
+- `{ "data": {...} }` — Converted to text for agent
+- `{ "message": "..." }` — Used as response
+- Any other JSON — Converted to string
+
 <Note>
-  The `result` field is what the agent reads aloud. Keep it conversational and concise.
+  The response is converted to text and read by the agent. Keep it conversational and concise.
 </Note>
 
 ---
 
 ## Enable on an Agent
 
-1. Go to **Agent Settings → Functions**
+1. Go to your agent → **Settings** → **Functions**
 2. Under **Custom Functions**, toggle on the functions you want available
 3. Save the agent
 
 The agent will only call functions that are explicitly enabled on it.
+
+<Note>
+  After enabling functions, **mention them in your system prompt** so the agent knows when to use them. Example: `"To check order status, use the check_order_status function."`
+</Note>
 
 ---
 
@@ -136,7 +167,7 @@ TalkifAI also provides built-in functions you can enable without any webhook:
 |----------|-------------|
 | `web_search` | Search the internet in real-time |
 | `end_call` | Programmatically end the conversation |
-| `get_time` | Get current time in a timezone |
+| `search_knowledge_base` | Search linked knowledge bases |
 
 Enable them in **Agent Settings → Functions → Built-in Functions**.
 
@@ -144,13 +175,30 @@ Enable them in **Agent Settings → Functions → Built-in Functions**.
 
 ## Security
 
-- All function webhook calls include `X-User-ID` and `X-Org-ID` headers
-- These headers are **auto-injected** and cannot be spoofed by the user's voice
-- Validate the headers in your webhook to prevent unauthorized access
-- Use HTTPS-only endpoints
+### Custom Headers
+
+You can configure custom headers in the function definition for authentication:
+
+```json
+{
+  "Authorization": "Bearer your-secret-key",
+  "X-API-Key": "your-api-key",
+  "X-Source": "talkifai"
+}
+```
+
+These headers are sent with every function call.
+
+### User Context Injection
+
+**For internal endpoints only** (`/internal/*` path):
+
+If your endpoint path contains `/internal/`, TalkifAI automatically injects:
+- `X-User-ID` — The authenticated user's ID
+- `X-Org-ID` — The active organization ID
 
 ```python
-@app.route('/check-order', methods=['POST'])
+@app.route('/internal/check-order', methods=['POST'])
 def check_order():
     user_id = request.headers.get('X-User-ID')
     org_id = request.headers.get('X-Org-ID')
@@ -158,15 +206,108 @@ def check_order():
     if not user_id or not org_id:
         return jsonify({"error": "Unauthorized"}), 401
 
-    # Proceed safely
+    # Proceed safely with user context
 ```
+
+<Warning>
+  **External endpoints don't receive user context:** For security, external custom functions (not under `/internal/`) do NOT receive user context headers. Pass user ID as a function parameter if needed.
+</Warning>
+
+### Best Practices
+
+- ✅ Use HTTPS-only endpoints
+- ✅ Validate all input parameters
+- ✅ Implement rate limiting
+- ✅ Use custom headers for API keys
+- ✅ Log all function calls for auditing
 
 ---
 
 ## Timeout Behavior
 
-Functions must respond within **5 seconds**. If your endpoint times out, the agent will say:
+Functions must respond within **30 seconds**. If your endpoint times out:
 
-> "I'm having trouble accessing that information right now. Let me try something else."
+**Agent receives:** Error message
+**Agent says:** "I'm having trouble accessing that information right now."
 
-For slow operations, consider returning a quick acknowledgment and using follow-up functions.
+**For slow operations:**
+- Return a quick acknowledgment
+- Use async patterns (webhook callbacks coming soon)
+- Consider breaking into multiple faster functions
+
+---
+
+## Testing Your Function
+
+### Test with curl
+
+```bash
+curl -X POST https://your-api.com/check-order \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer your-key" \
+  -d '{
+    "order_id": "ORD-123",
+    "customer_email": "user@example.com"
+  }'
+```
+
+### Test in Studio
+
+1. Go to your agent → **Test Agent**
+2. Start a conversation
+3. Trigger the function naturally: "What's my order status?"
+4. Watch the function call in real-time
+5. Check logs for any errors
+
+---
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Function not being called">
+    **Check:**
+    1. Is function calling enabled on the agent?
+    2. Is the function enabled in agent settings?
+    3. Does your system prompt mention the function?
+    4. Is the function description clear about when to use it?
+
+    **Fix:** Add explicit instructions: `"Use the check_order_status function when the user asks about their order."`
+  </Accordion>
+
+  <Accordion title="Function returns error">
+    **Check:**
+    1. Is your endpoint accessible (no firewall issues)?
+    2. Are headers correct (auth keys valid)?
+    3. Is the request format correct (JSON, parameters)?
+    4. Check function logs in Studio
+
+    **Test:** Use curl to test your endpoint directly.
+  </Accordion>
+
+  <Accordion title="Timeout errors">
+    **Problem:** Endpoint taking too long to respond.
+
+    **Solution:**
+    - Optimize your API response time
+    - Return partial results quickly
+    - Use caching for frequently called functions
+    - Consider async patterns for long operations
+  </Accordion>
+
+  <Accordion title="Agent misinterprets function result">
+    **Problem:** Agent says something odd about the result.
+
+    **Solution:**
+    - Return clearer, more conversational responses
+    - Include context in the result: `"Order ORD-123 is shipped and will arrive on January 20th."`
+    - Add instructions to system prompt about interpreting results
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Related Documentation
+
+- [Custom Functions API](/api-reference/custom-functions) — Full API reference
+- [Function Calling API](/platform/advanced-configuration#3-function-calling-api) — Enable/disable functions
+- [Agent Settings](/platform/agent-settings) — Configure functions in Studio
