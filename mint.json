@@ -107,20 +107,31 @@
     {
       "group": "Agents",
       "pages": [
-        "api-reference/agents"
+        "api-reference/endpoint/list-agents",
+        "api-reference/endpoint/create-agent",
+        "api-reference/endpoint/get-agent",
+        "api-reference/endpoint/update-agent",
+        "api-reference/endpoint/delete-agent"
       ]
     },
     {
       "group": "Voice Calls",
       "pages": [
-        "api-reference/call-sessions",
+        "api-reference/endpoint/initiate-call",
+        "api-reference/endpoint/list-calls",
+        "api-reference/endpoint/get-call",
+        "api-reference/endpoint/get-transcript",
+        "api-reference/endpoint/check-usage",
         "api-reference/phone-numbers"
       ]
     },
     {
       "group": "Text Chat",
       "pages": [
-        "api-reference/chat"
+        "api-reference/endpoint/create-chat-session",
+        "api-reference/endpoint/send-message",
+        "api-reference/endpoint/get-messages",
+        "api-reference/endpoint/end-session"
       ]
     },
     {
@@ -145,6 +156,7 @@
       ]
     }
   ],
+  "openapi": "/openapi.json",
   "footerSocials": {
     "website": "https://studio.talkifai.dev",
     "linkedin": "https://www.linkedin.com/company/talkifai-dev/",

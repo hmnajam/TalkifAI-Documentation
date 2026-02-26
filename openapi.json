@@ -1,0 +1,830 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "TalkifAI API",
+    "version": "1.0.0",
+    "description": "Build and manage AI voice and chat agents programmatically."
+  },
+  "servers": [
+    {
+      "url": "https://api.talkifai.dev/v1",
+      "description": "Production"
+    }
+  ],
+  "security": [{ "bearerAuth": [] }],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "tk_live_...",
+        "description": "Your TalkifAI API key. Get it from Studio → Settings → API Keys."
+      },
+      "apiKeyHeader": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-API-Key",
+        "description": "Used only for POST /chat/sessions (session creation). Your tk_live_... key."
+      }
+    },
+    "schemas": {
+      "Agent": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "example": "5b710eca-ee67-4c3a-aeb6-8b541f451b40" },
+          "name": { "type": "string", "example": "Customer Support Bot" },
+          "description": { "type": "string", "nullable": true, "example": "Handles tier-1 support queries" },
+          "agentArchitecture": {
+            "type": "string",
+            "enum": ["pipeline", "realtime", "text"],
+            "example": "pipeline"
+          },
+          "model": { "type": "string", "nullable": true, "example": "gpt_4o_mini", "description": "LLM model. Set for pipeline and text architectures; null for realtime." },
+          "stt": { "type": "string", "nullable": true, "example": "deepgram", "description": "Speech-to-text provider. Set for pipeline; null for realtime and text." },
+          "voiceId": { "type": "string", "nullable": true, "example": "gemini-leda-en", "description": "TTS voice ID. Required for pipeline; optional for realtime (used only when greetingType is agentFirst)." },
+          "realtimeProvider": { "type": "string", "nullable": true, "example": "openai", "description": "Realtime provider. Set for realtime architecture; null for pipeline and text." },
+          "sysMsg": { "type": "string", "nullable": true, "example": "You are a helpful customer support agent for Acme Corp. Be concise and friendly." },
+          "greetingType": {
+            "type": "string",
+            "enum": ["agentFirst", "userFirst"],
+            "example": "agentFirst",
+            "description": "Controls who speaks first when the call connects."
+          },
+          "greetingMessage": { "type": "string", "nullable": true, "example": "Hello! How can I help you today?", "description": "Opening message spoken by the agent. Only used when greetingType is agentFirst." },
+          "temperature": { "type": "number", "example": 0.7, "description": "LLM sampling temperature (0–2)." },
+          "inactivityTimeout": { "type": "integer", "example": 30, "description": "Seconds of user silence before the agent ends the call. Range: 10–60." },
+          "lastMessage": { "type": "string", "nullable": true, "example": "Is there anything else I can help you with?", "description": "Final message spoken by the agent before ending the call." },
+          "mode": { "type": "string", "enum": ["public", "private", "commercial"], "example": "public", "description": "Visibility mode. public: all org members. private: creator + admins/owners only. commercial: globally accessible." },
+          "functionCallingEnabled": { "type": "boolean", "example": false },
+          "enabledFunctions": { "type": "array", "items": { "type": "string" }, "description": "IDs of built-in functions enabled for this agent." },
+          "enabledCustomFunctions": { "type": "array", "items": { "type": "string" }, "description": "IDs of custom (webhook) functions enabled for this agent." },
+          "languages": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": { "type": "string" },
+                "language": { "type": "string", "example": "en" }
+              }
+            },
+            "description": "Languages the agent is configured to support."
+          },
+          "userId": { "type": "string", "description": "ID of the user who created this agent." },
+          "organizationId": { "type": "string", "description": "ID of the organization this agent belongs to." },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "CallSession": {
+        "type": "object",
+        "properties": {
+          "callId": { "type": "string", "example": "call_abc123" },
+          "sessionId": { "type": "string", "example": "sess_xyz789" },
+          "agentId": { "type": "string", "example": "5b710eca-ee67-4c3a-aeb6-8b541f451b40" },
+          "direction": { "type": "string", "enum": ["inbound", "outbound"] },
+          "to": { "type": "string", "example": "+12025550123" },
+          "from": { "type": "string", "example": "+18885550100" },
+          "duration": { "type": "integer", "example": 245 },
+          "status": {
+            "type": "string",
+            "enum": ["initiating", "ringing", "in_progress", "completed", "failed", "no_answer"]
+          },
+          "startTime": { "type": "string", "format": "date-time" },
+          "endTime": { "type": "string", "format": "date-time" },
+          "recordingUrl": { "type": "string" },
+          "metadata": { "type": "object" }
+        }
+      },
+      "Pagination": {
+        "type": "object",
+        "properties": {
+          "page": { "type": "integer", "example": 1 },
+          "limit": { "type": "integer", "example": 20 },
+          "total": { "type": "integer", "example": 48 },
+          "hasNext": { "type": "boolean" },
+          "hasPrev": { "type": "boolean" }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean", "example": false },
+          "error": { "type": "string", "example": "Error message" },
+          "code": { "type": "string", "example": "ERROR_CODE" }
+        }
+      }
+    },
+    "responses": {
+      "Unauthorized": {
+        "description": "Invalid or missing API key",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/Error" },
+            "example": { "success": false, "error": "Invalid API key", "code": "invalid_api_key" }
+          }
+        }
+      },
+      "NotFound": {
+        "description": "Resource not found",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/Error" },
+            "example": { "success": false, "error": "Not found", "code": "not_found" }
+          }
+        }
+      },
+      "Forbidden": {
+        "description": "Insufficient permissions",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/Error" }
+          }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/agents": {
+      "get": {
+        "operationId": "listAgents",
+        "summary": "List Agents",
+        "description": "Returns all agents in your organization.",
+        "tags": ["Agents"],
+        "parameters": [
+          {
+            "name": "mode",
+            "in": "query",
+            "description": "Filter by visibility mode",
+            "schema": { "type": "string", "enum": ["public", "private", "commercial"] }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": { "type": "integer", "default": 1 }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": { "type": "integer", "default": 20, "maximum": 100 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of agents",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "data": { "type": "array", "items": { "$ref": "#/components/schemas/Agent" } },
+                    "pagination": { "$ref": "#/components/schemas/Pagination" }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      },
+      "post": {
+        "operationId": "createAgent",
+        "summary": "Create Agent",
+        "description": "Creates a new agent. Supported architectures: pipeline, realtime, text.",
+        "tags": ["Agents"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name", "agentArchitecture", "systemPrompt"],
+                "properties": {
+                  "name": { "type": "string", "example": "Sales Bot" },
+                  "agentArchitecture": {
+                    "type": "string",
+                    "enum": ["pipeline", "realtime", "text"],
+                    "example": "pipeline"
+                  },
+                  "model": { "type": "string", "example": "gpt-4o", "description": "Required for pipeline and text" },
+                  "stt": { "type": "string", "example": "deepgram", "description": "Required for pipeline" },
+                  "tts": { "type": "string", "example": "cartesia", "description": "Required for pipeline" },
+                  "voiceId": { "type": "string", "example": "sonic-english" },
+                  "realtimeProvider": { "type": "string", "example": "openai", "description": "Required for realtime" },
+                  "systemPrompt": { "type": "string", "example": "You are a helpful sales agent..." },
+                  "language": { "type": "string", "example": "en" },
+                  "mode": { "type": "string", "enum": ["public", "private", "commercial"], "default": "private" },
+                  "temperature": { "type": "number", "example": 0.7, "minimum": 0, "maximum": 2 }
+                }
+              },
+              "examples": {
+                "pipeline": {
+                  "summary": "Pipeline (voice + text)",
+                  "value": {
+                    "name": "Customer Support",
+                    "agentArchitecture": "pipeline",
+                    "model": "gpt-4o",
+                    "stt": "deepgram",
+                    "tts": "cartesia",
+                    "voiceId": "sonic-english",
+                    "systemPrompt": "You are a helpful customer support agent for Acme Corp.",
+                    "language": "en",
+                    "mode": "private",
+                    "temperature": 0.7
+                  }
+                },
+                "realtime": {
+                  "summary": "Realtime (lowest latency)",
+                  "value": {
+                    "name": "Low Latency Bot",
+                    "agentArchitecture": "realtime",
+                    "realtimeProvider": "openai",
+                    "voiceId": "alloy",
+                    "systemPrompt": "You are a fast-responding support agent.",
+                    "language": "en",
+                    "mode": "private"
+                  }
+                },
+                "text": {
+                  "summary": "Text (chat only)",
+                  "value": {
+                    "name": "Website Chatbot",
+                    "agentArchitecture": "text",
+                    "model": "gpt-4o-mini",
+                    "systemPrompt": "You are a helpful website assistant.",
+                    "language": "en",
+                    "mode": "public"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Agent created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "data": { "$ref": "#/components/schemas/Agent" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing or invalid fields",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/agents/{agentId}": {
+      "get": {
+        "operationId": "getAgent",
+        "summary": "Get Agent",
+        "description": "Returns full details for a specific agent.",
+        "tags": ["Agents"],
+        "parameters": [
+          {
+            "name": "agentId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" },
+            "example": "5b710eca-ee67-4c3a-aeb6-8b541f451b40"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Agent details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "data": { "$ref": "#/components/schemas/Agent" }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": {
+            "description": "Forbidden. Either the caller is not a member of the agent's organization, or the agent is private and the caller is not its creator or an org admin/owner.",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+          },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      },
+      "patch": {
+        "operationId": "updateAgent",
+        "summary": "Update Agent",
+        "description": "Updates one or more fields on an agent. Send only the fields you want to change.",
+        "tags": ["Agents"],
+        "parameters": [
+          {
+            "name": "agentId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string" },
+                  "systemPrompt": { "type": "string" },
+                  "model": { "type": "string" },
+                  "voiceId": { "type": "string" },
+                  "temperature": { "type": "number" },
+                  "active": { "type": "boolean" },
+                  "mode": { "type": "string", "enum": ["public", "private", "commercial"] }
+                }
+              },
+              "example": {
+                "systemPrompt": "Updated instructions for the agent...",
+                "temperature": 0.5,
+                "active": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Agent updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "data": { "$ref": "#/components/schemas/Agent" }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      },
+      "delete": {
+        "operationId": "deleteAgent",
+        "summary": "Delete Agent",
+        "description": "Permanently deletes an agent. This action cannot be undone.",
+        "tags": ["Agents"],
+        "parameters": [
+          {
+            "name": "agentId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Agent deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "message": { "type": "string", "example": "Agent deleted successfully" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/calls": {
+      "post": {
+        "operationId": "initiateCall",
+        "summary": "Initiate Outbound Call",
+        "description": "Triggers an outbound voice call from your agent to a phone number.",
+        "tags": ["Voice Calls"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["agentId", "to"],
+                "properties": {
+                  "agentId": { "type": "string", "example": "5b710eca-ee67-4c3a-aeb6-8b541f451b40" },
+                  "to": { "type": "string", "example": "+12025550123", "description": "Destination phone number in E.164 format" },
+                  "metadata": {
+                    "type": "object",
+                    "description": "Custom key-value pairs attached to this call",
+                    "example": { "customerId": "cust_xyz", "campaignId": "campaign_001" }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Call initiated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "callId": { "type": "string", "example": "call_abc123" },
+                        "sessionId": { "type": "string" },
+                        "status": { "type": "string", "example": "initiating" },
+                        "agentId": { "type": "string" },
+                        "to": { "type": "string" },
+                        "createdAt": { "type": "string", "format": "date-time" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": {
+            "description": "Quota exceeded or agent not active",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+          }
+        }
+      },
+      "get": {
+        "operationId": "listCalls",
+        "summary": "List Call Sessions",
+        "description": "Returns a paginated list of all call sessions in your organization.",
+        "tags": ["Voice Calls"],
+        "parameters": [
+          { "name": "agentId", "in": "query", "schema": { "type": "string" }, "description": "Filter by agent" },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": { "type": "string", "enum": ["initiating", "ringing", "in_progress", "completed", "failed", "no_answer"] }
+          },
+          { "name": "from", "in": "query", "schema": { "type": "string", "format": "date" }, "description": "Filter calls after this date (ISO 8601)" },
+          { "name": "to_date", "in": "query", "schema": { "type": "string", "format": "date" }, "description": "Filter calls before this date (ISO 8601)" },
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 20, "maximum": 100 } }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of call sessions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "data": { "type": "array", "items": { "$ref": "#/components/schemas/CallSession" } },
+                    "pagination": { "$ref": "#/components/schemas/Pagination" }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/calls/check-usage": {
+      "get": {
+        "operationId": "checkUsage",
+        "summary": "Check Usage Quota",
+        "description": "Returns your current voice minutes usage and remaining quota for the billing period.",
+        "tags": ["Voice Calls"],
+        "responses": {
+          "200": {
+            "description": "Usage quota details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "minutesUsed": { "type": "integer", "example": 142 },
+                        "minutesLimit": { "type": "integer", "example": 3000 },
+                        "minutesRemaining": { "type": "integer", "example": 2858 },
+                        "percentUsed": { "type": "number", "example": 4.7 },
+                        "resetDate": { "type": "string", "example": "2024-02-01" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/calls/{callId}": {
+      "get": {
+        "operationId": "getCall",
+        "summary": "Get Call Details",
+        "description": "Returns full details for a specific call session, including post-call analysis if available.",
+        "tags": ["Voice Calls"],
+        "parameters": [
+          {
+            "name": "callId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" },
+            "example": "call_abc123"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Call details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "data": { "$ref": "#/components/schemas/CallSession" }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/calls/{callId}/transcript": {
+      "get": {
+        "operationId": "getTranscript",
+        "summary": "Get Call Transcript",
+        "description": "Returns the full conversation transcript for a completed call.",
+        "tags": ["Voice Calls"],
+        "parameters": [
+          {
+            "name": "callId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" },
+            "example": "call_abc123"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Call transcript",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "callId": { "type": "string" },
+                        "transcript": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "speaker": { "type": "string", "enum": ["agent", "user"] },
+                              "text": { "type": "string" },
+                              "timestamp": { "type": "number" }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/chat/sessions": {
+      "post": {
+        "operationId": "createChatSession",
+        "summary": "Create Chat Session",
+        "description": "Creates a new text chat session. Returns a session token for authenticating subsequent messages.\n\n**Auth:** Use `X-API-Key` header (not `Authorization: Bearer`) for this endpoint. Call from your backend server only.",
+        "tags": ["Text Chat"],
+        "security": [{ "apiKeyHeader": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["agent_id"],
+                "properties": {
+                  "agent_id": {
+                    "type": "string",
+                    "description": "ID of a Text architecture agent",
+                    "example": "5b710eca-ee67-4c3a-aeb6-8b541f451b40"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Session created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "conversation_id": { "type": "string", "example": "chat_5b710eca_user123_1705312800000" },
+                    "session_token": { "type": "string", "description": "JWT valid for 24 hours" },
+                    "agent_name": { "type": "string", "example": "Support Agent" },
+                    "greeting": { "type": "string", "example": "Hello! How can I help you today?", "nullable": true },
+                    "agent_model": { "type": "string", "example": "gpt-4o-mini" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Agent is not text architecture",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "402": {
+            "description": "Insufficient credits",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+          }
+        }
+      }
+    },
+    "/chat/sessions/{conversationId}/messages": {
+      "post": {
+        "operationId": "sendMessage",
+        "summary": "Send Message",
+        "description": "Sends a user message and streams the agent's response via Server-Sent Events (SSE).\n\n**Auth:** Use `Authorization: Bearer {session_token}` (the token from Create Session).\n\nThe response is a `text/event-stream`. Each event has `event:` and `data:` lines separated by blank lines.",
+        "tags": ["Text Chat"],
+        "parameters": [
+          {
+            "name": "conversationId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" },
+            "example": "chat_5b710eca_user123_1705312800000"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["message"],
+                "properties": {
+                  "message": {
+                    "type": "string",
+                    "example": "What are your business hours?",
+                    "maxLength": 10000
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "SSE stream of response chunks",
+            "content": {
+              "text/event-stream": {
+                "schema": { "type": "string" },
+                "example": "event: chunk\ndata: {\"delta\": \"Our business hours \"}\n\nevent: chunk\ndata: {\"delta\": \"are 9am–6pm EST.\"}\n\nevent: stream_end\ndata: {\"usage\": {\"input_tokens\": 12, \"output_tokens\": 18}, \"end_session\": false}\n"
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": {
+            "description": "Session not found or expired",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+          },
+          "409": {
+            "description": "Another message is already processing",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+          }
+        }
+      },
+      "get": {
+        "operationId": "getChatHistory",
+        "summary": "Get Message History",
+        "description": "Returns the conversation history for a chat session.",
+        "tags": ["Text Chat"],
+        "parameters": [
+          {
+            "name": "conversationId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 50 } },
+          { "name": "offset", "in": "query", "schema": { "type": "integer", "default": 0 } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Message history",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "messages": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "role": { "type": "string", "enum": ["user", "assistant"] },
+                          "content": { "type": "string" },
+                          "timestamp": { "type": "string", "format": "date-time" },
+                          "token_count": { "type": "integer", "nullable": true }
+                        }
+                      }
+                    },
+                    "count": { "type": "integer" }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/chat/sessions/{conversationId}/end": {
+      "post": {
+        "operationId": "endChatSession",
+        "summary": "End Chat Session",
+        "description": "Ends the chat session. Triggers billing finalization, memory ingestion (Graphiti), post-call analysis, and webhooks.",
+        "tags": ["Text Chat"],
+        "parameters": [
+          {
+            "name": "conversationId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Session ended",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "message": { "type": "string", "example": "Session ended successfully" }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    }
+  },
+  "tags": [
+    { "name": "Agents", "description": "Create and manage voice and chat agents" },
+    { "name": "Voice Calls", "description": "Initiate outbound calls and retrieve call data" },
+    { "name": "Text Chat", "description": "Text chat sessions via REST + SSE" }
+  ]
+}
