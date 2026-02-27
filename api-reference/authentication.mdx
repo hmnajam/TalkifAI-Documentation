@@ -1,115 +1,285 @@
 ---
 title: "Authentication"
-description: "API keys and organization context for the TalkifAI API."
+description: "Session-based and API key authentication for the TalkifAI API."
 ---
 
-## API Keys
+## Overview
 
-TalkifAI uses **Bearer token authentication**. Every API request must include your API key.
+TalkifAI supports two authentication methods:
 
-```bash
-Authorization: Bearer tk_live_your_api_key_here
+1. **Session-based authentication** — For Studio UI and logged-in users (via Better Auth)
+2. **API keys** — For server-to-server API access
+
+The authentication method you use depends on your use case:
+
+| Use Case | Authentication Method |
+|----------|----------------------|
+| Studio UI (logged-in users) | Session-based |
+| Marketing site → Studio API | API key (`x-api-key`) |
+| External backend → Studio API | API key (`x-api-key`) |
+| Backend service (your own) | Session-based or API key |
+
+---
+
+## Session-Based Authentication
+
+For applications where users log in to TalkifAI Studio, authentication is handled automatically via **Better Auth** session cookies.
+
+### How It Works
+
+1. User logs in via TalkifAI Studio
+2. Session cookie is set automatically
+3. All API requests include the session cookie
+4. Backend validates session via `auth.api.getSession()`
+
+### Example (Server-Side)
+
+```typescript
+import { auth } from "@/src/lib/auth";
+import { headers } from "next/headers";
+
+export async function GET() {
+  const session = await auth.api.getSession({
+    headers: await headers()
+  });
+
+  if (!session?.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  // User is authenticated
+  console.log("User:", session.user.email);
+  console.log("Organization:", session.session.activeOrganizationId);
+}
 ```
 
-### Generating an API Key
+### Example (Client-Side)
 
-1. Go to **Studio → Settings → API Keys**
-2. Click **Create API Key**
-3. Give it a name (e.g., "Production Backend")
-4. Copy the key immediately — **it won't be shown again**
+```typescript
+import { authClient } from "@/src/lib/auth-client";
+
+function MyComponent() {
+  const { data: session } = authClient.useSession();
+
+  if (!session) {
+    return <div>Please log in</div>;
+  }
+
+  return (
+    <div>
+      <p>Welcome, {session.user.name}!</p>
+      <p>Organization: {session.session.activeOrganizationId}</p>
+    </div>
+  );
+}
+```
+
+---
+
+## API Key Authentication
+
+For server-to-server communication (e.g., marketing site → Studio API, external backends), use API keys.
+
+### Generating an API Key (Via Studio UI)
+
+**Navigation:** **Studio → Organization → API Keys**
+
+**URL:** `/organization/api-key`
+
+<Info>
+  **Owner access required:** Only organization owners can generate API keys. Admins and Members cannot access this feature.
+</Info>
+
+**Step-by-Step Process:**
+
+1. **Navigate to API Keys Page**
+   - Go to **Studio → Organization** (sidebar)
+   - Click **API Keys** in the organization settings
+
+2. **Enter Key Details**
+   - **Key Name** (required, max 50 characters)
+     - Example: "Production Server", "Marketing Site", "Dev Testing"
+   - **Organization** is automatically selected from your active session
+
+3. **Click "Generate API Key"**
+   - Button shows loading spinner while processing
+   - Backend creates key via Better Auth
+
+4. **Copy the Key Immediately** ⚠️
+   - The full key is shown **only once** in a dark gray box
+   - Click **Copy** button to copy to clipboard
+   - Shows "Copied!" confirmation for 2 seconds
+   - **Important:** You cannot view the key again after leaving the page
+
+5. **Key Details Shown**
+   - Created date
+   - Expires date (1 year from creation)
+   - API endpoints that accept this key:
+     - Public Chat API: `https://api.talkifai.dev/v1/chat`
+     - Data Export API: `https://api.talkifai.dev/api/export`
 
 <Warning>
-  API keys grant full access to your organization. Treat them like passwords. Never commit them to version control or expose them in client-side code.
+  **Security Warning:** API keys grant full access to your organization.
+  
+  - ✅ Copy the key immediately and store in a password manager
+  - ✅ Use environment variables in your application
+  - ❌ Never commit to version control (add to `.gitignore`)
+  - ❌ Never expose in client-side code
+  - ❌ Never share via email or chat
 </Warning>
 
-### Key Prefixes
+**After Generation:**
+- Key appears in the **"Existing Keys"** list on the right
+- Shows: Name, prefix (e.g., `abc123••••••••`), created date, expires date, status
+- Can be revoked anytime by clicking **Delete** (trash icon)
 
-| Prefix | Environment |
-|--------|-------------|
-| `tk_live_` | Production |
-| `tk_test_` | Testing/Sandbox |
+### API Key Format
+
+TalkifAI API keys are random strings (no special prefix like `tk_live_`).
+
+**Example:** `abc123def456...` (64 characters)
+
+### Using API Keys
+
+Include the API key in the `x-api-key` header:
+
+```bash
+curl https://api.talkifai.dev/api/agents \
+  -H "x-api-key: your_api_key_here"
+```
+
+```javascript
+// JavaScript example
+const response = await fetch('https://api.talkifai.dev/api/agents', {
+  headers: {
+    'x-api-key': process.env.TALKIFAI_API_KEY,
+    'Content-Type': 'application/json'
+  }
+});
+
+const data = await response.json();
+```
+
+```python
+# Python example
+import httpx
+
+headers = {
+    "x-api-key": os.environ["TALKIFAI_API_KEY"],
+    "Content-Type": "application/json"
+}
+
+response = httpx.get(
+    "https://api.talkifai.dev/api/agents",
+    headers=headers
+)
+```
+
+### API Key Features
+
+| Feature | Description |
+|---------|-------------|
+| **Organization-scoped** | Keys are tied to a specific organization |
+| **Rate limiting** | 1000 requests per hour (default) |
+| **Expiration** | 1 year from creation (default) |
+| **Metadata** | Stores creator, creation date, org ID |
 
 ---
 
 ## Organization Context
 
-All API operations are scoped to your **active organization**. The API key is automatically linked to the organization it was created in.
+All API operations are scoped to your **active organization**.
 
-If you're a member of multiple organizations, you'll need separate API keys per organization.
+### Session-Based (Studio Users)
+
+The active organization is stored in the session:
+
+```typescript
+const session = await auth.api.getSession({ headers });
+
+if (session) {
+  const orgId = session.session.activeOrganizationId;
+  console.log("Active org:", orgId);
+}
+```
+
+Users can switch organizations in the Studio UI, which updates `activeOrganizationId`.
+
+### API Key Authentication
+
+API keys are **automatically scoped** to the organization they were created in:
+
+```typescript
+// When creating an API key
+const apiKeyData = await auth.api.createApiKey({
+  body: {
+    name: "Production Backend",
+    userId: session.user.id,
+    metadata: {
+      organizationId: "org_abc123",  // Key is scoped to this org
+    }
+  }
+});
+```
+
+All requests with this key automatically operate within that organization.
 
 ---
 
 ## Environment Variables
 
-Store your API key securely as an environment variable:
+Store credentials securely as environment variables:
 
 ```bash
-# .env
-TALKIFAI_API_KEY=tk_live_your_key_here
-TALKIFAI_BASE_URL=https://api.talkifai.dev/v1
+# .env.local (development)
+# .env.production (production)
+
+# API Key (for server-to-server)
+TALKIFAI_API_KEY=your_api_key_here
+
+# Base URL
+TALKIFAI_BASE_URL=https://api.talkifai.dev
 ```
 
-**Usage in code:**
-
-<CodeGroup>
-```python Python
-import os
-import httpx
-
-headers = {
-    "Authorization": f"Bearer {os.environ['TALKIFAI_API_KEY']}",
-    "Content-Type": "application/json"
-}
-
-response = httpx.get(
-    f"{os.environ['TALKIFAI_BASE_URL']}/agents",
-    headers=headers
-)
-```
-
-```javascript Node.js
-const TALKIFAI_API_KEY = process.env.TALKIFAI_API_KEY;
-
-const response = await fetch('https://api.talkifai.dev/v1/agents', {
-  headers: {
-    'Authorization': `Bearer ${TALKIFAI_API_KEY}`,
-    'Content-Type': 'application/json'
-  }
-});
-```
-
-```bash cURL
-curl https://api.talkifai.dev/v1/agents \
-  -H "Authorization: Bearer $TALKIFAI_API_KEY"
-```
-</CodeGroup>
+<Warning>
+  **Never commit `.env` files to version control.** Add them to `.gitignore`:
+  
+  ```bash
+  # .gitignore
+  .env
+  .env.local
+  .env.production
+  ```
+</Warning>
 
 ---
 
-## Verifying Your Key
+## Verifying Your API Key
 
 Test your API key with a simple request:
 
 ```bash
-GET /v1/me
+curl https://api.talkifai.dev/api/agents \
+  -H "x-api-key: $TALKIFAI_API_KEY"
 ```
 
-**Response:**
+**Success Response:**
 ```json
 {
-  "success": true,
-  "data": {
-    "user": {
-      "id": "user_abc123",
-      "email": "you@company.com",
-      "name": "Your Name"
-    },
-    "organization": {
-      "id": "org_xyz789",
-      "name": "My Company",
-      "slug": "my-company"
+  "agents": [
+    {
+      "id": "agent_abc123",
+      "name": "Customer Support Bot",
+      "description": "Handles customer inquiries"
     }
-  }
+  ]
+}
+```
+
+**Error Response (Invalid Key):**
+```json
+{
+  "error": "Unauthorized - Invalid or missing API key"
 }
 ```
 
@@ -118,18 +288,61 @@ GET /v1/me
 ## Revoking API Keys
 
 To revoke a key:
-1. Go to **Studio → Settings → API Keys**
-2. Find the key in the list
-3. Click **Revoke**
 
-Revoked keys immediately return `401 Unauthorized` on all requests.
+1. Go to **Studio → Organization → API Keys**
+2. Find the key in the **"Existing Keys"** list (right column)
+3. Click **Delete** (trash icon with red button)
+4. Confirm deletion in the dialog: "Are you sure you want to delete this API key?"
+
+**Revoked keys immediately return `401 Unauthorized` on all requests.**
+
+<Warning>
+  **Irreversible Action:** Once revoked, the key cannot be recovered. You'll need to generate a new key and update your applications.
+</Warning>
 
 ---
 
 ## Security Best Practices
 
-- Rotate API keys every 90 days
-- Use separate keys for development, staging, and production
-- Set up key expiration dates for temporary integrations
-- Monitor API key usage in **Settings → API Keys → Usage**
-- Never log API keys in application logs
+<CardGroup cols={2}>
+  <Card title="Rotate Keys Regularly" icon="rotate">
+  Generate new API keys every 90 days. Delete old keys after rotation.
+  </Card>
+  <Card title="Use Separate Keys" icon="key">
+  Use different keys for development, staging, and production environments.
+  </Card>
+  <Card title="Monitor Active Keys" icon="chart-line">
+  Check **Organization → API Keys** regularly. Revoke unused keys immediately.
+  </Card>
+  <Card title="Never Log Keys" icon="eye-off">
+  Never log API keys in application logs. Redact sensitive headers.
+  </Card>
+  <Card title="Use Environment Variables" icon="lock">
+  Store keys in environment variables, not in code or config files.
+  </Card>
+  <Card title="Limit Key Permissions" icon="shield">
+  Create separate keys for different services with minimal required access.
+  </Card>
+</CardGroup>
+
+---
+
+## Error Codes
+
+| Status | Error | Description |
+|--------|-------|-------------|
+| `401` | `Unauthorized` | Missing or invalid API key / session |
+| `401` | `Invalid API key` | API key is malformed or revoked |
+| `403` | `Forbidden` | Valid auth but insufficient permissions |
+| `403` | `Not a member of the selected organization` | User/org mismatch |
+| `429` | `Rate limit exceeded` | Too many requests (API keys only) |
+
+---
+
+## Related Documentation
+
+- [Organization Management](/platform/organization) — Manage organizations and members
+- [API Keys](/platform/api-keys) — Detailed API key management guide
+- [Get Agent](/api-reference/agents/get-agent) — Example API endpoint
+- [List Calls](/api-reference/calls/list-calls) — Example API endpoint
+- [Studio Navigation](/platform/studio-navigation) — Find your way around TalkifAI Studio
