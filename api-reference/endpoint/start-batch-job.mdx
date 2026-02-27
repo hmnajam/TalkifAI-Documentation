@@ -1,0 +1,222 @@
+---
+title: "Start Batch Job Immediately"
+openapi: "POST /batch/jobs/{batch_job_id}/start"
+description: "Manually start a scheduled or pending batch job immediately, bypassing the scheduled start time."
+---
+
+## Overview
+
+Starts a scheduled or pending batch job immediately, without waiting for the scheduled start time.
+
+**Use cases:**
+- Start a scheduled job ahead of time
+- Manually trigger a job that was created but not started
+- Override scheduling and begin processing now
+
+<Note>
+  Only works for jobs in `scheduled` or `pending` status. Running jobs cannot be started again.
+</Note>
+
+## Request
+
+```bash
+POST /batch/jobs/{batch_job_id}/start
+```
+
+## Path Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `batch_job_id` | string | ✅ | Unique batch job identifier |
+
+## Response
+
+```json
+{
+  "success": true,
+  "message": "Cancelled scheduled job, starting immediately",
+  "batchJobId": "batch_xyz789",
+  "status": "running",
+  "contactsEnqueued": 100,
+  "redisJobCancelled": true,
+  "startedAt": "2025-02-28T13:30:00Z"
+}
+```
+
+### Response Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `success` | boolean | Whether start succeeded |
+| `message` | string | Start result description |
+| `batchJobId` | string | Started batch job ID |
+| `status` | string | New job status (`running`) |
+| `contactsEnqueued` | integer | Number of contacts queued for processing |
+| `redisJobCancelled` | boolean | Whether Redis scheduled job was cancelled |
+| `startedAt` | string | Start time (ISO 8601, UTC) |
+
+## Examples
+
+### Example 1: Start Scheduled Job Early
+
+```bash
+curl -X POST "https://api.talkifai.com/batch/jobs/batch_xyz789/start" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Cancelled scheduled job, starting immediately",
+  "batchJobId": "batch_xyz789",
+  "status": "running",
+  "contactsEnqueued": 100,
+  "redisJobCancelled": true,
+  "startedAt": "2025-02-28T13:30:00Z"
+}
+```
+
+### Example 2: Start Pending Job
+
+```bash
+curl -X POST "https://api.talkifai.com/batch/jobs/batch_pending/start" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Starting immediately",
+  "batchJobId": "batch_pending",
+  "status": "running",
+  "contactsEnqueued": 50,
+  "redisJobCancelled": false,
+  "startedAt": "2025-02-28T13:30:00Z"
+}
+```
+
+### Example 3: Start Already Running Job (Error)
+
+```bash
+curl -X POST "https://api.talkifai.com/batch/jobs/batch_running/start" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+**Response:**
+```json
+{
+  "detail": "Cannot start job in 'running' status. Only 'scheduled' or 'pending' jobs can be started."
+}
+```
+
+## Behavior by Status
+
+| Job Status | Start Behavior |
+|------------|----------------|
+| `scheduled` | Cancels Redis defer job + marks as `running` + enqueues all contacts |
+| `pending` | Marks as `running` + enqueues all contacts |
+| `running` | ❌ Error: Job already running |
+| `completed` | ❌ Error: Cannot start completed job |
+| `failed` | ❌ Error: Cannot start failed job |
+| `cancelled` | ❌ Error: Cannot start cancelled job |
+
+## How It Works
+
+```
+POST /batch/jobs/{id}/start
+         │
+         ▼
+1. Check job status
+         ├── Not scheduled/pending → 400 Error
+         └── Scheduled/Pending → Continue
+                   │
+                   ▼
+2. If scheduled: Cancel Redis defer job
+         ├── Found → Cancel + clear scheduledJobId
+         └── Not found → Proceed (already dequeued)
+                   │
+                   ▼
+3. Update job status to 'running'
+         │
+         ▼
+4. Fetch all pending contacts
+         │
+         ▼
+5. Enqueue contacts to worker queue
+         │
+         ▼
+6. Return success with count
+```
+
+## Error Handling
+
+### 404 Not Found
+
+```json
+{
+  "detail": "Batch job not found"
+}
+```
+
+### 400 Bad Request
+
+```json
+{
+  "detail": "Cannot start job in 'running' status. Only 'scheduled' or 'pending' jobs can be started."
+}
+```
+
+| Error Code | Cause |
+|------------|-------|
+| `job_not_found` | Batch job ID doesn't exist |
+| `invalid_status` | Job is not in `scheduled` or `pending` status |
+| `already_running` | Job is already processing |
+
+### 500 Internal Server Error
+
+```json
+{
+  "detail": "Failed to start batch job"
+}
+```
+
+## Use Cases
+
+### Start Campaign Early
+
+You scheduled a campaign for 9 AM but want to start at 8:30 AM:
+
+```bash
+# Job scheduled for 9:00 AM
+# At 8:30 AM, decide to start early
+curl -X POST "https://api.talkifai.com/batch/jobs/batch_xyz789/start" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+### Manual Trigger After Creation
+
+Create a job without scheduling, then start manually:
+
+```bash
+# Create job without scheduledStartTime
+curl -X POST "https://api.talkifai.com/batch/create" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -F "file=@contacts.csv" \
+  -F "fromPhoneNumberId=phone_abc123" \
+  -F "name=Test Campaign"
+
+# Job created with status 'pending'
+# Start it when ready
+curl -X POST "https://api.talkifai.com/batch/jobs/batch_xyz789/start" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+## Related
+
+- [Create Batch Job](/api-reference/endpoint/create-batch-job) — Create a new batch job
+- [Cancel Batch Job](/api-reference/endpoint/cancel-batch-job) — Cancel a job
+- [Reschedule Batch Job](/api-reference/endpoint/reschedule-batch-job) — Change scheduled time
+- [Get Batch Job Detail](/api-reference/endpoint/get-batch-job) — Get job status
+- [Batch Calling Guide](/guides/batch-calling) — Complete guide to batch campaigns

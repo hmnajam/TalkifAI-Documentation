@@ -117,12 +117,7 @@
     {
       "group": "Voice Calls",
       "pages": [
-        "api-reference/endpoint/initiate-call",
-        "api-reference/endpoint/list-calls",
-        "api-reference/endpoint/get-call",
-        "api-reference/endpoint/get-transcript",
-        "api-reference/endpoint/check-usage",
-        "api-reference/phone-numbers"
+        "api-reference/endpoint/initiate-call"
       ]
     },
     {
@@ -132,6 +127,18 @@
         "api-reference/endpoint/send-message",
         "api-reference/endpoint/get-messages",
         "api-reference/endpoint/end-session"
+      ]
+    },
+    {
+      "group": "Batch Calling",
+      "pages": [
+        "api-reference/endpoint/create-batch-job",
+        "api-reference/endpoint/list-batch-jobs",
+        "api-reference/endpoint/get-batch-job",
+        "api-reference/endpoint/start-batch-job",
+        "api-reference/endpoint/cancel-batch-job",
+        "api-reference/endpoint/reschedule-batch-job",
+        "api-reference/endpoint/redis-status"
       ]
     },
     {
@@ -156,7 +163,7 @@
       ]
     }
   ],
-  "openapi": "/openapi.json",
+  "openapi": "openapi.json",
   "footerSocials": {
     "website": "https://studio.talkifai.dev",
     "linkedin": "https://www.linkedin.com/company/talkifai-dev/",

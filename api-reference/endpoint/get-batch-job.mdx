@@ -1,0 +1,315 @@
+---
+title: "Get Batch Job Detail"
+openapi: "GET /batch/jobs/{batch_job_id}"
+description: "Get complete details of a batch calling job including progress stats, timing info, and paginated contacts."
+---
+
+## Overview
+
+Retrieves comprehensive information about a specific batch job including:
+- Job configuration and status
+- Progress statistics
+- Status breakdown (count by status)
+- Timing information (scheduled, started, completed, estimated)
+- Paginated list of contacts with optional status filtering
+
+## Request
+
+```bash
+GET /batch/jobs/{batch_job_id}?contactStatus=completed&contactsPage=1&contactsPageSize=50
+```
+
+## Path Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `batch_job_id` | string | ✅ | Unique batch job identifier |
+
+## Query Parameters
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `contactStatus` | string | ❌ | — | Filter contacts by status |
+| `contactsPage` | integer | ❌ | `1` | Contacts page number (1-indexed) |
+| `contactsPageSize` | integer | ❌ | `50` | Contacts per page (1-500) |
+
+### Contact Status Filter Values
+
+| Status | Description |
+|--------|-------------|
+| `pending` | Contact waiting to be called |
+| `queued` | Contact queued for retry |
+| `dialing` | Call currently in progress |
+| `completed` | Call completed successfully |
+| `no_answer` | Call not answered |
+| `busy` | Line was busy |
+| `timeout` | Call timed out |
+| `blocked` | Call blocked by carrier |
+| `invalid_number` | Phone number invalid |
+| `carrier_error` | Carrier/network error |
+| `failed` | Call failed (other reason) |
+| `cancelled` | Contact cancelled |
+
+## Response
+
+```json
+{
+  "id": "batch_xyz789",
+  "name": "January Renewal Campaign",
+  "description": "Follow up on expiring subscriptions",
+  "status": "running",
+  "organizationId": "org_abc123",
+  "agentId": "agent_def456",
+  "fromPhoneNumberId": "phone_ghi789",
+  "totalContacts": 100,
+  "contactsProcessed": 42,
+  "successfulCalls": 35,
+  "failedCalls": 7,
+  "statusBreakdown": {
+    "pending": 55,
+    "dialing": 3,
+    "completed": 35,
+    "failed": 5,
+    "no_answer": 2
+  },
+  "scheduledStartTime": "2025-02-28T14:00:00Z",
+  "actualStartTime": "2025-02-28T14:00:05Z",
+  "completedAt": null,
+  "estimatedCompletionTime": "2025-02-28T14:25:00Z",
+  "createdAt": "2025-02-28T10:30:00Z",
+  "concurrentCallLimit": 5,
+  "retryPolicy": {
+    "maxAttempts": 3,
+    "retryableStatuses": ["no_answer", "busy", "timeout"]
+  },
+  "contacts": [
+    {
+      "id": "contact_001",
+      "phoneNumber": "+12025550101",
+      "contactData": {
+        "phone": "+12025550101",
+        "name": "John Smith",
+        "customerName": "John Smith",
+        "renewalDate": "Feb 1"
+      },
+      "status": "completed",
+      "errorCode": null,
+      "attemptCount": 1,
+      "maxAttempts": 3,
+      "lastAttemptAt": "2025-02-28T14:05:00Z",
+      "nextRetryAt": null,
+      "completedAt": "2025-02-28T14:05:30Z",
+      "roomName": "outbound_agent_def456_12025550101_1709128800",
+      "failureReason": null,
+      "callDuration": 120
+    },
+    {
+      "id": "contact_002",
+      "phoneNumber": "+12025550102",
+      "contactData": {
+        "phone": "+12025550102",
+        "name": "Jane Doe",
+        "customerName": "Jane Doe",
+        "renewalDate": "Feb 5"
+      },
+      "status": "no_answer",
+      "errorCode": "480",
+      "attemptCount": 2,
+      "maxAttempts": 3,
+      "lastAttemptAt": "2025-02-28T14:06:00Z",
+      "nextRetryAt": "2025-02-28T14:11:00Z",
+      "completedAt": null,
+      "roomName": null,
+      "failureReason": "SIP status: 480 Temporarily Unavailable",
+      "callDuration": null
+    }
+  ],
+  "contactsTotal": 100,
+  "contactsPage": 1,
+  "contactsPageSize": 50,
+  "contactsHasMore": true
+}
+```
+
+### Response Fields
+
+#### Job Info
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | Unique batch job identifier |
+| `name` | string | Job name |
+| `description` | string | Optional description |
+| `status` | string | Current job status |
+| `organizationId` | string | Organization ID |
+| `agentId` | string | Agent ID used for calls |
+| `fromPhoneNumberId` | string | Phone number ID used for calls |
+
+#### Progress Stats
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `totalContacts` | integer | Total contacts in job |
+| `contactsProcessed` | integer | Number of contacts processed |
+| `successfulCalls` | integer | Number of successful calls |
+| `failedCalls` | integer | Number of failed calls |
+| `statusBreakdown` | object | Count per status |
+
+#### Timing Info
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `scheduledStartTime` | string | Scheduled start time (ISO 8601, UTC) |
+| `actualStartTime` | string | Actual start time (ISO 8601, UTC) |
+| `completedAt` | string | Completion time (ISO 8601, UTC) |
+| `estimatedCompletionTime` | string | Estimated completion (ISO 8601, UTC) |
+| `createdAt` | string | Creation time (ISO 8601, UTC) |
+
+#### Settings
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `concurrentCallLimit` | integer | Max concurrent calls |
+| `retryPolicy` | object | Retry configuration |
+
+#### Contacts List
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `contacts` | array | List of contact objects |
+| `contactsTotal` | integer | Total contacts (with filter) |
+| `contactsPage` | integer | Current contacts page |
+| `contactsPageSize` | integer | Contacts per page |
+| `contactsHasMore` | boolean | Whether more pages exist |
+
+### Contact Object
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | Contact identifier |
+| `phoneNumber` | string | Phone number (E.164 format) |
+| `contactData` | object | Original contact data + custom fields |
+| `status` | string | Current contact status |
+| `errorCode` | string | SIP error code (if failed) |
+| `attemptCount` | integer | Number of attempts made |
+| `maxAttempts` | integer | Maximum allowed attempts |
+| `lastAttemptAt` | string | Last attempt time (ISO 8601, UTC) |
+| `nextRetryAt` | string | Next retry time (ISO 8601, UTC) |
+| `completedAt` | string | Completion time (ISO 8601, UTC) |
+| `roomName` | string | LiveKit room name (if connected) |
+| `failureReason` | string | Error message (if failed) |
+| `callDuration` | integer | Call duration in seconds (if completed) |
+
+## Examples
+
+### Example 1: Get Full Job Detail
+
+```bash
+curl -X GET "https://api.talkifai.com/batch/jobs/batch_xyz789" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+### Example 2: Get Only Completed Contacts
+
+```bash
+curl -X GET "https://api.talkifai.com/batch/jobs/batch_xyz789?contactStatus=completed&contactsPage=1&contactsPageSize=100" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+### Example 3: Get Failed Contacts for Analysis
+
+```bash
+curl -X GET "https://api.talkifai.com/batch/jobs/batch_xyz789?contactStatus=no_answer&contactsPage=1&contactsPageSize=50" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+### Example 4: Get Pending Contacts
+
+```bash
+curl -X GET "https://api.talkifai.com/batch/jobs/batch_xyz789?contactStatus=pending&contactsPage=1&contactsPageSize=50" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+## Error Handling
+
+### 404 Not Found
+
+```json
+{
+  "detail": "Batch job not found"
+}
+```
+
+### 400 Bad Request
+
+```json
+{
+  "detail": "Invalid contact status filter value"
+}
+```
+
+| Error Code | Cause |
+|------------|-------|
+| `invalid_contact_status` | Invalid contact status filter |
+| `invalid_page` | Page number less than 1 |
+| `invalid_page_size` | Page size outside 1-500 range |
+
+### 500 Internal Server Error
+
+```json
+{
+  "detail": "Failed to get batch job detail"
+}
+```
+
+## Status Breakdown Interpretation
+
+The `statusBreakdown` object shows count of contacts in each status:
+
+```json
+{
+  "statusBreakdown": {
+    "pending": 55,      // Waiting to be called
+    "dialing": 3,       // Currently being called
+    "completed": 35,    // Successfully completed
+    "failed": 5,        // Failed (non-retryable)
+    "no_answer": 2      // No answer (will retry)
+  }
+}
+```
+
+**Calculate remaining contacts:**
+```
+remaining = statusBreakdown.pending + statusBreakdown.queued + statusBreakdown.dialing
+```
+
+**Calculate success rate:**
+```
+successRate = successfulCalls / contactsProcessed * 100
+```
+
+## Estimated Completion Time
+
+For running jobs, the API calculates estimated completion based on:
+- Elapsed time since start
+- Number of contacts processed
+- Remaining contacts
+
+**Formula:**
+```
+avgTimePerContact = elapsedSeconds / contactsProcessed
+remainingSeconds = (totalContacts - contactsProcessed) * avgTimePerContact
+estimatedCompletion = actualStartTime + remainingSeconds
+```
+
+<Note>
+  Estimated completion is approximate and may vary based on retry attempts, concurrency, and call duration.
+</Note>
+
+## Related
+
+- [Create Batch Job](/api-reference/endpoint/create-batch-job) — Create a new batch job
+- [List Batch Jobs](/api-reference/endpoint/list-batch-jobs) — List all batch jobs
+- [Cancel Batch Job](/api-reference/endpoint/cancel-batch-job) — Cancel a running job
+- [Start Batch Job](/api-reference/endpoint/start-batch-job) — Start a scheduled job immediately
+- [Batch Calling Guide](/guides/batch-calling) — Complete guide to batch campaigns

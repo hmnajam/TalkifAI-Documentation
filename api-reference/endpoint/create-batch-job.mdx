@@ -1,0 +1,322 @@
+---
+title: "Create Batch Job"
+openapi: "POST /batch/create"
+description: "Create a new batch calling job by uploading a CSV file or sending contacts via JSON."
+---
+
+## Overview
+
+Creates a batch calling job that will automatically dial contacts from your uploaded list. The job can start immediately or be scheduled for a future time.
+
+**Key Features:**
+- CSV file upload (up to 10,000 contacts)
+- Automatic phone number validation (E.164 format)
+- Scheduled start with timezone support
+- Configurable retry policy
+- Two-level concurrency control
+
+## Prerequisites
+
+Before creating a batch job:
+
+1. **Register a phone number** in Studio → Phone Numbers
+2. **Assign an outbound agent** to that phone number
+3. **Ensure sufficient credits** in your organization account
+4. **Prepare CSV file** with at least a `phone` column
+
+<Warning>
+  The agent assigned to the phone number must use **Pipeline** or **Realtime** architecture. Text-only agents cannot make voice calls.
+</Warning>
+
+## Request
+
+### CSV Upload (Recommended)
+
+```bash
+POST /batch/create
+Content-Type: multipart/form-data
+
+file: [CSV file]
+fromPhoneNumberId: phone_abc123
+name: January Renewal Campaign
+description: Follow up on expiring subscriptions
+concurrentCallLimit: 5
+maxAttempts: 3
+scheduledStartTime: 2025-02-28T09:00:00 (optional)
+timezone: America/New_York (optional, default: UTC)
+```
+
+### JSON Request (Programmatic)
+
+```bash
+POST /batch/create
+Content-Type: application/json
+
+{
+  "fromPhoneNumberId": "phone_abc123",
+  "name": "January Renewal Campaign",
+  "description": "Follow up on expiring subscriptions",
+  "contacts": [
+    {
+      "phone": "+12025550101",
+      "name": "John Smith",
+      "customerName": "John Smith",
+      "renewalDate": "Feb 1"
+    },
+    {
+      "phone": "+12025550102",
+      "name": "Jane Doe",
+      "customerName": "Jane Doe",
+      "renewalDate": "Feb 5"
+    }
+  ],
+  "concurrentCallLimit": 5,
+  "maxAttempts": 3,
+  "scheduledStartTime": "2025-02-28T09:00:00",
+  "timezone": "America/New_York"
+}
+```
+
+## Request Parameters
+
+### Form/Body Fields
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `file` | File | ✅ (CSV mode) | — | CSV file with contacts |
+| `fromPhoneNumberId` | string | ✅ | — | Phone number ID to call from |
+| `name` | string | ✅ | — | Batch job name (max 200 chars) |
+| `description` | string | ❌ | `null` | Optional description (max 1000 chars) |
+| `contacts` | array | ✅ (JSON mode) | — | List of contact objects |
+| `concurrentCallLimit` | integer | ❌ | `5` | Max concurrent calls (1-50) |
+| `maxAttempts` | integer | ❌ | `3` | Max retry attempts (1-10) |
+| `scheduledStartTime` | string | ❌ | `null` | Schedule start (ISO 8601 format) |
+| `timezone` | string | ❌ | `"UTC"` | IANA timezone for scheduled time |
+
+### Contact Object
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `phone` | string | ✅ | Phone number in E.164 format |
+| `name` | string | ❌ | Contact name |
+| `*` | any | ❌ | Additional custom fields (stored as-is) |
+
+### CSV Format
+
+Your CSV file **must** have a `phone` column. Additional columns are stored as custom fields.
+
+```csv
+phone,name,customerName,renewalDate
++12025550101,John Smith,John Smith,Feb 1
++12025550102,Jane Doe,Jane Doe,Feb 5
++12025550103,Bob Johnson,Bob Johnson,Feb 10
+```
+
+| Column | Required | Description |
+|--------|----------|-------------|
+| `phone` | ✅ | Phone number in E.164 format (+12025550101) |
+| `name` | ❌ | Contact name |
+| *any other* | ❌ | Additional columns stored as custom fields |
+
+<Note>
+  **Phone Number Format:** All phone numbers must be in E.164 format (e.g., `+12025550101`, `+442071838750`). Numbers without `+` or with formatting characters will be rejected.
+</Note>
+
+## Response
+
+```json
+{
+  "success": true,
+  "batchJobId": "batch_xyz789",
+  "totalContacts": 2,
+  "estimatedDuration": "2 minutes",
+  "estimatedCost": "$0.50",
+  "status": "scheduled",
+  "scheduledStartTime": "2025-02-28T14:00:00Z",
+  "message": "Batch job created with 2 contacts"
+}
+```
+
+### Response Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `success` | boolean | Whether the job was created successfully |
+| `batchJobId` | string | Unique batch job identifier |
+| `totalContacts` | integer | Number of valid contacts |
+| `estimatedDuration` | string | Human-readable duration estimate |
+| `estimatedCost` | string | Estimated cost in USD |
+| `status` | string | Initial status (`scheduled` or `pending`) |
+| `scheduledStartTime` | string | Scheduled start time (ISO 8601, UTC) |
+| `message` | string | Success message |
+
+## Status Values
+
+| Status | Description |
+|--------|-------------|
+| `pending` | Job created, will start immediately |
+| `scheduled` | Job created, waiting for scheduled start time |
+| `running` | Job is actively processing contacts |
+| `completed` | All contacts processed |
+| `failed` | Job failed due to errors |
+| `cancelled` | Job was cancelled manually |
+
+## Examples
+
+### Example 1: Immediate Start (CSV)
+
+```bash
+curl -X POST "https://api.talkifai.com/batch/create" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -F "file=@contacts.csv" \
+  -F "fromPhoneNumberId=phone_abc123" \
+  -F "name=Payment Reminders" \
+  -F "concurrentCallLimit=5" \
+  -F "maxAttempts=3"
+```
+
+### Example 2: Scheduled Start with Timezone
+
+```bash
+curl -X POST "https://api.talkifai.com/batch/create" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "fromPhoneNumberId": "phone_abc123",
+    "name": "Morning Follow-ups",
+    "contacts": [
+      {"phone": "+12025550101", "name": "John Smith"},
+      {"phone": "+12025550102", "name": "Jane Doe"}
+    ],
+    "scheduledStartTime": "2025-03-01T09:00:00",
+    "timezone": "America/New_York",
+    "concurrentCallLimit": 3,
+    "maxAttempts": 2
+  }'
+```
+
+### Example 3: Custom Fields for Personalization
+
+```bash
+curl -X POST "https://api.talkifai.com/batch/create" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "fromPhoneNumberId": "phone_abc123",
+    "name": "Renewal Campaign",
+    "contacts": [
+      {
+        "phone": "+12025550101",
+        "name": "John Smith",
+        "customerName": "John Smith",
+        "renewalDate": "Feb 1",
+        "planType": "Premium"
+      }
+    ],
+    "concurrentCallLimit": 5
+  }'
+```
+
+Then in your **Agent System Prompt**, use the custom fields:
+
+```
+You are calling {{customerName}} about their {{planType}} plan renewal on {{renewalDate}}.
+Greet them by name and confirm the renewal date.
+```
+
+## Cost Estimation
+
+The system estimates cost based on:
+- Number of contacts
+- Agent architecture (pipeline vs realtime)
+- Average call duration (assumed 2 minutes)
+
+**Example calculation for 100 contacts:**
+- Pipeline agent: ~$3.50 ($0.035/call)
+- Realtime agent: ~$7.00 ($0.07/call)
+
+<Note>
+  Actual costs may vary based on call duration. The estimate assumes 2-minute average calls.
+</Note>
+
+## Error Handling
+
+### 400 Bad Request
+
+```json
+{
+  "detail": "CSV must have 'phone' column. Found columns: ['name', 'email']"
+}
+```
+
+| Error Code | Cause |
+|------------|-------|
+| `invalid_csv` | CSV file missing or invalid format |
+| `missing_phone_column` | CSV missing required `phone` column |
+| `no_valid_contacts` | CSV contains no valid phone numbers |
+| `too_many_contacts` | Exceeds 10,000 contact limit |
+| `invalid_timezone` | Invalid IANA timezone |
+| `past_scheduled_time` | Scheduled time is in the past |
+| `invalid_phone_format` | Phone number not in E.164 format |
+| `insufficient_credits` | Organization has insufficient credits |
+| `no_outbound_agent` | Phone number has no outbound agent assigned |
+
+### 404 Not Found
+
+```json
+{
+  "detail": "Phone number phone_abc123 not found"
+}
+```
+
+### 500 Internal Server Error
+
+```json
+{
+  "detail": "Failed to process CSV file: Database connection error"
+}
+```
+
+## How It Works
+
+```
+1. Upload CSV / Send JSON
+         │
+         ▼
+2. Validate phone numbers (E.164 format)
+         │
+         ▼
+3. Look up fromPhoneNumberId
+         ├── Not found → 404 Error
+         └── Found → Get org + agent
+                   │
+                   ▼
+4. Check agent architecture
+         ├── Text agent → 400 Error
+         └── Voice agent → Continue
+                   │
+                   ▼
+5. Validate contacts (remove duplicates)
+         │
+         ▼
+6. Check organization credits
+         ├── Insufficient → 400 Error
+         └── Sufficient → Continue
+                   │
+                   ▼
+7. Create batch job record
+         │
+         ├── Scheduled? → Store in Redis defer queue
+         └── Immediate? → Enqueue contacts to worker queue
+                   │
+                   ▼
+8. Return batch job ID
+```
+
+## Related
+
+- [Batch Jobs List](/api-reference/endpoint/list-batch-jobs) — List all batch jobs
+- [Batch Job Detail](/api-reference/endpoint/get-batch-job) — Get detailed job status
+- [Cancel Batch Job](/api-reference/endpoint/cancel-batch-job) — Cancel a running job
+- [Batch Calling Guide](/guides/batch-calling) — Complete guide to batch campaigns
+- [Telephony](/platform/telephony) — Configure phone numbers

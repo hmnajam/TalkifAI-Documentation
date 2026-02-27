@@ -1,0 +1,183 @@
+---
+title: "List Batch Jobs"
+openapi: "GET /batch/jobs"
+description: "Returns a paginated list of batch calling jobs for your organization."
+---
+
+## Overview
+
+Retrieves all batch calling jobs for an organization with optional filtering by status. Supports pagination for large result sets.
+
+## Request
+
+```bash
+GET /batch/jobs?organizationId=org_abc123&status=running&page=1&pageSize=20
+```
+
+## Query Parameters
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `organizationId` | string | ✅ | — | Organization ID to filter by |
+| `status` | string | ❌ | — | Filter by job status |
+| `page` | integer | ❌ | `1` | Page number (1-indexed) |
+| `pageSize` | integer | ❌ | `20` | Items per page (1-100) |
+
+### Status Filter Values
+
+| Status | Description |
+|--------|-------------|
+| `pending` | Job created, waiting to start |
+| `scheduled` | Job scheduled for future start |
+| `running` | Job actively processing contacts |
+| `completed` | All contacts processed successfully |
+| `failed` | Job failed due to errors |
+| `cancelled` | Job was cancelled manually |
+
+## Response
+
+```json
+{
+  "batchJobs": [
+    {
+      "id": "batch_xyz789",
+      "name": "January Renewal Campaign",
+      "description": "Follow up on expiring subscriptions",
+      "status": "running",
+      "totalContacts": 100,
+      "contactsProcessed": 42,
+      "successfulCalls": 35,
+      "failedCalls": 7,
+      "scheduledStartTime": "2025-02-28T14:00:00Z",
+      "actualStartTime": "2025-02-28T14:00:05Z",
+      "completedAt": null,
+      "createdAt": "2025-02-28T10:30:00Z"
+    },
+    {
+      "id": "batch_abc123",
+      "name": "Payment Reminders",
+      "description": null,
+      "status": "completed",
+      "totalContacts": 50,
+      "contactsProcessed": 50,
+      "successfulCalls": 45,
+      "failedCalls": 5,
+      "scheduledStartTime": null,
+      "actualStartTime": "2025-02-27T09:00:00Z",
+      "completedAt": "2025-02-27T09:25:00Z",
+      "createdAt": "2025-02-27T08:45:00Z"
+    }
+  ],
+  "total": 47,
+  "page": 1,
+  "pageSize": 20
+}
+```
+
+### Response Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `batchJobs` | array | List of batch job objects |
+| `total` | integer | Total number of jobs matching filter |
+| `page` | integer | Current page number |
+| `pageSize` | integer | Number of items per page |
+
+### Batch Job Object
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | Unique batch job identifier |
+| `name` | string | Job name |
+| `description` | string | Optional description |
+| `status` | string | Current job status |
+| `totalContacts` | integer | Total contacts in job |
+| `contactsProcessed` | integer | Number of contacts processed |
+| `successfulCalls` | integer | Number of successful calls |
+| `failedCalls` | integer | Number of failed calls |
+| `scheduledStartTime` | string | Scheduled start time (ISO 8601, UTC) |
+| `actualStartTime` | string | Actual start time (ISO 8601, UTC) |
+| `completedAt` | string | Completion time (ISO 8601, UTC) |
+| `createdAt` | string | Creation time (ISO 8601, UTC) |
+
+## Examples
+
+### Example 1: List All Jobs
+
+```bash
+curl -X GET "https://api.talkifai.com/batch/jobs?organizationId=org_abc123" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+### Example 2: Filter by Running Status
+
+```bash
+curl -X GET "https://api.talkifai.com/batch/jobs?organizationId=org_abc123&status=running" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+### Example 3: Paginated Results
+
+```bash
+curl -X GET "https://api.talkifai.com/batch/jobs?organizationId=org_abc123&page=2&pageSize=50" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+### Example 4: List Completed Jobs
+
+```bash
+curl -X GET "https://api.talkifai.com/batch/jobs?organizationId=org_abc123&status=completed" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+## Error Handling
+
+### 400 Bad Request
+
+```json
+{
+  "detail": "Invalid page number: must be >= 1"
+}
+```
+
+| Error Code | Cause |
+|------------|-------|
+| `invalid_page` | Page number less than 1 |
+| `invalid_page_size` | Page size outside 1-100 range |
+| `invalid_status` | Invalid status filter value |
+
+### 500 Internal Server Error
+
+```json
+{
+  "detail": "Failed to list batch jobs"
+}
+```
+
+## Pagination
+
+The API uses **offset-based pagination**:
+
+```
+Page 1: Items 1-20
+Page 2: Items 21-40
+Page 3: Items 41-60
+...
+```
+
+**Calculate total pages:**
+```
+totalPages = ceil(total / pageSize)
+```
+
+**Example:**
+- Total: 47 jobs
+- Page size: 20
+- Total pages: 3
+
+## Related
+
+- [Create Batch Job](/api-reference/endpoint/create-batch-job) — Create a new batch job
+- [Get Batch Job Detail](/api-reference/endpoint/get-batch-job) — Get detailed job info
+- [Cancel Batch Job](/api-reference/endpoint/cancel-batch-job) — Cancel a running job
+- [Batch Calling Guide](/guides/batch-calling) — Complete guide to batch campaigns
