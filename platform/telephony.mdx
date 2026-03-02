@@ -19,6 +19,299 @@ TalkifAI supports full telephony integration — connect a real phone number to 
 
 ---
 
+## Studio Phone Numbers Page
+
+**Navigation:** **Studio → Telephony** (or **Studio → Phone Numbers**)
+
+**URL:** `/telephony`
+
+**Access:** Owners and Admins can manage phone numbers. Members can view and use assigned numbers.
+
+---
+
+### Page Layout
+
+The Phone Numbers page has a **two-column layout**:
+
+#### Left Column: Phone Numbers List (Sidebar)
+
+**Width:** 320px (fixed)
+
+**Sections:**
+
+1. **Header**
+   - **Icon:** Phone icon (purple background)
+   - **Title:** "Phone Numbers"
+   - **Add Button:** Plus icon (blue, circular, top-right)
+
+2. **Search Bar**
+   - **Placeholder:** "Search phone numbers..."
+   - **Icon:** Search icon (left side)
+   - **Filters by:**
+     - Phone number
+     - Inbound agent name
+     - Outbound agent name
+
+3. **Phone Numbers List**
+   - Scrollable list of all phone numbers
+   - Each number shows:
+     - **Phone Number** (bold, truncated if long)
+     - **Status Badge** (green = active, gray = inactive)
+     - **Inbound Agent** (agent name + mode)
+     - **Outbound Agent** (agent name + mode)
+   - **Selected State:** Blue background with blue border
+   - **Hover State:** Light gray background
+
+4. **Action Buttons (per number)**
+   - **Edit Button** (pencil icon)
+     - Opens edit dialog
+     - Edit number details
+   - **Delete Button** (trash icon)
+     - Red on hover
+     - Requires confirmation
+
+**Empty State:**
+- Phone icon (gray, large)
+- Text: "No phone numbers found"
+- Action: Click "Add Phone Number" button
+
+#### Right Column: Phone Number Details (Main Content)
+
+**When No Number Selected:**
+- Phone icon (gray, 64x64)
+- Text: "Select a phone number" or "No phone numbers"
+- Subtext: Instructions
+- **Add Button:** "Add Phone Number" (if no numbers exist)
+
+**When Number Selected:**
+
+**Top Bar:**
+- **Phone Number** (large, bold)
+- **Status Badge** (green/gray)
+- **ID:** Internal phone number ID
+- **Test Call Button:** Green "Make Test Call" button
+  - Links to `/demo-call`
+  - Opens demo call page
+
+**Configuration Cards:**
+
+**Card 1: Inbound Call Configuration**
+- **Title:** "Inbound Call Configuration"
+- **Field:** "Inbound Call Agent" dropdown
+  - Shows all available agents
+  - Format: "Agent Name (mode)"
+  - Current selection shown below
+- **Save:** Included in main save button
+
+**Card 2: Outbound Call Configuration**
+- **Title:** "Outbound Call Configuration"
+- **Field:** "Outbound Call Agent" dropdown
+  - Shows all available agents
+  - Format: "Agent Name (mode)"
+  - Current selection shown below
+- **Save:** Included in main save button
+
+**Card 3: Call Settings**
+- **Title:** "Call Settings"
+- **Field 1:** "Webhook URL"
+  - Input field
+  - Copy button (clipboard icon)
+  - Placeholder: "https://your-webhook-url.com/webhook"
+- **Field 2:** "Call Recording"
+  - Dropdown options:
+    - Disabled
+    - Record all calls
+    - Record with consent
+
+**Save Button:**
+- **Location:** Below configuration cards
+- **Text:** "Save Agent Assignments"
+- **Icon:** Save icon
+- **Loading State:** Shows spinner, "Saving..."
+- **Success:** Toast notification
+
+---
+
+### Add/Edit Phone Number Dialog
+
+**Trigger:** Click "Add Phone Number" (+) button or Edit (pencil) button
+
+**Dialog Title:**
+- **Add:** "Add Phone Number"
+- **Edit:** "Edit Phone Number"
+
+**Form Fields:**
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| **Phone Number** | ✅ | E.164 format (+1234567890) |
+| **Termination URI** | ✅ | SIP URI for outbound (e.g., `your-trunk.pstn.twilio.com`) |
+| **SIP Username** | ❌ | For outbound authentication |
+| **SIP Password** | ❌ | For outbound authentication (encrypted) |
+
+**Buttons:**
+- **Cancel:** Closes dialog, no changes
+- **Save:** Validates and saves number
+  - Shows loading spinner
+  - Toast on success/error
+  - Refreshes list on success
+
+**Validation:**
+- Phone number must be in E.164 format
+- Must start with `+`
+- Minimum 10 digits after `+`
+- Termination URI must be valid URL
+
+---
+
+### Delete Phone Number
+
+**Process:**
+1. Click trash icon on phone number
+2. Confirmation dialog appears:
+   - "Are you sure you want to delete phone number +1234567890?"
+   - "This action cannot be undone."
+3. Click **Confirm** or **Cancel**
+4. If confirmed:
+   - Calls backend API to delete
+   - Removes from local state
+   - Shows success toast
+   - Selects next number or shows empty state
+
+**What Gets Deleted:**
+- Phone number record
+- Associated SIP trunks in LiveKit
+- Agent assignments
+- Call history (preserved in database)
+
+---
+
+### Save Agent Assignments
+
+**Process:**
+1. Select inbound agent from dropdown
+2. Select outbound agent from dropdown
+3. Click "Save Agent Assignments"
+4. Sends PUT request to backend:
+   ```json
+   {
+     "phone_number": "+1234567890",
+     "inbound_agent_id": "agent_abc123",
+     "outbound_agent_id": "agent_def456"
+   }
+   ```
+5. Shows loading state
+6. Success toast: "Agent assignments saved successfully"
+7. Refreshes data
+
+**Validation:**
+- At least one agent must be selected
+- Agent must be Pipeline or Realtime architecture
+- Text agents cannot be assigned
+
+---
+
+### Search & Filter
+
+**Search Functionality:**
+- Real-time filtering
+- Case-insensitive
+- Searches:
+  - Phone number string
+  - Inbound agent name
+  - Outbound agent name
+
+**Example Searches:**
+- `+1202` → Finds all numbers starting with +1202
+- `Support` → Finds numbers with "Support" agent assigned
+- `Sales` → Finds numbers with "Sales" agent assigned
+
+---
+
+### Status Badges
+
+| Status | Color | Meaning |
+|--------|-------|---------|
+| **Active** | Green | Number is configured and can receive/make calls |
+| **Inactive** | Gray | Number is not fully configured |
+
+**Active Requirements:**
+- ✅ Phone number added
+- ✅ Termination URI set
+- ✅ At least one agent assigned (inbound or outbound)
+- ✅ SIP credentials configured (for outbound)
+
+---
+
+### Keyboard Shortcuts
+
+**Not currently implemented**
+
+**Future:**
+- `N` — New phone number
+- `Ctrl+F` — Focus search
+- `Delete` — Delete selected number
+- `Enter` — Save changes
+
+---
+
+### Mobile Responsiveness
+
+**Desktop (≥1024px):**
+- Two-column layout (sidebar + main)
+- Full configuration cards visible
+- All fields accessible
+
+**Tablet (768px - 1023px):**
+- Sidebar collapses to icons only
+- Main content takes full width
+- Cards stack vertically
+
+**Mobile (under 768px):**
+- Sidebar becomes drawer (slide-in)
+- Hamburger menu to toggle
+- Cards full width
+- Simplified form fields
+
+---
+
+### Real-Time Updates
+
+**Auto-Refresh:**
+- Refreshes when organization changes
+- Listens for `agentUpdated` events
+- Manual refresh via reload
+
+**Cross-Tab Sync:**
+- Uses `CustomEvent` for communication
+- Events:
+  - `phoneNumberAdded`
+  - `phoneNumberUpdated`
+  - `phoneNumberDeleted`
+
+---
+
+### Error States
+
+**No Organization Selected:**
+- Yellow warning box
+- Text: "Please select an organization first"
+- Action: Select organization from sidebar
+
+**API Error:**
+- Toast notification
+- Error message from backend
+- Retry option
+
+**Validation Error:**
+- Inline error messages
+- Red border on invalid fields
+- Helper text below field
+
+---
+
+---
+
 ## Inbound Calling
 
 Allow customers to call your agent on a real phone number.
