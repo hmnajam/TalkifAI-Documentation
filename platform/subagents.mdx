@@ -7,6 +7,8 @@ description: "Build complex agent workflows with multiple specialized subagents 
 
 **Subagents** allow you to create a hierarchy of agents where a parent agent delegates specific tasks to specialized child agents. This enables more complex, modular, and maintainable agent architectures.
 
+TalkifAI automatically creates **handoff tools** for each subagent, allowing the parent agent to seamlessly transfer conversations to specialists when needed.
+
 **Best for:**
 - Complex workflows with multiple stages
 - Agents requiring different expertise areas
@@ -23,18 +25,24 @@ User Call
     ▼
 Parent Agent (Main Controller)
     │
-    ├──→ Subagent 1: Greeting & Triage
+    ├──→ [Handoff Tool] → Subagent 1: Greeting & Triage
     │    "Hello! How can I help you today?"
     │
-    ├──→ Subagent 2: Technical Support
+    ├──→ [Handoff Tool] → Subagent 2: Technical Support
     │    "Let me help you troubleshoot..."
     │
-    ├──→ Subagent 3: Billing Specialist
+    ├──→ [Handoff Tool] → Subagent 3: Billing Specialist
     │    "I can help with your invoice..."
     │
-    └──→ Subagent 4: Closing & Follow-up
+    └──→ [Return Tool] → Parent Agent
          "Thank you for calling. Have a great day!"
 ```
+
+**Key Features:**
+- **Automatic handoff tools** — Parent agent automatically gets `transfer_to_{subagent}` tools
+- **Return mechanism** — Subagents can return control to parent agent
+- **Sibling handoffs** — Subagents can transfer to other subagents
+- **Inherited settings** — Subagents inherit parent's functions and knowledge bases
 
 ---
 
@@ -46,30 +54,51 @@ The **parent agent** is the main entry point:
 
 - Receives all incoming calls
 - Handles initial greeting and triage
-- Decides which subagent to activate
+- Has automatic handoff tools to transfer to subagents
 - Manages conversation flow
 - Handles closing and follow-up
 
 **Requirements:**
-- Must use **Pipeline architecture**
+- Must use **Pipeline architecture** (enforced by API)
 - Acts as orchestrator/controller
-- Cannot be Realtime architecture
+- Cannot be Realtime or Text architecture
+
+**Automatic Tools Created:**
+```python
+# For each subagent, parent gets:
+transfer_to_sales_agent()
+transfer_to_billing_specialist()
+transfer_to_technical_support()
+```
 
 ### Subagents
 
 **Subagents** are specialized agents:
 
 - Handle specific conversation stages
-- Have their own system prompts
-- Can use different models/voices
-- Inherit parent's functions
-- Cannot be called directly by users
+- Have their own system prompts and models
+- Can use different voices and temperatures
+- Inherit parent's functions automatically
+- Cannot be called directly by users (only via parent)
+
+**Automatic Tools Created:**
+```python
+# Each subagent gets:
+return_to_parent()  # Return control to parent
+transfer_to_sibling_agent()  # Transfer to other subagents
+```
 
 **Inherited Settings:**
-- Functions (enabled on parent)
-- Knowledge bases (linked to parent)
-- Organization context
-- Authentication
+- ✅ Functions (enabled on parent)
+- ✅ Knowledge bases (linked to parent)
+- ✅ Organization context
+- ✅ Authentication
+
+**Independent Settings:**
+- ✅ System prompt
+- ✅ Model (can differ from parent)
+- ✅ Temperature
+- ✅ Voice (for realtime/pipeline)
 
 ---
 
@@ -84,6 +113,10 @@ The **parent agent** is the main entry point:
    - Model: GPT-4o or similar (for reasoning)
    - Voice: Professional, clear
 
+<Warning>
+  **Subagents only work with Pipeline architecture.** If you try to add subagents to a Realtime or Text agent, the API will return an error.
+</Warning>
+
 ### Parent Agent System Prompt
 
 ```
@@ -96,21 +129,17 @@ You coordinate the conversation and route to specialists as needed.
 1. Greet the customer warmly
 2. Ask how you can help
 3. Identify the type of request:
-   - Technical issue → Transfer to Tech Support subagent
-   - Billing question → Transfer to Billing subagent
+   - Technical issue → Use transfer_to_technical_support tool
+   - Billing question → Use transfer_to_billing_specialist tool
    - General inquiry → Handle yourself
 4. After resolution, confirm satisfaction
 5. Close the call professionally
 
-## Transfer Protocol
-When transferring to a subagent:
-- Briefly explain what you're doing: "Let me connect you with our technical specialist..."
-- Provide context to the subagent
-- Stay on the line during handoff
-
-## Available Subagents
-- Tech Support: Handles troubleshooting, bugs, how-to questions
-- Billing: Handles invoices, payments, refunds, subscriptions
+## Using Handoff Tools
+When you need a specialist:
+1. Briefly explain: "Let me connect you with our technical specialist..."
+2. Call the appropriate transfer_to_* tool
+3. The system will handle the handoff automatically
 ```
 
 ---
@@ -119,18 +148,18 @@ When transferring to a subagent:
 
 ### Create Subagent via Studio
 
-1. Go to **Agent Settings → Subagents**
+1. Go to your agent → **Settings** → **Subagents** section
 2. Click **Add Subagent**
 3. Configure subagent:
 
-| Field | Description |
-|-------|-------------|
-| **Name** | Internal identifier (e.g., "Tech Support") |
-| **Description** | What this subagent handles |
-| **System Prompt** | Specialized instructions |
-| **Model** | Can differ from parent |
-| **Temperature** | Subagent-specific creativity |
-| **Functions** | Inherited from parent + custom |
+| Field | Required | Description |
+|-------|----------|-------------|
+| **Name** | ✅ | Internal identifier (e.g., "Technical Support") |
+| **Description** | ✅ | What this subagent handles (used by parent for routing) |
+| **System Prompt** | ✅ | Specialized instructions for this subagent |
+| **Model** | ❌ | Defaults to parent's model (GPT-4o Mini, GPT-4.1, or Gemini) |
+| **Temperature** | ❌ | Defaults to 0.7 (0.0-1.0 range) |
+| **Function Calling** | ❌ | Inherited from parent + custom functions |
 
 4. Click **Save**
 
@@ -145,11 +174,32 @@ Content-Type: application/json
   "name": "Technical Support Specialist",
   "description": "Handles technical troubleshooting and product support",
   "sysMsg": "You are a technical support specialist with deep product knowledge...",
-  "model": "gpt-4o",
+  "model": "gpt_4o_mini",
   "temperature": 0.3,
   "functionCallingEnabled": true,
-  "enabledFunctions": ["check_product_specs", "troubleshoot_issue"],
+  "enabledFunctions": [],
   "enabledCustomFunctions": []
+}
+```
+
+**Response:**
+```json
+{
+  "subagent": {
+    "id": "subagent_abc123",
+    "name": "Technical Support Specialist",
+    "description": "Handles technical troubleshooting and product support",
+    "sysMsg": "You are a technical support specialist...",
+    "model": "gpt_4o_mini",
+    "temperature": 0.3,
+    "agentArchitecture": "pipeline",
+    "functionCallingEnabled": true,
+    "enabledFunctions": [],
+    "enabledCustomFunctions": [],
+    "agentId": "agent_xyz789",
+    "createdAt": "2024-01-10T09:00:00Z",
+    "updatedAt": "2024-01-10T09:00:00Z"
+  }
 }
 ```
 
@@ -168,7 +218,7 @@ You are a technical support specialist for Acme Corp products.
 ## Process
 1. Ask for specific error messages or symptoms
 2. Walk through troubleshooting steps systematically
-3. If unresolved, escalate to senior support
+3. If unresolved, use return_to_parent to escalate
 4. Document the issue and solution
 
 ## Tone
@@ -191,7 +241,7 @@ You are a billing specialist for Acme Corp.
 ## Guidelines
 - Always verify customer identity first
 - Never promise refunds — use "I can initiate a refund request"
-- For disputes, escalate to billing manager
+- For disputes, use return_to_parent to escalate to billing manager
 - Be empathetic but professional
 
 ## Available Tools
@@ -202,7 +252,25 @@ You are a billing specialist for Acme Corp.
 
 ---
 
-## Step 3: Configure Subagent Handoff
+## Step 3: Understanding Automatic Handoffs
+
+### How Handoff Tools Work
+
+When you create subagents, the system **automatically creates tools** for navigation:
+
+**Parent Agent Gets:**
+```python
+transfer_to_technical_support()
+transfer_to_billing_specialist()
+# One tool per subagent
+```
+
+**Each Subagent Gets:**
+```python
+return_to_parent()  # Return control to parent agent
+transfer_to_technical_support()  # Transfer to siblings
+transfer_to_billing_specialist()
+```
 
 ### Handoff Strategies
 
@@ -213,9 +281,17 @@ Greeting → Triage → Specialist → Closing
 
 **Use Case:** Structured workflows (support, sales)
 
+**Example:**
+```
+Parent: "Hello! How can I help you today?"
+User: "I have a billing question"
+Parent: [Calls transfer_to_billing_specialist]
+Billing: "I can help with your invoice. What's your account number?"
+```
+
 **2. Conditional Handoff**
 ```
-If technical → Tech subagent
+If technical → Technical subagent
 If billing → Billing subagent
 Else → Handle directly
 ```
@@ -225,7 +301,7 @@ Else → Handle directly
 **3. Consultative Handoff**
 ```
 Main agent handles conversation
-Consults subagent for specific questions
+Consults subagent for specific questions via tool calls
 Returns to main agent
 ```
 
@@ -234,33 +310,21 @@ Returns to main agent
 ### Implementing Handoff in System Prompt
 
 ```
-## Handoff Protocol
+## Using Your Handoff Tools
 
-When you identify the need for a subagent:
+You have access to specialist tools:
+- transfer_to_technical_support: For product issues and bugs
+- transfer_to_billing_specialist: For invoices and payments
 
-1. **Announce the transfer:**
-   "I'm going to connect you with [subagent name] who specializes in [area]."
+When to use handoff tools:
+1. User asks about topics outside your expertise
+2. User requests a specific department
+3. Issue requires specialized knowledge
 
-2. **Provide context:**
-   "This customer has [brief summary of issue]."
-
-3. **Confirm handoff:**
-   Wait for acknowledgment before fully transferring.
-
-4. **Stay available:**
-   Remain on the line in case customer has additional questions.
-
-## Subagent Triggers
-
-**Transfer to Tech Support when:**
-- Customer mentions "error", "bug", "not working"
-- Technical how-to questions
-- Product malfunction reports
-
-**Transfer to Billing when:**
-- Customer asks about invoices or payments
-- Refund or cancellation requests
-- Subscription upgrade/downgrade questions
+How to use:
+1. Briefly explain: "Let me connect you with our specialist..."
+2. Call the appropriate transfer_to_* tool
+3. The system handles the rest automatically
 ```
 
 ---
@@ -270,8 +334,8 @@ When you identify the need for a subagent:
 ### List Subagents
 
 **Via Studio:**
-- Go to **Agent Settings → Subagents**
-- See all subagents in order
+- Go to your agent → **Settings** → **Subagents**
+- See all subagents in creation order
 
 **Via API:**
 ```bash
@@ -282,20 +346,20 @@ Authorization: Bearer YOUR_API_KEY
 **Response:**
 ```json
 {
-  "success": true,
   "subagents": [
     {
       "id": "subagent_abc123",
       "name": "Technical Support Specialist",
       "description": "Handles technical troubleshooting",
       "sysMsg": "You are a technical support specialist...",
-      "model": "gpt-4o",
+      "model": "gpt_4o_mini",
       "temperature": 0.3,
       "agentArchitecture": "pipeline",
       "functionCallingEnabled": true,
-      "enabledFunctions": ["check_product_specs"],
+      "enabledFunctions": [],
+      "enabledCustomFunctions": [],
       "createdAt": "2024-01-10T09:00:00Z",
-      "updatedAt": "2024-01-15T14:30:00Z"
+      "updatedAt": "2024-01-10T09:00:00Z"
     }
   ]
 }
@@ -304,10 +368,10 @@ Authorization: Bearer YOUR_API_KEY
 ### Update Subagent
 
 **Via Studio:**
-1. Go to **Agent Settings → Subagents**
-2. Click **Edit** on subagent
+1. Go to agent → **Settings** → **Subagents**
+2. Click **Edit** (pencil icon) on subagent
 3. Modify settings
-4. Save changes
+4. Click **Save**
 
 **Via API:**
 ```bash
@@ -320,17 +384,18 @@ Content-Type: application/json
   "name": "Senior Technical Support",
   "description": "Handles complex technical issues",
   "sysMsg": "You are a senior technical support specialist...",
-  "model": "gpt-4o",
+  "model": "gpt_4o_mini",
   "temperature": 0.2,
   "functionCallingEnabled": true,
-  "enabledFunctions": ["check_product_specs", "escalate_issue"]
+  "enabledFunctions": [],
+  "enabledCustomFunctions": []
 }
 ```
 
 ### Delete Subagent
 
 **Via Studio:**
-1. Go to **Agent Settings → Subagents**
+1. Go to agent → **Settings** → **Subagents**
 2. Click **Delete** (trash icon)
 3. Confirm deletion
 
@@ -338,6 +403,14 @@ Content-Type: application/json
 ```bash
 DELETE /api/agents/{agentId}/subagents?subagentId={subagentId}
 Authorization: Bearer YOUR_API_KEY
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Subagent deleted successfully"
+}
 ```
 
 ---
@@ -351,11 +424,11 @@ Level 1: General Support (Parent)
     │
     ├──→ Level 2: Technical Specialist
     │       │
-    │       └──→ Level 3: Engineering Escalation
+    │       └──→ [Return to Parent for follow-up]
     │
     └──→ Level 2: Billing Specialist
             │
-            └──→ Level 3: Refund Manager
+            └──→ [Return to Parent for follow-up]
 ```
 
 **Use Case:** Multi-tier support organizations
@@ -388,16 +461,16 @@ Main Agent (English)
 ### Pattern 4: Task-Specialized Pipeline
 
 ```
-Greeting Agent
+Greeting Agent (Parent)
     │
     ▼
-Qualification Agent
+Qualification Subagent
     │
     ▼
-Solution Agent
+Solution Subagent
     │
     ▼
-Closing Agent
+[Return to Parent] → Closing Agent
 ```
 
 **Use Case:** Highly structured workflows
@@ -410,20 +483,20 @@ Closing Agent
   <Card title="Clear Responsibilities" icon="target">
     Each subagent should have a well-defined scope. Avoid overlap between subagents to prevent confusion.
   </Card>
+  <Card title="Descriptive Names" icon="tag">
+    Use clear, descriptive names for subagents. The parent agent uses these names to decide which handoff tool to call.
+  </Card>
   <Card title="Consistent Voice" icon="microphone">
     Use similar voice settings across subagents for a cohesive customer experience.
   </Card>
   <Card title="Context Preservation" icon="database">
-    Ensure subagents have access to relevant conversation history. Include context in handoff.
+    Write system prompts that reference conversation history. Subagents can see the full conversation so far.
   </Card>
   <Card title="Fallback Handling" icon="shield">
-    Always have a fallback — if subagent can't help, return to parent agent.
-  </Card>
-  <Card title="Monitor Performance" icon="chart-line">
-    Track which subagents are used most. Optimize or remove underutilized subagents.
+    Always have a fallback — instruct subagents to use return_to_parent if they can't help.
   </Card>
   <Card title="Test End-to-End" icon="flask">
-    Test full conversation flows including all handoffs before going live.
+    Test full conversation flows including all handoffs before going live. Verify each transfer works smoothly.
   </Card>
 </CardGroup>
 
@@ -435,19 +508,18 @@ Closing Agent
 
 | Limitation | Workaround |
 |------------|------------|
-| Subagents only work with Pipeline architecture | Use Pipeline for parent agent |
-| Subagents inherit parent's functions | Configure functions on parent |
-| No automatic handoff (manual via prompt) | Define clear handoff protocol in prompt |
-| Subagents can't be called directly | All calls go through parent |
-| Maximum 10 subagents per parent | Use nested subagents (coming soon) |
+| Subagents only work with Pipeline architecture | Use Pipeline for parent agent (required) |
+| Subagents inherit parent's functions | Configure all needed functions on parent agent |
+| Handoff is tool-based (LLM decides) | Write clear system prompts with handoff examples |
+| Subagents can't be called directly | All calls must go through parent agent |
+| No nested subagents | Use sibling handoffs instead (subagent → subagent) |
 
-### Coming Soon
+### Technical Notes
 
-- [ ] Automatic handoff based on intent detection
-- [ ] Nested subagents (subagents with their own subagents)
-- [ ] Parallel subagent execution
-- [ ] Subagent-specific knowledge bases
-- [ ] Visual workflow builder
+- **Maximum subagents:** No enforced limit (test with your use case)
+- **Model flexibility:** Each subagent can use different models
+- **Voice independence:** Subagents can have different voice settings
+- **Function inheritance:** All parent functions available to subagents
 
 ---
 
@@ -456,12 +528,16 @@ Closing Agent
 <AccordionGroup>
   <Accordion title="Subagent isn't being activated">
     **Check:**
-    1. Is subagent properly configured?
-    2. Does parent prompt include handoff instructions?
-    3. Are trigger conditions clearly defined?
-    4. Is function calling enabled?
+    1. Is subagent properly configured with name and description?
+    2. Does parent prompt mention when to use handoff tools?
+    3. Are trigger conditions clearly defined in parent prompt?
+    4. Is function calling enabled on the parent agent?
 
-    **Fix:** Add explicit handoff examples to parent prompt.
+    **Fix:** Add explicit handoff examples to parent prompt:
+    ```
+    When user mentions "bug" or "error", call transfer_to_technical_support
+    When user asks about "invoice" or "payment", call transfer_to_billing_specialist
+    ```
   </Accordion>
 
   <Accordion title="Handoff is abrupt or confusing">
@@ -470,23 +546,18 @@ Closing Agent
     **Solution:** Add to parent prompt:
     ```
     Before transferring:
-    1. Explain what you're doing
-    2. Summarize the issue for the subagent
-    3. Confirm customer is ready for transfer
+    1. Explain what you're doing: "Let me connect you with..."
+    2. Summarize the issue briefly
+    3. Confirm customer is ready (optional)
     ```
   </Accordion>
 
   <Accordion title="Subagent loses conversation context">
     **Problem:** Context not passed during handoff.
 
-    **Solution:** Include in handoff prompt:
-    ```
-    When transferring, provide:
-    - Customer name and account info
-    - Summary of issue so far
-    - Steps already attempted
-    - Customer's emotional state
-    ```
+    **Solution:** This shouldn't happen — subagents automatically see the full conversation history. If issues persist:
+    - Include context summary in subagent's system prompt
+    - Use return_to_parent with context: "I've helped with X, but Y needs parent assistance"
   </Accordion>
 
   <Accordion title="Too many subagents causing confusion">
@@ -494,8 +565,23 @@ Closing Agent
 
     **Solution:**
     - Consolidate similar subagents
-    - Use conditional logic instead of separate subagents
-    - Limit to 3-5 subagents maximum
+    - Use conditional logic in parent prompt instead of separate subagents
+    - Limit to 3-5 subagents for most use cases
+  </Accordion>
+
+  <Accordion title="API returns 'Subagent not found'">
+    **Problem:** The subagent ID doesn't exist or doesn't belong to this agent.
+
+    **Solution:**
+    1. Verify the subagent ID with `GET /api/agents/{agentId}/subagents`
+    2. Ensure you're using the correct agent ID in the URL
+    3. Check that the subagent wasn't deleted
+  </Accordion>
+
+  <Accordion title="Can't add subagent to agent">
+    **Error:** "Subagents can only be added to pipeline architecture agents"
+
+    **Solution:** Change the parent agent's architecture to Pipeline, or create a new Pipeline agent.
   </Accordion>
 </AccordionGroup>
 
@@ -511,22 +597,53 @@ Authorization: Bearer YOUR_API_KEY
 Content-Type: application/json
 
 {
-  "name": "string (required)",
-  "description": "string (required)",
-  "sysMsg": "string (required)",
+  "name": "string (required, max 100 chars)",
+  "description": "string (required, max 500 chars)",
+  "sysMsg": "string (required, max 5000 chars)",
   "model": "gpt_4o_mini | gpt_4_1 | gemini (default: gpt_4o_mini)",
   "temperature": "number 0.0-1.0 (default: 0.7)",
   "functionCallingEnabled": "boolean (default: false)",
-  "enabledFunctions": "string[] (function IDs)",
+  "enabledFunctions": "string[] (built-in function IDs)",
   "enabledCustomFunctions": "string[] (custom function IDs)"
 }
 ```
+
+**Validation Errors:**
+| Status | Error | Cause |
+|--------|-------|-------|
+| `400` | "Subagent name is required" | Missing or empty name |
+| `400` | "System message is required" | Missing or empty sysMsg |
+| `400` | "Subagents can only be added to pipeline architecture agents" | Parent is not Pipeline |
+| `403` | "You don't have permission..." | User lacks edit rights |
 
 ### List Subagents
 
 ```bash
 GET /api/agents/{agentId}/subagents
 Authorization: Bearer YOUR_API_KEY
+```
+
+**Response:**
+```json
+{
+  "subagents": [
+    {
+      "id": "string",
+      "name": "string",
+      "description": "string",
+      "sysMsg": "string",
+      "model": "string",
+      "temperature": "number",
+      "agentArchitecture": "pipeline",
+      "functionCallingEnabled": "boolean",
+      "enabledFunctions": "string[]",
+      "enabledCustomFunctions": "string[]",
+      "agentId": "string",
+      "createdAt": "ISO 8601 datetime",
+      "updatedAt": "ISO 8601 datetime"
+    }
+  ]
+}
 ```
 
 ### Update Subagent
@@ -556,18 +673,83 @@ DELETE /api/agents/{agentId}/subagents?subagentId={id}
 Authorization: Bearer YOUR_API_KEY
 ```
 
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Subagent deleted successfully"
+}
+```
+
+---
+
+## Technical Implementation
+
+### Backend Architecture
+
+Subagents are implemented using the **Unified Agent** system in the backend:
+
+1. **Parent Agent** receives `UnifiedAgentConfig` with `subagents` array
+2. **Handoff Tools** are automatically generated for each subagent
+3. **Subagent Personas** are created as separate agent instances
+4. **Session Management** handles seamless transfers between agents
+
+### Handoff Tool Generation
+
+```python
+# Parent agent gets these tools automatically:
+for subagent in config.subagents:
+    create_handoff_tool(
+        name=f"transfer_to_{subagent.name.lower()}",
+        description=subagent.description,
+        target_id=subagent.id
+    )
+
+# Subagents get return tool + sibling tools:
+create_return_to_parent_tool()
+for sibling in siblings:
+    create_handoff_tool(
+        name=f"transfer_to_{sibling.name.lower()}",
+        target_id=sibling.id
+    )
+```
+
+### Session Flow
+
+```
+1. User calls → Parent agent session created
+2. Parent handles conversation
+3. Parent calls transfer_to_X tool
+4. System creates X's session with conversation context
+5. X handles conversation
+6. X calls return_to_parent or transfer_to_Y
+7. System switches session accordingly
+```
+
 ---
 
 ## Next Steps
 
 <CardGroup cols={2}>
   <Card title="Create Parent Agent" icon="robot">
-    Set up your main orchestrator agent with pipeline architecture.
+    Set up your main orchestrator agent with Pipeline architecture.
   </Card>
   <Card title="Add Subagents" icon="users">
-    Create specialized subagents for different tasks.
+    Create specialized subagents for different tasks via Studio or API.
   </Card>
   <Card title="Test Handoffs" icon="exchange-alt">
-    Test conversation flows with subagent transfers.
+    Test conversation flows with subagent transfers to verify smooth handoffs.
+  </Card>
+  <Card title="Monitor Performance" icon="chart-line">
+    Track which subagents are used most and optimize accordingly.
   </Card>
 </CardGroup>
+
+---
+
+## Related Documentation
+
+- [Agent Architecture](/platform/agent-architecture) — Pipeline vs Realtime vs Text
+- [Custom Functions](/guides/custom-functions) — Add actions to your agents
+- [System Prompt Guide](/platform/system-prompt-guide) — Writing effective prompts
+- [API Reference](/api-reference/agents) — Full agents API documentation

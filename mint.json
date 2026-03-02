@@ -65,40 +65,68 @@
       ]
     },
     {
-      "group": "Platform Guide",
+      "group": "Building Agents",
       "pages": [
         "platform/overview",
         "platform/create-agent",
+        "platform/managing-agents",
         "platform/agent-architectures",
-        "platform/system-prompt-guide",
+        "platform/system-prompt-guide"
+      ]
+    },
+    {
+      "group": "Voice & Audio",
+      "pages": [
         "platform/voices",
-        "platform/agent-testing",
+        "platform/pronunciation",
+        "platform/agent-testing"
+      ]
+    },
+    {
+      "group": "Telephony",
+      "pages": [
         "platform/telephony",
+        "platform/batch-calling"
+      ]
+    },
+    {
+      "group": "Intelligence & Memory",
+      "pages": [
         "platform/knowledge-base",
         "platform/memory",
-        "platform/subagents",
-        "platform/pronunciation",
-        "platform/post-call-analysis",
+        "platform/subagents"
+      ]
+    },
+    {
+      "group": "Analytics & Insights",
+      "pages": [
         "platform/analytics",
-        "platform/marketplace",
+        "platform/post-call-analysis"
+      ]
+    },
+    {
+      "group": "Organization & Settings",
+      "pages": [
         "platform/organization",
         "platform/api-keys",
         "platform/billing",
+        "platform/billing-credits",
+        "platform/settings-profile",
+        "platform/marketplace",
         "platform/advanced-configuration"
       ]
     },
     {
-      "group": "How-To Guides",
+      "group": "Guides",
       "pages": [
         "guides/custom-functions",
         "guides/chat-api",
-        "guides/batch-calling",
         "guides/byoc",
         "guides/noise-cancellation"
       ]
     },
     {
-      "group": "Getting Started",
+      "group": "Overview",
       "pages": [
         "api-reference/introduction",
         "api-reference/authentication"
@@ -107,30 +135,48 @@
     {
       "group": "Agents",
       "pages": [
-        "api-reference/agents"
+        "api-reference/endpoint/list-agents",
+        "api-reference/endpoint/create-agent",
+        "api-reference/endpoint/get-agent",
+        "api-reference/endpoint/update-agent",
+        "api-reference/endpoint/delete-agent"
       ]
     },
     {
       "group": "Voice Calls",
       "pages": [
-        "api-reference/call-sessions",
-        "api-reference/phone-numbers"
+        "api-reference/endpoint/initiate-call"
       ]
     },
     {
       "group": "Text Chat",
       "pages": [
-        "api-reference/chat"
+        "api-reference/endpoint/create-chat-session",
+        "api-reference/endpoint/send-message",
+        "api-reference/endpoint/get-messages",
+        "api-reference/endpoint/end-session"
       ]
     },
     {
-      "group": "Agent Features",
+      "group": "Batch Calling",
+      "pages": [
+        "api-reference/endpoint/create-batch-job",
+        "api-reference/endpoint/list-batch-jobs",
+        "api-reference/endpoint/get-batch-job",
+        "api-reference/endpoint/start-batch-job",
+        "api-reference/endpoint/cancel-batch-job",
+        "api-reference/endpoint/reschedule-batch-job",
+        "api-reference/endpoint/redis-status"
+      ]
+    },
+    {
+      "group": "Custom Functions",
       "pages": [
         "api-reference/custom-functions"
       ]
     },
     {
-      "group": "Events",
+      "group": "Webhooks",
       "pages": [
         "api-reference/webhooks"
       ]
@@ -145,6 +191,7 @@
       ]
     }
   ],
+  "openapi": "openapi.json",
   "footerSocials": {
     "website": "https://studio.talkifai.dev",
     "linkedin": "https://www.linkedin.com/company/talkifai-dev/",

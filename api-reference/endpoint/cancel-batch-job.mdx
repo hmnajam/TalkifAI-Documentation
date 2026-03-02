@@ -1,0 +1,190 @@
+---
+title: "Cancel Batch Job"
+openapi: "POST /batch/jobs/{batch_job_id}/cancel"
+description: "Cancel a scheduled, pending, or running batch job. Stops new calls and marks remaining contacts as cancelled."
+---
+
+## Overview
+
+Cancels a batch job permanently. Behavior depends on job status:
+
+- **Scheduled**: Cancels Redis scheduled job + updates database
+- **Pending/Running**: Marks remaining contacts as cancelled
+- **Completed/Failed/Cancelled**: Returns error (cannot cancel)
+
+Running calls complete normally; only pending/queued contacts are cancelled.
+
+## Request
+
+```bash
+POST /batch/jobs/{batch_job_id}/cancel
+```
+
+## Path Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `batch_job_id` | string | ✅ | Unique batch job identifier |
+
+## Response
+
+```json
+{
+  "success": true,
+  "message": "Scheduled job cancelled successfully",
+  "batchJobId": "batch_xyz789",
+  "redisJobCancelled": true,
+  "contactsCancelled": 58
+}
+```
+
+### Response Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `success` | boolean | Whether cancellation succeeded |
+| `message` | string | Cancellation result description |
+| `batchJobId` | string | Cancelled batch job ID |
+| `redisJobCancelled` | boolean | Whether Redis scheduled job was cancelled |
+| `contactsCancelled` | integer | Number of contacts marked as cancelled |
+
+## Examples
+
+### Example 1: Cancel Scheduled Job
+
+```bash
+curl -X POST "https://api.talkifai.com/batch/jobs/batch_xyz789/cancel" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Scheduled job cancelled successfully",
+  "batchJobId": "batch_xyz789",
+  "redisJobCancelled": true,
+  "contactsCancelled": 100
+}
+```
+
+### Example 2: Cancel Running Job
+
+```bash
+curl -X POST "https://api.talkifai.com/batch/jobs/batch_abc123/cancel" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Job was already running - cancelled remaining contacts",
+  "batchJobId": "batch_abc123",
+  "redisJobCancelled": false,
+  "contactsCancelled": 42
+}
+```
+
+### Example 3: Cancel Already Completed Job (Error)
+
+```bash
+curl -X POST "https://api.talkifai.com/batch/jobs/batch_completed/cancel" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+**Response:**
+```json
+{
+  "detail": "Cannot cancel job in 'completed' status"
+}
+```
+
+## Behavior by Status
+
+| Job Status | Cancellation Behavior |
+|------------|----------------------|
+| `scheduled` | Cancels Redis defer job + marks DB as cancelled |
+| `pending` | Marks all contacts as cancelled |
+| `running` | Marks remaining (non-terminal) contacts as cancelled |
+| `completed` | ❌ Error: Cannot cancel completed job |
+| `failed` | ❌ Error: Cannot cancel failed job |
+| `cancelled` | ❌ Error: Already cancelled |
+
+## Contact Statuses Affected
+
+When cancelling a running job, only contacts in **non-terminal** statuses are cancelled:
+
+**Cancelled Statuses:**
+- `pending` — Not yet called
+- `queued` — Waiting for retry
+- `no_answer` — Will be retried
+- `busy` — Will be retried
+- `timeout` — Will be retried
+
+**Not Affected (Terminal Statuses):**
+- `completed` — Already successful
+- `failed` — Final failure
+- `blocked` — Permanently blocked
+- `invalid_number` — Invalid phone number
+- `carrier_error` — Carrier error (final)
+- `cancelled` — Already cancelled
+
+## Error Handling
+
+### 404 Not Found
+
+```json
+{
+  "detail": "Batch job not found"
+}
+```
+
+### 400 Bad Request
+
+```json
+{
+  "detail": "Cannot cancel job in 'completed' status"
+}
+```
+
+| Error Code | Cause |
+|------------|-------|
+| `job_not_found` | Batch job ID doesn't exist |
+| `already_terminal` | Job is in completed/failed/cancelled status |
+
+### 500 Internal Server Error
+
+```json
+{
+  "detail": "Failed to cancel batch job"
+}
+```
+
+## Use Cases
+
+### Cancel Due to Error in Campaign
+
+If you discover an error in your campaign (wrong message, wrong numbers):
+
+```bash
+# Immediately cancel the job
+curl -X POST "https://api.talkifai.com/batch/jobs/batch_xyz789/cancel" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+### Cancel Scheduled Job Before Start Time
+
+```bash
+# Job scheduled for 9 AM, but you want to cancel at 8 AM
+curl -X POST "https://api.talkifai.com/batch/jobs/batch_scheduled/cancel" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+## Related
+
+- [Create Batch Job](/api-reference/endpoint/create-batch-job) — Create a new batch job
+- [Get Batch Job Detail](/api-reference/endpoint/get-batch-job) — Get job status
+- [Start Batch Job](/api-reference/endpoint/start-batch-job) — Start scheduled job immediately
+- [Reschedule Batch Job](/api-reference/endpoint/reschedule-batch-job) — Change scheduled time
+- [Batch Calling Guide](/guides/batch-calling) — Complete guide to batch campaigns

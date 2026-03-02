@@ -1,0 +1,265 @@
+---
+title: "Reschedule Batch Job"
+openapi: "PATCH /batch/jobs/{batch_job_id}/reschedule"
+description: "Reschedule a scheduled or pending batch job to a new start time."
+---
+
+## Overview
+
+Changes the scheduled start time of a batch job. Only works for jobs in `scheduled` or `pending` status.
+
+**Features:**
+- Timezone-aware scheduling
+- Automatic cancellation of old scheduled job
+- Creates new Redis defer job with updated time
+
+<Note>
+  Cannot reschedule jobs that are already `running`, `completed`, `failed`, or `cancelled`.
+</Note>
+
+## Request
+
+```bash
+PATCH /batch/jobs/{batch_job_id}/reschedule?scheduledStartTime=2025-03-01T10:00:00&timezone=America/New_York
+```
+
+## Path Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `batch_job_id` | string | ✅ | Unique batch job identifier |
+
+## Query Parameters
+
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `scheduledStartTime` | string | ✅ | — | New scheduled start time (ISO 8601 format) |
+| `timezone` | string | ❌ | `"UTC"` | IANA timezone for the scheduled time |
+
+### Timezone Examples
+
+| Timezone | Description |
+|----------|-------------|
+| `UTC` | Coordinated Universal Time |
+| `America/New_York` | Eastern Time (US/Canada) |
+| `America/Los_Angeles` | Pacific Time (US/Canada) |
+| `Europe/London` | GMT/BST (UK) |
+| `Europe/Paris` | Central European Time |
+| `Asia/Karachi` | Pakistan Standard Time |
+| `Asia/Dubai` | Gulf Standard Time |
+| `Asia/Tokyo` | Japan Standard Time |
+| `Australia/Sydney` | Australian Eastern Time |
+
+## Response
+
+```json
+{
+  "success": true,
+  "message": "Rescheduled successfully (old job cancelled)",
+  "batchJobId": "batch_xyz789",
+  "scheduledStartTime": "2025-03-01T15:00:00Z",
+  "status": "scheduled",
+  "oldJobCancelled": true,
+  "newScheduledJobId": "arq_job_abc123"
+}
+```
+
+### Response Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `success` | boolean | Whether reschedule succeeded |
+| `message` | string | Reschedule result description |
+| `batchJobId` | string | Rescheduled batch job ID |
+| `scheduledStartTime` | string | New scheduled start time (ISO 8601, UTC) |
+| `status` | string | Job status (`scheduled`) |
+| `oldJobCancelled` | boolean | Whether old Redis job was cancelled |
+| `newScheduledJobId` | string | New Redis defer job ID |
+
+## Examples
+
+### Example 1: Reschedule to Later Time
+
+```bash
+curl -X PATCH "https://api.talkifai.com/batch/jobs/batch_xyz789/reschedule?scheduledStartTime=2025-03-01T10:00:00&timezone=America/New_York" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Rescheduled successfully (old job cancelled)",
+  "batchJobId": "batch_xyz789",
+  "scheduledStartTime": "2025-03-01T15:00:00Z",
+  "status": "scheduled",
+  "oldJobCancelled": true,
+  "newScheduledJobId": "arq_job_abc123"
+}
+```
+
+### Example 2: Reschedule with UTC Timezone
+
+```bash
+curl -X PATCH "https://api.talkifai.com/batch/jobs/batch_xyz789/reschedule?scheduledStartTime=2025-03-01T09:00:00&timezone=UTC" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+### Example 3: Reschedule Pending Job (No Previous Schedule)
+
+```bash
+curl -X PATCH "https://api.talkifai.com/batch/jobs/batch_pending/reschedule?scheduledStartTime=2025-03-01T09:00:00&timezone=Europe/London" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Scheduled successfully",
+  "batchJobId": "batch_pending",
+  "scheduledStartTime": "2025-03-01T09:00:00Z",
+  "status": "scheduled",
+  "oldJobCancelled": false,
+  "newScheduledJobId": "arq_job_def456"
+}
+```
+
+### Example 4: Reschedule Running Job (Error)
+
+```bash
+curl -X PATCH "https://api.talkifai.com/batch/jobs/batch_running/reschedule?scheduledStartTime=2025-03-01T09:00:00&timezone=UTC" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+**Response:**
+```json
+{
+  "detail": "Cannot reschedule job in 'running' status. Only 'scheduled' or 'pending' jobs can be rescheduled."
+}
+```
+
+## Behavior by Status
+
+| Job Status | Reschedule Behavior |
+|------------|---------------------|
+| `scheduled` | Cancels old Redis job + creates new defer job + updates DB |
+| `pending` | Creates new Redis defer job + updates DB + changes status to `scheduled` |
+| `running` | ❌ Error: Cannot reschedule running job |
+| `completed` | ❌ Error: Cannot reschedule completed job |
+| `failed` | ❌ Error: Cannot reschedule failed job |
+| `cancelled` | ❌ Error: Cannot reschedule cancelled job |
+
+## How It Works
+
+```
+PATCH /batch/jobs/{id}/reschedule
+         │
+         ▼
+1. Parse scheduled time + timezone
+         ├── Invalid format → 400 Error
+         └── Valid → Convert to UTC
+                   │
+                   ▼
+2. Check job status
+         ├── Not scheduled/pending → 400 Error
+         └── Scheduled/Pending → Continue
+                   │
+                   ▼
+3. If has scheduledJobId: Cancel old Redis job
+         ├── Found → Cancel + clear
+         └── Not found → Proceed
+                   │
+                   ▼
+4. Create new Redis defer job
+         │
+         ▼
+5. Update database with new time + job ID
+         │
+         ▼
+6. Return success
+```
+
+## Error Handling
+
+### 404 Not Found
+
+```json
+{
+  "detail": "Batch job not found"
+}
+```
+
+### 400 Bad Request
+
+```json
+{
+  "detail": "Invalid timezone 'Invalid/Timezone'. Use IANA timezone format (e.g., 'America/New_York', 'Asia/Karachi', 'UTC')."
+}
+```
+
+```json
+{
+  "detail": "Invalid datetime format. Use format like '2025-03-01T10:00:00'."
+}
+```
+
+```json
+{
+  "detail": "Cannot reschedule job in 'running' status. Only 'scheduled' or 'pending' jobs can be rescheduled."
+}
+```
+
+| Error Code | Cause |
+|------------|-------|
+| `job_not_found` | Batch job ID doesn't exist |
+| `invalid_timezone` | Invalid IANA timezone |
+| `invalid_datetime` | Invalid datetime format |
+| `past_scheduled_time` | Scheduled time is in the past |
+| `invalid_status` | Job is not in `scheduled` or `pending` status |
+
+### 500 Internal Server Error
+
+```json
+{
+  "detail": "Failed to reschedule batch job"
+}
+```
+
+## Use Cases
+
+### Reschedule Due to Weather Event
+
+Your campaign is scheduled for today, but a storm is affecting your target region:
+
+```bash
+# Reschedule from today to tomorrow same time
+curl -X PATCH "https://api.talkifai.com/batch/jobs/batch_xyz789/reschedule?scheduledStartTime=2025-03-02T09:00:00&timezone=America/New_York" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+### Adjust Calling Hours for Compliance
+
+You realize your scheduled time violates calling hours regulations:
+
+```bash
+# Reschedule from 7 AM to 9 AM (legal calling hours start)
+curl -X PATCH "https://api.talkifai.com/batch/jobs/batch_xyz789/reschedule?scheduledStartTime=2025-03-01T09:00:00&timezone=America/Chicago" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+### Postpone Campaign to Next Week
+
+```bash
+# Move campaign from Friday to next Monday
+curl -X PATCH "https://api.talkifai.com/batch/jobs/batch_xyz789/reschedule?scheduledStartTime=2025-03-10T10:00:00&timezone=America/Los_Angeles" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+## Related
+
+- [Create Batch Job](/api-reference/endpoint/create-batch-job) — Create a new batch job
+- [Start Batch Job](/api-reference/endpoint/start-batch-job) — Start scheduled job immediately
+- [Cancel Batch Job](/api-reference/endpoint/cancel-batch-job) — Cancel a job
+- [Get Batch Job Detail](/api-reference/endpoint/get-batch-job) — Get job status
+- [Batch Calling Guide](/guides/batch-calling) — Complete guide to batch campaigns

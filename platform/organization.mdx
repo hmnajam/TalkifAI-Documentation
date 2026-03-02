@@ -8,10 +8,11 @@ description: "Manage your TalkifAI organization, invite team members, assign rol
 TalkifAI is built around **organizations** — every agent, API key, phone number, and call log belongs to an organization. This enables multi-user teams to collaborate on building and managing voice agents.
 
 **Organization features:**
-- Invite unlimited team members
+- Invite team members
 - Role-based access control (Owner / Admin / Member)
 - Multiple organizations per user account
 - All resources scoped and isolated per organization
+- Organization logo and branding
 
 ---
 
@@ -25,12 +26,16 @@ Organization
   ├── Call Logs & Analytics
   ├── Knowledge Bases
   └── Members
-       ├── Owner (1)
-       ├── Admins (N)
-       └── Members (N)
+       ├── Owner (1 per organization)
+       ├── Admins (unlimited)
+       └── Members (unlimited)
 ```
 
 Every authenticated action is performed **within your active organization context**. Switching organizations gives you access to that organization's resources only.
+
+<Note>
+  **Organization Creation:** A default organization is automatically created when you sign up. You can create additional organizations from the organization switcher in the sidebar.
+</Note>
 
 ---
 
@@ -40,27 +45,32 @@ Every authenticated action is performed **within your active organization contex
 
 | Permission | Owner | Admin | Member |
 |------------|:-----:|:-----:|:------:|
-| View all agents | ✅ | ✅ | ✅ (public only) |
+| View all agents | ✅ | ✅ | ⚠️ Public only |
 | Create agents | ✅ | ✅ | ✅ |
 | Edit public/commercial agents | ✅ | ✅ | ❌ |
 | Edit private agents | ✅ (any) | ✅ (any) | ✅ (own only) |
 | Delete agents | ✅ | ✅ | ❌ |
 | Invite members | ✅ | ✅ | ❌ |
 | Remove members | ✅ | ✅ | ❌ |
+| Change member roles | ✅ | ⚠️ Member→Admin | ❌ |
 | Manage API keys | ✅ | ❌ | ❌ |
 | Manage phone numbers | ✅ | ✅ | ❌ |
 | View analytics | ✅ | ✅ | ✅ |
 | Edit organization settings | ✅ | ❌ | ❌ |
-| Delete organization | ✅ | ❌ | ❌ |
+| Create commercial agents | ✅ | ✅ | ❌ |
+
+⚠️ **Notes:**
+- Admins can promote Members to Admin, but cannot change other Admins or the Owner
+- Members can only view and use public agents created by others
 
 ### Role Descriptions
 
 <CardGroup cols={3}>
   <Card title="Owner" icon="crown">
-    Full control over the organization. Can manage billing, API keys, organization settings, and all members. One owner per organization.
+    Full control over the organization. Can manage API keys, organization settings, and all members. One owner per organization.
   </Card>
   <Card title="Admin" icon="user-shield">
-    Can invite/remove members, manage agents and phone numbers, view all analytics. Cannot manage API keys or org settings.
+    Can invite/remove members, manage agents and phone numbers, view all analytics, and promote members to admin. Cannot manage API keys or org settings.
   </Card>
   <Card title="Member" icon="user">
     Can create and manage their own private agents. Can view and use public agents. Cannot invite others or manage organizational resources.
@@ -75,33 +85,36 @@ Every authenticated action is performed **within your active organization contex
 
 An organization is automatically created when you sign up. You can create additional organizations:
 
-1. Click your **organization name** in the top navigation
+1. Click your **organization name** in the top navigation (sidebar)
 2. Click **Create Organization**
-3. Enter organization name and slug (unique URL identifier)
+3. Enter:
+   - **Organization name** (display name)
+   - **Slug** (unique URL identifier, cannot be changed later)
 4. Click **Create**
 
-<Info>
-  Each organization has a unique **slug** — a short identifier used in URLs. Once set, the slug cannot be changed.
-</Info>
+<Warning>
+  **Slug is permanent:** The organization slug (URL identifier) cannot be changed after creation. Choose carefully (e.g., `acme-corp`, `my-startup`).
+</Warning>
 
 ### Switch Between Organizations
 
 If you're a member of multiple organizations:
 
-1. Click your **organization name** in the top navigation
+1. Click your **organization name** in the sidebar
 2. A dropdown shows all organizations you belong to
 3. Click any organization to switch to it
-4. All resources (agents, keys, logs) will update to reflect the selected organization
+4. All resources (agents, keys, logs) update to reflect the selected organization
+
+**Session persistence:** Your active organization is saved in the session and persists across page reloads.
 
 ### Edit Organization Settings
 
 **Owners only:**
 
-1. Go to **Settings → Organization**
+1. Go to **Studio → Organization** (or Settings → Organization)
 2. Update:
-   - Organization name (display name)
-   - Organization logo
-   - Default timezone
+   - **Organization name** (display name)
+   - **Organization logo** (image upload)
 3. Click **Save Changes**
 
 ---
@@ -112,15 +125,25 @@ If you're a member of multiple organizations:
 
 **Owners and Admins can invite:**
 
-1. Go to **Settings → Team**
+1. Go to **Studio → Organization** (or Team page)
 2. Click **Invite Member**
-3. Enter their email address
-4. Select their role (Admin or Member)
-5. Click **Send Invitation**
+3. Enter:
+   - **Email address** (must be valid)
+   - **Role** (Admin or Member)
+4. Click **Send Invitation**
 
-The invitee receives an email with a link to join your organization. The invitation expires in **7 days**.
+The invitee receives an email with a link to join your organization.
 
-### Via API
+<Frame>
+  ![Invite member modal](/images/organization-invite-modal.png)
+</Frame>
+
+**Invitation details:**
+- ✅ **Expires in 7 days**
+- ✅ Can be resent from Pending Invitations
+- ✅ Can be cancelled before acceptance
+
+### Via API (Better Auth)
 
 ```bash
 POST /api/organization/invite
@@ -129,7 +152,8 @@ Content-Type: application/json
 
 {
   "email": "teammate@company.com",
-  "role": "member"
+  "role": "member",
+  "organizationId": "org_abc123"
 }
 ```
 
@@ -142,14 +166,14 @@ Content-Type: application/json
     "email": "teammate@company.com",
     "role": "member",
     "status": "pending",
-    "expiresAt": "2024-01-22T10:00:00Z"
+    "expiresAt": "2024-02-01T10:00:00Z"
   }
 }
 ```
 
 ### Resend or Cancel Invitations
 
-1. Go to **Settings → Team → Pending Invitations**
+1. Go to **Studio → Organization → Pending Invitations**
 2. Click **Resend** to resend the invitation email
 3. Click **Cancel** to revoke the invitation
 
@@ -159,34 +183,46 @@ Content-Type: application/json
 
 ### View All Members
 
-Go to **Settings → Team** to see:
+Go to **Studio → Organization** to see:
 - All current members with their roles
-- Pending invitations
 - Member join dates
+- Pending invitations
 
 ### Change a Member's Role
 
-**Owners only** (for changing to/from admin):
+**Owners only** (for changing Admin roles):
 
-1. Go to **Settings → Team**
+1. Go to **Studio → Organization → Members**
 2. Click the **⋯** menu next to a member
 3. Select **Change Role**
 4. Choose new role and confirm
 
-**Admins** can change Members' roles to Admin, but cannot change Owner or other Admins.
+**Admins can:**
+- ✅ Promote Members to Admin
+- ❌ Cannot change other Admins
+- ❌ Cannot change Owner
+
+**Owners can:**
+- ✅ Promote/Demote any member
 
 ### Remove a Member
 
 **Owners and Admins:**
 
-1. Go to **Settings → Team**
+1. Go to **Studio → Organization → Members**
 2. Click the **⋯** menu next to a member
 3. Select **Remove from Organization**
 4. Confirm removal
 
 <Warning>
-  Removing a member immediately revokes their access. Their private agents remain in the organization (visible to Owners/Admins) but they lose access. Call logs and history are preserved.
+  **Immediate effect:** Removing a member immediately revokes their access. Their private agents remain in the organization (visible to Owners/Admins) but they lose access. Call logs and history are preserved.
 </Warning>
+
+**What happens to their agents:**
+- ✅ Private agents → remain in org (Owners/Admins can access)
+- ✅ Public agents → remain public
+- ✅ Commercial agents → remain in marketplace
+- ❌ Member loses all access
 
 ---
 
@@ -194,21 +230,24 @@ Go to **Settings → Team** to see:
 
 Agents within your organization have three visibility levels:
 
-| Mode | Who Can See It | Who Can Edit It |
-|------|---------------|-----------------|
-| **Private** | Creator + Owners/Admins | Creator + Owners/Admins |
-| **Public** | All org members | Owners/Admins only |
-| **Commercial** | Everyone (marketplace) | Owners/Admins only |
+| Mode | Who Can See It | Who Can Edit It | Who Can Delete |
+|------|---------------|-----------------|----------------|
+| **Private** | Creator + Owners/Admins | Creator + Owners/Admins | Creator + Owners/Admins |
+| **Public** | All org members | Owners/Admins only | Owners/Admins only |
+| **Commercial** | Everyone (marketplace) | Owners/Admins only | Owners/Admins only |
 
 ### Change Agent Visibility
 
 1. Open the agent in Studio
-2. Go to **Settings → Access**
-3. Select visibility mode
+2. Go to **Settings → Access** (or Agent Settings panel)
+3. Select visibility mode:
+   - **Private** — Only you and admins can see
+   - **Public** — All organization members can see
+   - **Commercial** — Published to marketplace (requires Owner/Admin)
 4. Save
 
 <Note>
-  Only Owners and Admins can publish agents to the **marketplace** (commercial mode). Members can create private agents but not publish them publicly.
+  **Commercial mode restriction:** Only Owners and Admins can publish agents to the marketplace. Members can create private agents but cannot publish them publicly or commercially.
 </Note>
 
 ---
@@ -222,44 +261,66 @@ All API calls are automatically scoped to your organization when you use your AP
 ```bash
 # This returns only agents belonging to your organization
 GET /api/agents
-Authorization: Bearer YOUR_ORG_API_KEY
+Authorization: YOUR_API_KEY (auto-scoped)
 ```
+
+**Authentication:** API calls use session-based auth via Better Auth. The active organization ID is included in the session.
 
 ### Get Organization Info
 
 ```bash
-GET /api/organization
+GET /api/organizations
 Authorization: Bearer YOUR_API_KEY
 ```
 
 **Response:**
 ```json
-{
-  "success": true,
-  "organization": {
+[
+  {
     "id": "org_abc123",
     "name": "Acme Corp",
     "slug": "acme-corp",
-    "keyMode": "talkifai_keys",
-    "memberCount": 5,
-    "createdAt": "2024-01-01T00:00:00Z"
+    "logo": null,
+    "createdAt": "2024-01-01T00:00:00Z",
+    "metadata": null
   }
-}
+]
 ```
+
+### Manage API Keys
+
+**Owners only:**
+
+1. Go to **Studio → Organization → API Keys**
+2. Configure provider keys:
+   - OpenAI API Key
+   - Google (Gemini) API Key
+   - Deepgram API Key
+   - Cartesia API Key
+3. Save changes
+
+**Key modes:**
+- **TalkifAI Keys** — Use platform-managed keys (billing applies)
+- **My Keys** — Use your own provider keys (no platform markup)
 
 ---
 
-## Leaving an Organization
+## Organization Settings
 
-To leave an organization:
+### Logo Upload
 
-1. Go to **Settings → Team**
-2. Click **Leave Organization** at the bottom
-3. Confirm
+Upload a logo for your organization:
 
-<Warning>
-  **Owners cannot leave** an organization unless they first transfer ownership to another member. Go to **Settings → Team → Transfer Ownership** before leaving.
-</Warning>
+1. Go to **Studio → Organization**
+2. Click on the logo placeholder
+3. Upload an image (PNG, JPG, SVG)
+4. Crop/adjust as needed
+5. Save
+
+**Logo usage:**
+- Displayed in organization switcher
+- Shown in team page header
+- Used in email invitations
 
 ---
 
@@ -270,17 +331,19 @@ To leave an organization:
     **Check:**
     1. Check spam/junk folder
     2. Verify the email address was entered correctly
-    3. Resend the invitation from Settings → Team → Pending Invitations
+    3. Resend the invitation from **Studio → Organization → Pending Invitations**
 
     Invitations expire after 7 days. Resend if expired.
+    
+    **Still not received?** Contact support with the invitee's email address.
   </Accordion>
 
   <Accordion title="Member can't see an agent">
     **Problem:** A member reports not being able to access an agent.
 
     **Check:**
-    - Is the agent set to **Private** (only creator + admins see it)?
-    - Is the member in the correct organization?
+    - Is the agent set to **Private**? (only creator + admins see it)
+    - Is the member in the correct organization? (check org switcher)
     - Has the member refreshed their browser?
 
     **Fix:** Change the agent to **Public** if it should be accessible to all members.
@@ -290,7 +353,7 @@ To leave an organization:
     **Rules:**
     - Only **Owners** can change Admins' roles
     - Only **Owners** can promote someone to Owner
-    - Admins can change Member ↔ Admin only if they have owner permission
+    - **Admins** can change Member ↔ Admin (but not other Admins)
 
     Contact the organization Owner if you need role changes beyond your permission level.
   </Accordion>
@@ -298,9 +361,38 @@ To leave an organization:
   <Accordion title="Organization resources missing after switching orgs">
     **Expected behavior:** Each organization is completely isolated. When you switch organizations, you see only that organization's agents, keys, and logs.
 
-    If resources seem missing, verify you're in the correct organization via the navigation bar.
+    **Fix:** Verify you're in the correct organization via the sidebar organization switcher.
+  </Accordion>
+
+  <Accordion title="API keys not working">
+    **Check:**
+    1. Are you an Owner? (only Owners can manage API keys)
+    2. Is the key format correct? (no extra spaces)
+    3. Is the key still valid? (check provider dashboard)
+    4. Are you using the correct key mode? (TalkifAI vs My Keys)
+
+    **Fix:** Go to **Studio → Organization → API Keys** and re-enter the key.
   </Accordion>
 </AccordionGroup>
+
+---
+
+## Security Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Regular Access Reviews" icon="shield-check">
+    Quarterly review of member list. Remove inactive members and update roles as needed.
+  </Card>
+  <Card title="API Key Rotation" icon="key">
+    Rotate API keys every 90 days. Revoke old keys immediately after rotation.
+  </Card>
+  <Card title="Least Privilege" icon="user-lock">
+    Give members the minimum role needed. Start with Member, promote only when necessary.
+  </Card>
+  <Card title="Monitor Activity" icon="chart-line">
+    Regularly check analytics and call logs for unusual activity patterns.
+  </Card>
+</CardGroup>
 
 ---
 
@@ -308,7 +400,7 @@ To leave an organization:
 
 <CardGroup cols={2}>
   <Card title="API Key Management" icon="key">
-    Create and manage API keys for programmatic access.
+    Create and manage API keys for programmatic access to your organization's resources.
   </Card>
   <Card title="Create Your First Agent" icon="robot">
     Build your first voice or text agent for the team.
@@ -316,7 +408,17 @@ To leave an organization:
   <Card title="Analytics" icon="chart-bar">
     View call logs and usage across your organization.
   </Card>
-  <Card title="Billing & Credits" icon="credit-card">
-    Manage your organization's credits and usage limits.
+  <Card title="Team Permissions" icon="users">
+    Learn about role-based permissions and access control.
   </Card>
 </CardGroup>
+
+---
+
+## Related Documentation
+
+- [API Keys](/platform/api-keys) — Manage API keys for your organization
+- [Agent Visibility](/platform/agents#visibility-modes) — Public vs Private vs Commercial
+- [Team Permissions](/platform/team-permissions) — Detailed permission matrix
+- [Analytics](/platform/analytics) — View usage metrics
+- [Call Logs](/platform/call-logs) — Detailed call history

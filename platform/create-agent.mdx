@@ -9,10 +9,13 @@ Have these ready:
 
 <Steps>
   <Step title="Open the Studio">
-    Go to [studio.talkifai.dev/agents](https://studio.talkifai.dev/agents) and click **Create Agent**.
+    Go to your TalkifAI Studio dashboard and navigate to **Agents**, then click **Create Agent**.
   </Step>
   <Step title="Decide on a use case">
     What should this agent do? Customer support? Appointments? Sales? Decide first — everything else follows from this.
+  </Step>
+  <Step title="Select an organization">
+    Make sure you have an organization selected — agents are scoped to organizations.
   </Step>
 </Steps>
 
@@ -37,14 +40,19 @@ The most important decision — it determines whether your agent can handle voic
     ```
 
     Each component uses a separate provider — you choose which:
-    - **STT:** Deepgram, OpenAI Whisper
-    - **LLM:** GPT-4o, Gemini 1.5 Pro, etc.
-    - **TTS:** Cartesia, ElevenLabs, OpenAI TTS
+    - **STT:** Deepgram, OpenAI Whisper, Cartesia, Gemini
+    - **LLM:** GPT-4o, GPT-4o-mini, Gemini models, etc.
+    - **TTS:** Cartesia, OpenAI TTS, Gemini, Deepgram
 
     ✅ **Pros:** Flexible, cost-effective, provider-independent, supports voice + text
     ❌ **Cons:** Slightly higher latency (500–800ms)
+
+    **Required fields:**
+    - Voice selection
+    - LLM model
+    - STT provider
   </Tab>
-  <Tab title="⚡ Realtime">
+  <Tab title="⚡ Live (Realtime)">
     **Best when:** You need the fastest, most natural voice conversation possible.
 
     How it works:
@@ -58,10 +66,14 @@ The most important decision — it determines whether your agent can handle voic
     ❌ **Cons:** Locked to OpenAI or Gemini only
 
     <Warning>
-      Realtime mode requires your own OpenAI or Google API key. Platform keys do not work here.
+      Realtime mode may require your own API keys depending on your organization's key mode. Platform keys do not work for all providers.
     </Warning>
+
+    **Required fields:**
+    - Realtime provider (OpenAI or Gemini)
+    - Voice selection (if agent speaks first)
   </Tab>
-  <Tab title="💬 Text (Chat Only)">
+  <Tab title="💬 Chat (Text Only)">
     **Best when:** You only need a text chat widget — no voice calls needed.
 
     How it works:
@@ -78,11 +90,14 @@ The most important decision — it determines whether your agent can handle voic
     <Info>
       Text agents support custom functions, knowledge base, subagents, and long-term memory — everything except audio.
     </Info>
+
+    **Required fields:**
+    - LLM model only (no voice or STT needed)
   </Tab>
 </Tabs>
 
 <Info>
-  **First time building?** If you need voice → choose Pipeline. If you only need a website chatbot → choose Text.
+  **First time building?** If you need voice → choose Pipeline. If you only need a website chatbot → choose Chat.
 </Info>
 
 ---
@@ -91,16 +106,28 @@ The most important decision — it determines whether your agent can handle voic
 
 | Field | Required | Tips |
 |-------|----------|------|
-| **Name** | ✅ | Keep it clear — e.g., "Customer Support Bot", "Sales Agent" |
-| **Description** | ❌ | Internal notes — not visible to users |
-| **Language** | ✅ | The language the agent will speak |
-| **Visibility** | ✅ | Start with **Private**, test, then change |
+| **Name** | ✅ | Keep it clear — e.g., "Customer Support Bot", "Sales Agent" (max 50 characters) |
+| **Description** | ✅ | Internal notes — not visible to end users (max 200 characters) |
+| **Languages** | ✅ | The language(s) the agent will understand and speak. Supported: **English, Urdu, Sindhi** |
+| **Agent Mode** | ✅ | Defaults to **Public**. Switch to **Private** for testing before sharing with your team |
+
+<Info>
+  **Agent Modes:**
+  - **Private:** Only visible to you and organization admins
+  - **Public:** Visible to all members of your organization (default)
+  - **Commercial:** Listed in the marketplace (requires owner/admin permissions)
+</Info>
 
 ---
 
 ## Step 3: System Prompt — The Most Important Part
 
 The system prompt is the agent's **soul**. It defines:
+
+<Frame>
+  ![System prompt editor](/images/create-agent-system-prompt.png)
+</Frame>
+
 - Who the agent is
 - What it should do
 - How it should speak
@@ -227,7 +254,7 @@ Then use the end_call tool.
 
 <CardGroup cols={2}>
   <Card title="Keep it Short" icon="scissors">
-    Under 500 words. Long prompts confuse the agent and produce inconsistent responses.
+    Under 5000 characters. Long prompts confuse the agent and produce inconsistent responses.
   </Card>
   <Card title="Be Specific" icon="list-check">
     "Be friendly" is vague. "Start every response with the customer's name" is actionable.
@@ -244,30 +271,65 @@ Full guide: [System Prompt Guide →](/platform/system-prompt-guide)
 
 ---
 
-## Step 4: Choose an LLM Model (Pipeline Only)
+## Step 4: Configure Agent Behavior
 
-| Model | Best For | Speed | Cost |
-|-------|----------|-------|------|
+### Temperature
+
+Controls the randomness and creativity of the agent's responses.
+
+| Value | Effect | Use When |
+|-------|--------|----------|
+| `0.1 – 0.3` | Precise, consistent | Support, factual queries |
+| `0.4 – 0.7` | Balanced | General use (default: 0.7) |
+| `0.8 – 1.0` | Creative, varied | Sales, casual conversation |
+
+### Inactivity Timeout
+
+How long the agent waits before ending a call due to silence.
+
+| Value | Range | Default |
+|-------|-------|---------|
+| **Timeout** | 10–60 seconds | 30 seconds |
+
+### Greeting Configuration
+
+Choose who speaks first when the call starts:
+
+| Option | Description |
+|--------|-------------|
+| **Agent speaks first** | The agent greets the user with a custom message |
+| **User speaks first** | The agent waits for the user to initiate |
+
+<Info>
+  If you choose "Agent speaks first", you'll need to select a voice for the greeting (for Realtime architecture) or configure a greeting message.
+</Info>
+
+### Last Message (Optional)
+
+A farewell message played when the conversation ends gracefully.
+
+**Example:** "Thank you for chatting! Have a great day."
+
+---
+
+## Step 5: Choose an LLM Model (Pipeline & Text Only)
+
+Available models are fetched from your organization's configured providers.
+
+| Model Family | Best For | Speed | Cost |
+|--------------|----------|-------|------|
 | **GPT-4o** | Complex conversations, reasoning | Fast | $$$ |
 | **GPT-4o-mini** | Simple tasks, high volume | Very fast | $ |
 | **Gemini 1.5 Pro** | Long context, multilingual | Fast | $$ |
-| **Gemini 1.5 Flash** | Fast responses, cost-saving | Very fast | $ |
+| **Gemini Flash** | Fast responses, cost-saving | Very fast | $ |
 
 <Tip>
   For most customer support use cases, **GPT-4o-mini** or **Gemini Flash** is more than enough. Use GPT-4o only when complex reasoning is required.
 </Tip>
 
-**Temperature:**
-
-| Value | Effect | Use When |
-|-------|--------|----------|
-| `0.0 – 0.3` | Precise, consistent | Support, factual queries |
-| `0.4 – 0.7` | Balanced | General use |
-| `0.8 – 1.0` | Creative, varied | Sales, casual conversation |
-
 ---
 
-## Step 5: Choose a Voice
+## Step 6: Choose a Voice (Pipeline & Realtime Only)
 
 The right voice makes your agent sound trustworthy and professional.
 
@@ -278,15 +340,44 @@ Full guide: [Voice Selection →](/platform/voices)
 | Use Case | Recommended |
 |----------|-------------|
 | Customer Support | Cartesia — warm, clear |
-| Sales | ElevenLabs — confident, engaging |
+| Sales | OpenAI TTS — confident, engaging |
 | Medical / Legal | Cartesia — calm, professional |
 | Casual / Friendly | OpenAI TTS — natural |
 
+<Info>
+  Supported voice providers: **Cartesia, OpenAI TTS, Gemini, Deepgram**. Availability depends on your organization's API keys and configured providers.
+</Info>
+
 ---
 
-## Step 6: Add Functions (Optional)
+## Step 7: Choose STT Provider (Pipeline Only)
+
+<Frame>
+  ![Pipeline configuration — Voice, LLM, STT](/images/create-agent-pipeline-config.png)
+</Frame>
+
+Speech-to-Text converts user speech into text for the LLM.
+
+| Provider | Best For |
+|----------|----------|
+| **Deepgram** | Fast, accurate transcription |
+| **OpenAI Whisper** | High accuracy, multilingual |
+| **Cartesia** | Low-latency streaming |
+| **Gemini** | Integrated with Gemini LLM |
+
+<Tip>
+  For most use cases, **Gemini STT** or **Deepgram** provides the best balance of speed and accuracy.
+</Tip>
+
+---
+
+## Step 8: Add Functions (Optional)
 
 Give your agent the ability to take real actions during calls.
+
+<Frame>
+  ![Functions configuration](/images/create-agent-functions.png)
+</Frame>
 
 **Built-in functions** (enable with one click):
 
@@ -301,11 +392,15 @@ Give your agent the ability to take real actions during calls.
 - Book a calendar slot
 - Update your CRM
 
+<Warning>
+  If you enable function calling, you must select at least one function (built-in or custom).
+</Warning>
+
 Full guide: [Custom Functions →](/guides/custom-functions)
 
 ---
 
-## Step 7: Test Before Going Live
+## Step 9: Test Before Going Live
 
 **Always test before activating!**
 
@@ -320,9 +415,9 @@ Full testing guide: [Agent Testing →](/platform/agent-testing)
 
 ---
 
-## Step 8: Activate
+## Step 10: Save and Activate
 
-Once testing passes — click **Activate**.
+Click **Create Agent** (or **Update Agent** when editing).
 
 Your agent is now live. You can:
 
@@ -342,7 +437,7 @@ Your agent is now live. You can:
 </CardGroup>
 
 <Warning>
-  **An inactive agent cannot receive calls.** Make sure to click Activate before going to production.
+  **Agent Status:** Agents are created in an active state by default. To pause an agent, use the Pause button in the agents list. A paused agent cannot receive calls.
 </Warning>
 
 ---
@@ -352,7 +447,7 @@ Your agent is now live. You can:
 <AccordionGroup>
   <Accordion title="❌ System prompt is too long">
     **Problem:** Agent becomes inconsistent and confused.
-    **Fix:** Keep it under 500 words. Include only essential instructions.
+    **Fix:** Keep it under 5000 characters. Include only essential instructions.
   </Accordion>
   <Accordion title="❌ Skipping tests">
     **Problem:** Agent behaves unexpectedly in production.
@@ -366,4 +461,18 @@ Your agent is now live. You can:
     **Problem:** Support agent gives "creative" but incorrect answers.
     **Fix:** For factual/support tasks, keep temperature at 0.2–0.4.
   </Accordion>
+  <Accordion title="❌ Missing required fields">
+    **Problem:** Agent creation fails with validation errors.
+    **Fix:** Ensure Name, Description, Languages, and System Prompt are filled. For Pipeline: also select Voice, LLM, and STT.
+  </Accordion>
+  <Accordion title="❌ Inactivity timeout too short">
+    **Problem:** Calls end prematurely during natural pauses.
+    **Fix:** Set timeout between 20–40 seconds for most use cases.
+  </Accordion>
 </AccordionGroup>
+
+---
+
+## API Reference
+
+Creating agents programmatically? See the [Agents API Reference →](/api-reference/agents)

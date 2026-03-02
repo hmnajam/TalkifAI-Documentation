@@ -5,9 +5,17 @@ description: "Credit-based billing architecture — how usage is tracked and cha
 
 ## Overview
 
-TalkifAI uses a **credit-based billing system**. Organizations purchase credits, which are consumed as voice sessions run.
+TalkifAI uses a **credit-based billing system**. Organizations purchase credits via Lemon Squeezy, which are consumed as voice sessions run.
 
 The billing system is a separate **FastAPI microservice** running on Google Cloud Run.
+
+**Key features:**
+- Pay-as-you-go credit system (1 credit = $1 = ~1 minute of voice conversation)
+- BYOC (Bring Your Own Carrier) — no telephony markup
+- Grace period of $5 (calls allowed even with negative balance up to -$5)
+- Redis caching for fast quota checks (30s TTL)
+- Automatic cost calculation via background worker
+- Low balance email notifications
 
 ---
 
@@ -25,8 +33,8 @@ The billing system is a separate **FastAPI microservice** running on Google Clou
 │  ┌────────────────────────────────────────────────┐   │
 │  │  Lemon Squeezy Service                         │   │
 │  │  • Webhook: POST /lemon-squeezy/webhook        │   │
-│  │  • Verifies signature                          │   │
-│  │  • Processes subscriptions & orders            │   │
+│  │  • Verifies signature (HMAC-SHA256)            │   │
+│  │  • Processes orders                            │   │
 │  │  • Adds credits on payment                     │   │
 │  └────────────────────────────────────────────────┘   │
 └────────────────────────┬──────────────────────────────┘
@@ -36,17 +44,21 @@ The billing system is a separate **FastAPI microservice** running on Google Clou
 │              Billing Service (Cloud Run)               │
 │                                                        │
 │  API Endpoints:                                        │
-│  • /billing/sessions  — Start/end session tracking    │
-│  • /billing/credits   — Check/consume/add credits     │
-│  • /billing/auto-topup — Configure auto-recharge      │
-│  • /billing/dashboard  — Usage analytics              │
+│  • POST /billing/sessions/start — Start session       │
+│  • POST /billing/sessions/end — End + calculate cost  │
+│  • POST /billing/credits/check — Check quota          │
+│  • POST /billing/credits/consume — Deduct credits     │
+│  • GET /billing/credits/balance/{org_id} — Balance    │
+│  • GET /billing/credits/history/{org_id} — History    │
+│  • GET /billing/dashboard — Usage analytics           │
+│  • GET /billing/pricing — Pricing rules               │
 │                                                        │
 │  Services:                                             │
-│  • SessionService   — Track call lifecycle             │
-│  • CreditService    — Credit balance management       │
-│  • PricingService   — Cost calculation                │
-│  • AutoTopUpService — Automatic recharge              │
-│  • NotificationService — Low credit alerts            │
+│  • SessionService — Track call lifecycle              │
+│  • CreditService — Credit balance management          │
+│  • PricingService — Cost calculation                  │
+│  • NotificationService — Low balance alerts           │
+│  • OrganizationService — Org management               │
 │                                                        │
 │  Background Workers:                                   │
 │  • CostCalculatorWorker — Async cost processing       │
@@ -54,6 +66,16 @@ The billing system is a separate **FastAPI microservice** running on Google Clou
 │  Redis Cache (30s TTL):                                │
 │  • Credit balance caching                             │
 │  • Quota caching                                      │
+└───────────────────────────────────────────────────────┘
+                         │
+                         ▼
+┌───────────────────────────────────────────────────────┐
+│         PostgreSQL Database (Neon Serverless)          │
+│  • BillingSession — Session tracking with costs       │
+│  • CreditTransaction — Credit movement history        │
+│  • PricingRule — Dynamic pricing configuration        │
+│  • LemonSqueezyOrder — One-time credit purchases      │
+│  • LemonSqueezyWebhookEvent — Webhook audit log       │
 └───────────────────────────────────────────────────────┘
 ```
 
@@ -63,19 +85,19 @@ The billing system is a separate **FastAPI microservice** running on Google Clou
 
 ### How Credits Work
 
-| 1 credit | = 1 minute of voice conversation |
-|----------|----------------------------------|
+| 1 credit | = $1 USD = ~1 minute of voice conversation |
+|----------|--------------------------------------------|
 
 Credits are:
 - Purchased via Lemon Squeezy (payment processor)
-- Stored per organization
-- Consumed at session end (not during)
+- Stored per organization in the database
+- Consumed at session end (not during the call)
 - Cached in Redis (30-second TTL) for fast quota checks
 
 ### Credit Flow
 
 ```
-1. Pre-call: Check credits available
+1. Pre-call: Check credits available (optional)
          │
          ├── Insufficient → Reject call
          └── OK → Allow call
@@ -84,76 +106,102 @@ Credits are:
          2. Call runs (credits NOT deducted yet)
                    │
                    ▼
-         3. Call ends → Duration calculated
+         3. Call ends → POST /billing/sessions/end
                    │
                    ▼
-         4. CostCalculatorWorker (async)
-            calculates cost based on:
-            • Duration
-            • Provider rates (OpenAI vs Deepgram vs etc.)
-            • Plan tier
+         4. Session marked as "completed"
+            • endTime recorded
+            • duration calculated
                    │
                    ▼
-         5. Credits deducted from org balance
+         5. CostCalculatorWorker (background, polls every 10s)
+            • Finds completed sessions
+            • Calculates cost based on:
+              - Duration (seconds)
+              - Base cost (infrastructure)
+              - Model cost (AI processing, if platform keys)
+              - STT/TTS costs (if platform keys)
                    │
                    ▼
-         6. Notification if balance < 20%
+         6. POST /billing/credits/consume
+            • Optimistic locking prevents race conditions
+            • Credits deducted from org balance
+            • CreditTransaction record created
+            • Redis cache invalidated
+                   │
+                   ▼
+         7. Notification check
+            • Balance < $1.00 → Email alert
+            • Balance < $0.00 → Grace period warning
+            • Balance < -$4.00 → Critical alert
 ```
+
+### Grace Period Logic
+
+TalkifAI uses a **grace period system** to prevent sudden service interruption:
+
+| Balance | Status | Calls Allowed |
+|---------|--------|---------------|
+| ≥ $0.00 | ✅ Normal | ✅ Yes |
+| -$5.00 to $0.00 | ⚠️ Warning | ✅ Yes |
+| < -$5.00 | ❌ Blocked | ❌ No |
+
+**Purpose:** The $5 grace period prevents sudden service interruption due to timing issues or unexpected usage spikes.
 
 ---
 
 ## Pricing Model
 
-Costs depend on the agent architecture and providers used:
+### BYOC Architecture (Bring Your Own Carrier)
 
-| Component | Approximate Cost |
-|-----------|-----------------|
-| Pipeline STT (Deepgram) | ~$0.003/min |
-| Pipeline LLM (GPT-4o) | ~$0.015/min |
-| Pipeline TTS (Cartesia) | ~$0.005/min |
-| Realtime (OpenAI Realtime) | ~$0.06/min |
+Customers provide their own SIP credentials (Twilio, Telnyx, etc.) and pay carriers **directly**.
+
+**Platform only charges for:**
+- Base platform fee (infrastructure)
+- AI usage (STT/TTS/LLM if using platform keys)
+
+**No telephony markup** — carrier costs are NOT charged by TalkifAI.
+
+### Cost Breakdown
+
+The total cost of a session is calculated as:
+
+```
+TOTAL = Base Cost + Model Cost + STT Cost + Voice Cost
+
+Where:
+• Base Cost — Infrastructure fee (always charged)
+• Model Cost — LLM processing (only if keyMode = "talkifai_keys")
+• STT Cost — Speech-to-text (only if keyMode = "talkifai_keys")
+• Voice Cost — TTS voice (only if keyMode = "talkifai_keys")
+```
+
+### Example Rates (via PricingRule table)
+
+| Component | Rate | When Charged |
+|-----------|------|--------------|
+| **Base (Webcall + platform keys)** | ~$0.05/min | Always |
+| **Base (Webcall + own keys)** | ~$0.02/min | Always |
+| **Base (Telephony + platform keys)** | ~$0.10/min | Always |
+| **LLM (GPT-4o-mini)** | ~$0.015/min | Platform keys only |
+| **LLM (Gemini Flash)** | ~$0.010/min | Platform keys only |
+| **STT (Deepgram)** | ~$0.003/min | Platform keys only |
+| **TTS (Cartesia)** | ~$0.005/min | Platform keys only |
+
+**Example Calculation:**
+```
+Session: Telephony call, 5 minutes, platform keys
+• Base cost: $0.10/min × 5 min = $0.50
+• LLM cost: $0.015/min × 5 min = $0.075
+• STT cost: $0.003/min × 5 min = $0.015
+• TTS cost: $0.005/min × 5 min = $0.025
+• Carrier cost: $0.00 (customer pays Twilio directly)
+• TOTAL: $0.615 (6.15 credits)
+```
 
 <Note>
-  Platform credits abstract away provider pricing differences. You pay one credit per minute regardless of which providers your agent uses.
+  Actual rates are stored in the `PricingRule` database table and can be updated dynamically without code changes.
 </Note>
-
----
-
-## Auto Top-Up
-
-Organizations can configure automatic credit recharging:
-
-1. Go to **Settings → Billing → Auto Top-Up**
-2. Set trigger balance (e.g., "Recharge when below 100 credits")
-3. Set recharge amount (e.g., "Add 500 credits")
-4. Save payment method
-
-When the balance drops below the trigger, the billing service automatically:
-1. Initiates a payment via Lemon Squeezy
-2. Adds credits on successful payment
-3. Sends a notification email
-
----
-
-## Developer Quotas (Free Tier)
-
-Users on the free tier have **monthly minute limits** instead of credit-based billing:
-
-| Setting | Default |
-|---------|---------|
-| Monthly limit | 3,000 minutes |
-| Scope | Per user, per organization |
-| Reset | 1st of every month |
-
-Quota is checked before every call. Calls that would exceed the quota are rejected with:
-```json
-{
-  "error": "Monthly quota exceeded",
-  "code": "QUOTA_EXCEEDED",
-  "minutesUsed": 3000,
-  "minutesLimit": 3000
-}
-```
 
 ---
 
@@ -161,7 +209,359 @@ Quota is checked before every call. Calls that would exceed the quota are reject
 
 TalkifAI uses **Lemon Squeezy** for payment processing:
 
-- Credit packages available in the Studio dashboard
-- Subscriptions for monthly credit allocations
-- One-time purchases for credit top-ups
-- Webhook-based credit addition (automatic after payment)
+### Purchase Flow
+
+```
+1. User selects credit package in Studio
+         │
+         ▼
+2. Redirected to Lemon Squeezy checkout
+         │
+         ▼
+3. User completes payment
+         │
+         ▼
+4. Lemon Squeezy sends webhook to TalkifAI
+   POST /lemon-squeezy/webhook
+         │
+         ▼
+5. Webhook verified (HMAC-SHA256 signature)
+         │
+         ▼
+6. LemonSqueezyOrder record created
+         │
+         ▼
+7. Credits added to organization balance
+         │
+         ▼
+8. CreditTransaction record created (type: "topup")
+         │
+         ▼
+9. Redis cache invalidated
+         │
+         ▼
+10. User can immediately use new credits
+```
+
+### Supported Events
+
+| Event | Action |
+|-------|--------|
+| `order_created` | Add credits from one-time purchase |
+
+**Webhook payload includes:**
+- `custom_data.organization_id` — Links payment to org
+- `custom_data.user_id` — User who made purchase
+- `data.attributes.total` — Amount in cents ($19.99 = 1999)
+
+### Credit Packages
+
+Credits are purchased as **one-time payments** (no subscriptions):
+
+| Package | Price | Credits Added |
+|---------|-------|---------------|
+| Starter | $9.99 | $9.99 in credits |
+| Pro | $39.99 | $39.99 in credits |
+| Enterprise | $99.99 | $99.99 in credits |
+
+<Note>
+  Credits never expire and remain in the organization's balance indefinitely.
+</Note>
+
+---
+
+## Session Tracking
+
+### Start Session
+
+```bash
+POST /billing/sessions/start
+Content-Type: application/json
+
+{
+  "organizationId": "org_abc123",
+  "userId": "user_xyz789",
+  "agentId": "agent_def456",
+  "roomName": "room_session_123",
+  "sessionType": "webcall",  // or "telephony"
+  "keyMode": "talkifai_keys",  // or "my_keys"
+  "agentModel": "gpt_4o_mini",
+  "agentArchitecture": "pipeline",
+  "sttProvider": "deepgram",
+  "voiceId": "cartesia-voice-123"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "sessionId": "session_abc123",
+  "message": "Session started successfully"
+}
+```
+
+### End Session
+
+```bash
+POST /billing/sessions/end
+Content-Type: application/json
+
+{
+  "roomName": "room_session_123",
+  "endTime": "2024-01-15T10:30:00Z"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "sessionId": "session_abc123",
+  "duration": 180,
+  "message": "Session ended successfully. Costs will be calculated shortly."
+}
+```
+
+<Note>
+  Costs are calculated asynchronously by the background worker (usually within 10-20 seconds).
+</Note>
+
+---
+
+## Concurrency Safety
+
+### Optimistic Locking
+
+To prevent race conditions when multiple calls end simultaneously:
+
+```
+WITHOUT Optimistic Locking (WRONG):
+────────────────────────────────────────────────────────
+Thread A reads: balance = $10.00
+Thread B reads: balance = $10.00  ← Both read same value!
+Thread A writes: $10.00 - $1.00 = $9.00
+Thread B writes: $10.00 - $1.50 = $8.50  ← Overwrites Thread A!
+Final balance: $8.50  ❌ WRONG! (Should be $7.50)
+
+WITH Optimistic Locking (CORRECT):
+────────────────────────────────────────────────────────
+Thread A reads: balance = $10.00, timestamp = T1
+Thread B reads: balance = $10.00, timestamp = T1
+Thread A updates: WHERE timestamp = T1 → Success
+  New balance: $9.00, timestamp = T2
+Thread B updates: WHERE timestamp = T1 → Fails! (timestamp changed)
+Thread B retries: reads balance = $9.00, timestamp = T2
+Thread B updates: WHERE timestamp = T2 → Success
+  New balance: $7.50, timestamp = T3
+Final balance: $7.50  ✅ CORRECT!
+```
+
+---
+
+## Redis Caching
+
+### Cache Flow
+
+```
+Request: Check credit for org_123
+       │
+       ▼
+┌──────────────────┐
+│ Check Redis      │  Key: "credit:balance:org_123"
+│ TTL: 30 seconds  │
+└────┬─────────────┘
+     │
+     ├─ HIT? → Return cached balance (fast path - 5ms)
+     │
+     └─ MISS? → Query database (slow path - 50ms)
+                 └─ Store in cache (TTL: 30s)
+                     └─ Return balance
+```
+
+### Cache Invalidation
+
+Cache is invalidated when:
+- Credits are consumed (session ends)
+- Credits are added (payment successful)
+- Manual balance refresh requested
+
+**Performance Impact:**
+- Without cache: 100 requests = 100 DB queries
+- With cache: 100 requests = ~3-4 DB queries (96% reduction)
+
+---
+
+## Notifications
+
+The billing service sends email notifications for:
+
+| Trigger | Threshold | Email Content |
+|---------|-----------|---------------|
+| **Low Balance** | Balance < $1.00 | "Your balance is low. Please add credits." |
+| **Grace Period** | Balance < $0.00 | "You're using grace period credits. Add credits now." |
+| **Critical** | Balance < -$4.00 | "Service suspension imminent. Add credits immediately." |
+
+Notifications are sent to the organization owner's email address.
+
+---
+
+## API Reference
+
+### Check Credit Quota
+
+```bash
+POST /billing/credits/check
+Content-Type: application/json
+
+{
+  "organizationId": "org_abc123"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "allowed": true,
+    "balance": 25.50,
+    "gracePeriodUsed": 0.00,
+    "gracePeriodLimit": 5.00
+  }
+}
+```
+
+### Consume Credits
+
+```bash
+POST /billing/credits/consume
+Content-Type: application/json
+
+{
+  "organizationId": "org_abc123",
+  "sessionCost": 0.615,
+  "roomName": "room_session_123"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "balanceBefore": 25.50,
+    "balanceAfter": 24.885,
+    "amountConsumed": 0.615
+  }
+}
+```
+
+### Get Balance
+
+```bash
+GET /billing/credits/balance/{org_id}
+Authorization: Bearer YOUR_API_KEY
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "organizationId": "org_abc123",
+    "balance": 24.885,
+    "lastUpdated": "2024-01-15T10:30:00Z"
+  }
+}
+```
+
+### Get Transaction History
+
+```bash
+GET /billing/credits/history/{org_id}?limit=50&offset=0
+Authorization: Bearer YOUR_API_KEY
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "transactions": [
+      {
+        "id": "txn_abc123",
+        "type": "consumption",
+        "amount": -0.615,
+        "balanceBefore": 25.50,
+        "balanceAfter": 24.885,
+        "sessionId": "session_xyz789",
+        "createdAt": "2024-01-15T10:30:00Z"
+      },
+      {
+        "id": "txn_def456",
+        "type": "topup",
+        "amount": 39.99,
+        "balanceBefore": 5.00,
+        "balanceAfter": 44.99,
+        "orderId": "lemon_order_123",
+        "createdAt": "2024-01-10T08:00:00Z"
+      }
+    ],
+    "total": 150
+  }
+}
+```
+
+---
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Call rejected due to insufficient credits">
+    **Check:**
+    1. Current balance: `GET /billing/credits/balance/{org_id}`
+    2. Grace period status (balance may be negative but still allowed)
+    3. Recent transactions for unexpected charges
+
+    **Fix:** Add credits via Lemon Squeezy checkout.
+  </Accordion>
+
+  <Accordion title="Credits not added after payment">
+    **Check:**
+    1. Lemon Squeezy order status (check email receipt)
+    2. Webhook logs: `GET /lemon-squeezy/webhook-events`
+    3. `LemonSqueezyWebhookEvent.processed` flag in database
+
+    **Fix:** Contact support with order ID if webhook failed.
+  </Accordion>
+
+  <Accordion title="Balance seems incorrect">
+    **Check:**
+    1. Transaction history for all debits/credits
+    2. Recent session costs (may still be calculating)
+    3. Redis cache staleness (wait 30s or force refresh)
+
+    **Fix:** Force cache refresh: `DELETE /billing/credits/cache/{org_id}`
+  </Accordion>
+
+  <Accordion title="Cost calculation delayed">
+    **Expected behavior:** Costs are calculated within 10-20 seconds by the background worker.
+
+    **Check:**
+    1. Worker logs for errors
+    2. `BillingSession.sessionStatus` = "completed"
+    3. `BillingSession.costsCalculatedAt` timestamp
+
+    **Fix:** Manual cost calculation via admin tools if worker stuck.
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Related Documentation
+
+- [Lemon Squeezy Integration](/architecture/lemon-squeezy) — Payment webhook details
+- [Pricing Rules](/architecture/pricing-rules) — How pricing is configured
+- [Session Tracking](/api-reference/billing/sessions) — Full API reference
+- [Organization Management](/platform/organization) — Managing org billing settings

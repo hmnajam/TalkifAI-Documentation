@@ -5,98 +5,99 @@ description: "Create your first AI voice agent in under 5 minutes."
 
 ## Prerequisites
 
-Before you begin, make sure you have:
+All you need to get started:
 
-- A [TalkifAI account](https://studio.talkifai.dev/sign-up)
-- An OpenAI API key (or Google Gemini key)
-- A microphone-enabled browser (for testing)
-
----
-
-## Step 1: Create an Organization
-
-When you first sign up, TalkifAI automatically creates a default organization for you.
-
-To create additional organizations:
-
-1. Go to **Settings → Organization**
-2. Click **Create Organization**
-3. Enter a name and unique slug (e.g., `my-company`)
-
-<Note>
-  All agents, phone numbers, and API keys are scoped to an organization. You can be a member of multiple organizations.
-</Note>
+- A [TalkifAI account](https://studio.talkifai.dev/signup) — free to create
+- A **microphone-enabled browser** (Chrome or Edge recommended) — for testing voice agents
+`
+<Info>
+  When you sign up, TalkifAI automatically creates a **default organization** for you and adds **free trial credits** to your account. No API keys or credit card required to start.
+</Info>
 
 ---
 
-## Step 2: Add Your API Keys (Optional)
-
-By default, TalkifAI uses its own platform keys. To use your own:
-
-1. Go to **Settings → API Keys**
-2. Set your **Key Mode**:
-   - `Platform Keys` — Use TalkifAI's built-in keys (easiest)
-   - `My Keys` — Use your own keys (full control)
-   - `Hybrid` — Your keys with platform keys as fallback
-3. Enter your provider keys (OpenAI, Google, Deepgram, Cartesia)
-
----
-
-## Step 3: Create Your First Agent
+## Step 1: Create Your First Agent
 
 <Steps>
   <Step title="Open Agent Builder">
     In the Studio sidebar, click **Agents → Create Agent**.
+
+    <Frame>
+      ![Agents dashboard](/images/quickstart-agents-dashboard.png)
+    </Frame>
   </Step>
 
   <Step title="Choose Architecture">
-    Select the agent type:
+    Select the agent type based on what you need:
+
+    <Frame>
+      ![Create agent — architecture selection](/images/quickstart-create-agent.png)
+    </Frame>
 
     | Type | Best For |
     |------|----------|
-    | **Pipeline** | Mix-and-match providers |
-    | **Realtime** | Lowest latency (OpenAI/Gemini) |
+    | **Pipeline** | Voice agent — mix-and-match STT, LLM, TTS providers |
+    | **Realtime** | Voice agent — lowest latency (OpenAI/Gemini native) |
+    | **Text** | Chat only — website chatbot, no microphone needed |
+
+    <Tip>
+      Not sure? Start with **Pipeline** — it's the most flexible and works great for most use cases.
+    </Tip>
   </Step>
 
   <Step title="Configure the Agent">
     Fill in the basics:
 
     - **Name**: e.g., "Customer Support Bot"
-    - **System Prompt**: Instructions for your agent's behavior
-    - **LLM Model**: GPT-4o, Gemini 1.5 Pro, etc.
-    - **Voice**: Choose a TTS voice (ElevenLabs, Cartesia, OpenAI TTS)
+    - **System Prompt**: Instructions for your agent's behavior and personality
+    - **LLM Model**: GPT-4o, Gemini 1.5 Pro, Claude, etc.
+    - **Voice**: Choose a TTS voice (Cartesia, ElevenLabs, OpenAI TTS)
     - **Language**: Select the spoken language
   </Step>
 
   <Step title="Test in Browser">
-    Click **Test Agent** to start a live voice conversation in your browser. No phone number required.
+    Click **Test Agent** to start a live voice conversation directly in your browser. No phone number required — your trial credits cover the test session.
   </Step>
 
-  <Step title="Deploy">
-    Click **Activate** to make the agent live. You can now embed it in your app, connect a phone number, or call it via API.
+  <Step title="Activate">
+    Click **Activate** to make the agent live. You can now connect a phone number, embed it as a chat widget, or call it via API.
   </Step>
 </Steps>
 
 ---
 
-## Step 4: Make Your First API Call
+## Step 2: Add Your Own API Keys (Optional)
 
-Once your agent is active, you can trigger it programmatically.
+By default, TalkifAI uses its own platform keys — you don't need to bring your own to get started. When you're ready for production or want full control:
+
+1. Go to **Settings → Provider Keys**
+2. Set your **Key Mode**:
+   - `Platform Keys` — TalkifAI's built-in keys, billed from your credits (default)
+   - `My Keys` — Your own provider keys, billed directly by the provider
+   - `Hybrid` — Your keys with platform keys as fallback
+3. Enter your provider keys (OpenAI, Google, Deepgram, Cartesia, etc.)
+
+---
+
+## Step 3: Make Your First API Call
+
+Once your agent is active, you can trigger outbound calls programmatically.
 
 ### Get Your API Key
 
-1. Go to **Settings → Developer**
-2. Click **Generate API Key**
-3. Copy the key — you won't see it again
+1. Go to **Settings → API Keys**
+2. Click **Create API Key**
+3. Give it a name (e.g., "My First Key")
+4. Copy it immediately — it won't be shown again
 
-### Start a Call Session
+### Start an Outbound Call
 
 ```bash
 curl -X POST https://api.talkifai.dev/v1/calls \
   -H "Authorization: Bearer YOUR_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
-    "agent_id": "agent_your_agent_id",
+    "agentId": "your-agent-id",
     "to": "+12025550123"
   }'
 ```
@@ -107,14 +108,18 @@ curl -X POST https://api.talkifai.dev/v1/calls \
 {
   "success": true,
   "data": {
-    "call_id": "call_abc123",
+    "callId": "call_abc123",
     "status": "initiating",
-    "agent_id": "agent_your_agent_id",
+    "agentId": "your-agent-id",
     "to": "+12025550123",
-    "created_at": "2024-01-15T10:30:00Z"
+    "createdAt": "2024-01-15T10:30:00Z"
   }
 }
 ```
+
+<Note>
+  To make outbound calls you need a phone number connected to your agent. See [Telephony Setup →](/platform/telephony)
+</Note>
 
 ---
 

@@ -1,0 +1,739 @@
+---
+title: "Settings & Profile"
+description: "Manage your profile, notifications, security settings, and integrations."
+---
+
+## Overview
+
+The **Settings** page lets you manage your personal profile, notification preferences, security settings, and telephony integrations.
+
+**Navigation:** **Studio → Settings** (sidebar)
+
+**URL:** `/settings`
+
+**Access:** All authenticated users can access their own settings.
+
+---
+
+## Page Layout
+
+### Header Section
+
+**Title:** "Settings"
+- Large gradient text (purple brand color)
+- Subtitle: "Manage your account preferences and configurations"
+
+**Save Button** (Top Right):
+- **Icon:** Save icon
+- **Text:** "Save Changes" (or "Saving..." when loading)
+- **State:** Disabled while saving
+- **Action:** Saves profile changes
+
+### Navigation Tabs
+
+**Desktop (Large Screens):**
+- Vertical sidebar navigation (left side)
+- 5 tabs with icons
+- Active tab highlighted (purple background)
+- Full width cards
+
+**Mobile/Tablet:**
+- Horizontal tab bar (top)
+- Icon-only buttons
+- Hover labels on hover
+- Compact layout
+
+**Tabs:**
+1. **Profile** (User icon)
+2. **Notifications** (Bell icon)
+3. **Security** (Shield icon)
+4. **Integrations** (Globe icon)
+5. **Danger Zone** (Alert Triangle icon, red)
+
+---
+
+## Profile Tab
+
+### Profile Information Card
+
+**Card Header:**
+- **Title:** "Profile Information" (gradient text)
+- **Description:** "Update your personal and company details"
+
+### Avatar Section
+
+**Avatar Display:**
+- **Size:** 80x80px
+- **Shape:** Circular
+- **Content:**
+  - Custom image (if uploaded)
+  - Default: User icon placeholder
+- **Fallback:** Initials or default user.png
+
+### Profile Form Fields
+
+**Grid Layout:** 2 columns (desktop), 1 column (mobile)
+
+#### Field 1: Full Name
+
+**Field Type:** Text Input
+**Required:** Yes
+**Placeholder:** Your full name
+**Validation:** 
+- Min: 2 characters
+- Max: 100 characters
+- Letters, spaces, hyphens allowed
+
+**Example:**
+```
+John Smith
+```
+
+#### Field 2: Email Address
+
+**Field Type:** Email Input
+**Required:** Yes
+**Editable:** No (read-only)
+**Format:** Standard email format
+
+**Note:** Email cannot be changed. Contact support to update email.
+
+**Example:**
+```
+john@example.com
+```
+
+#### Field 3: Company
+
+**Field Type:** Text Input
+**Required:** No
+**Placeholder:** "Acme Corp"
+**Validation:**
+- Max: 200 characters
+- Any text allowed
+
+**Example:**
+```
+Acme Corporation
+```
+
+#### Field 4: Phone Number
+
+**Field Type:** Tel Input
+**Required:** No
+**Placeholder:** "+92-300-1234567"
+**Validation:**
+- E.164 format recommended
+- Country code required
+- Numbers, +, -, () allowed
+
+**Example:**
+```
++1-202-555-0123
+```
+
+#### Field 5: Timezone
+
+**Field Type:** Dropdown Select
+**Required:** Yes
+**Default:** Auto-detected from browser
+**Options:** All IANA timezones (425+ options)
+
+**Popular Timezones:**
+- `America/New_York` (EST/EDT)
+- `America/Los_Angeles` (PST/PDT)
+- `Europe/London` (GMT/BST)
+- `Europe/Berlin` (CET/CEST)
+- `Asia/Karachi` (PKT)
+- `Asia/Dubai` (GST)
+- `Asia/Singapore` (SGT)
+- `Australia/Sydney` (AEST/AEDT)
+- `UTC` (Coordinated Universal Time)
+
+**Search:** Type to filter timezones
+**Auto-Detect:** Uses browser's timezone on first login
+
+### Save Profile
+
+**Button:** "Save Changes" (top right)
+
+**Process:**
+1. Click "Save Changes"
+2. Sends PUT request to `/api/user/profile`
+3. Shows loading state ("Saving...")
+4. Success toast: "Profile updated successfully!"
+5. Updates local state with new data
+
+**Request:**
+```json
+{
+  "name": "John Smith",
+  "company": "Acme Corp",
+  "phone": "+1-202-555-0123",
+  "timezone": "America/New_York"
+}
+```
+
+**Response:**
+```json
+{
+  "user": {
+    "id": "user_abc123",
+    "name": "John Smith",
+    "email": "john@example.com",
+    "company": "Acme Corp",
+    "phone": "+1-202-555-0123",
+    "timezone": "America/New_York"
+  }
+}
+```
+
+**Validation Errors:**
+- Missing required fields
+- Invalid email format
+- Invalid phone format
+- Invalid timezone
+
+**Success Message:**
+- Toast notification (top-center)
+- Duration: 4 seconds
+- Green checkmark icon
+
+**Error Messages:**
+- Red toast notification
+- Specific error from API
+- "Something went wrong. Please try again."
+
+---
+
+## Notifications Tab
+
+### Notification Preferences Card
+
+**Card Header:**
+- **Title:** "Notification Preferences"
+- **Description:** "Choose how you want to be notified"
+
+### Notification Types
+
+**Currently Unavailable** - All notification settings show error toast when toggled:
+
+#### Email Notifications
+
+**Toggle:** On/Off
+**Description:** "Receive notifications via email"
+**Status:** ❌ Not available
+**Error:** "Email notifications is not available for you! please try again later."
+
+#### SMS Notifications
+
+**Toggle:** On/Off
+**Description:** "Receive critical alerts via SMS"
+**Status:** ❌ Not available
+**Error:** "SMS notifications is not available for you! please try again later."
+
+#### Call Alerts
+
+**Toggle:** On/Off
+**Description:** "Get notified when agents go offline"
+**Status:** ❌ Not available
+**Error:** "Call alerts is not available for you! please try again later."
+
+#### Weekly Reports
+
+**Toggle:** On/Off
+**Description:** "Receive weekly performance summaries"
+**Status:** ❌ Not available
+**Error:** "Weekly reports is not available for you! please try again later."
+
+#### System Updates
+
+**Toggle:** On/Off
+**Description:** "Get notified about new features and updates"
+**Status:** ❌ Not available
+**Error:** "System updates is not available for you! please try again later."
+
+**Future Features:**
+- Email notifications for low balance
+- SMS alerts for failed calls
+- Weekly usage reports
+- System maintenance notifications
+- New feature announcements
+
+---
+
+## Security Tab
+
+### Security Settings Card
+
+**Card Header:**
+- **Title:** "Security Settings"
+- **Description:** "Manage your account security preferences"
+
+### Security Options
+
+#### Two-Factor Authentication (2FA)
+
+**Toggle:** On/Off
+**Description:** "Add an extra layer of security to your account"
+**Status:** ❌ Not available
+**Badge:** "Enabled" (green, when on)
+**Error:** "Two-Factor Authentication is not available for you!. please try again later."
+
+**Behavior:**
+- Toggle attempts to enable
+- Shows error toast
+- Automatically resets to OFF
+- Cannot be enabled currently
+
+#### Session Timeout
+
+**Field Type:** Dropdown Select
+**Label:** "Session Timeout (minutes)"
+**Options:**
+- 15 minutes
+- 30 minutes
+- 1 hour
+- 2 hours
+- Never
+
+**Status:** ❌ Not available
+**Error:** "Session timeout setting is not available for you! please try again later."
+
+**Behavior:**
+- Selection shows error toast
+- Value doesn't persist
+- Default: 30 minutes
+
+#### IP Whitelist
+
+**Field Type:** Textarea
+**Label:** "IP Whitelist"
+**Placeholder:** "Enter IP addresses (one per line)"
+**Rows:** 3
+**Description:** "Restrict access to specific IP addresses"
+
+**Example:**
+```
+192.168.1.1
+10.0.0.1
+172.16.0.1
+```
+
+**Save Button:**
+- **Text:** "Save"
+- **Variant:** Outline (purple border)
+- **Status:** ❌ Not available
+- **Error:** "IP Whitelist is not available for you! please try again later."
+
+#### Change Password
+
+**Button:**
+- **Text:** "Change Password"
+- **Icon:** Key icon
+- **Variant:** Outline (red border)
+- **Status:** ❌ Not available
+- **Error:** "Change password option is not available for you! please try again later."
+
+**Future Implementation:**
+- Current password field
+- New password field
+- Confirm password field
+- Password strength indicator
+- Minimum 8 characters
+- Require uppercase, lowercase, number, special char
+
+---
+
+## Integrations Tab
+
+### Telephony Integration Card
+
+**Card Header:**
+- **Title:** "Telephony Integration"
+- **Description:** "Configure your telephony settings"
+
+### Integration Buttons
+
+**Layout:** Horizontal grid (responsive)
+**Style:** Outline buttons (purple border)
+
+#### Twilio Integration
+
+**Button Text:** "Twilio Integration"
+**Icon:** None
+**Link:** `/telephony`
+**Action:** Navigates to Telephony page
+
+**Use Case:**
+- Connect Twilio SIP trunk
+- Configure Twilio phone numbers
+- Set up Twilio credentials
+- Manage Twilio outbound calling
+
+#### Telnyx Integration
+
+**Button Text:** "Telnyx Integration"
+**Icon:** None
+**Link:** `/telephony`
+**Action:** Navigates to Telephony page
+
+**Use Case:**
+- Connect Telnyx SIP trunk
+- Configure Telnyx phone numbers
+- Set up Telnyx credentials
+- Manage Telnyx outbound calling
+
+#### Plivo Integration
+
+**Button Text:** "Plivo Integration"
+**Icon:** None
+**Link:** `/telephony`
+**Action:** Navigates to Telephony page
+
+**Use Case:**
+- Connect Plivo SIP trunk
+- Configure Plivo phone numbers
+- Set up Plivo credentials
+- Manage Plivo outbound calling
+
+#### Custom Telephony
+
+**Button Text:** "Custom Telephony"
+**Icon:** None
+**Link:** `/telephony`
+**Action:** Navigates to Telephony page
+
+**Use Case:**
+- Connect custom SIP provider
+- BYOC (Bring Your Own Carrier)
+- Custom SIP trunk configuration
+- Advanced telephony setup
+
+**Note:** All telephony integrations redirect to the main Telephony page (`/telephony`) where you configure SIP trunks, phone numbers, and credentials.
+
+---
+
+## Danger Zone Tab
+
+### Danger Zone Card
+
+**Card Style:**
+- **Border:** Red (red-200)
+- **Background:** White
+- **Shadow:** Red-tinted shadow
+
+**Card Header:**
+- **Title:** "Danger Zone" (red text)
+- **Icon:** Alert Triangle (red)
+- **Description:** "Irreversible and destructive actions"
+
+### Destructive Actions
+
+#### Delete Account
+
+**Warning Box:**
+- **Border:** Red (red-200)
+- **Background:** Red-50
+- **Title:** "Delete Account" (red-900)
+- **Description:** "Permanently delete your account and all associated data. This action cannot be undone."
+
+**Button:**
+- **Text:** "Delete Account"
+- **Icon:** Trash icon
+- **Variant:** Destructive (red background)
+- **Status:** ❌ Not available
+- **Error:** "Delete account is not available for you! please try again later."
+
+**What Gets Deleted (Future):**
+- User account
+- All organizations owned
+- All agents created
+- All call logs
+- All recordings
+- All transcripts
+- API keys
+- Phone numbers
+
+**What's Preserved (Future):**
+- Call logs for compliance (legal requirement)
+- Billing records (financial records)
+- Anonymous usage statistics
+
+**Confirmation Flow (Future):**
+1. Click "Delete Account"
+2. Modal appears with warning
+3. Must type "DELETE" to confirm
+4. Enter password for verification
+5. 7-day grace period (account recoverable)
+6. Permanent deletion after 7 days
+
+#### Reset All Data
+
+**Warning Box:**
+- **Border:** Orange (orange-200)
+- **Background:** Orange-50
+- **Title:** "Reset All Data" (orange-900)
+- **Description:** "Delete all call logs, feedback data, and analytics. Your agents and settings will be preserved."
+
+**Button:**
+- **Text:** "Reset Data"
+- **Icon:** Trash icon
+- **Variant:** Outline (orange border)
+- **Status:** ❌ Not available
+- **Error:** "Reset data is not available for you! please try again later."
+
+**What Gets Deleted (Future):**
+- All call logs
+- All feedback data
+- All analytics data
+- All transcripts
+- All recordings
+- All post-call analysis results
+
+**What's Preserved (Future):**
+- User account
+- Organizations
+- Agents and configurations
+- Phone numbers
+- API keys
+- Settings and preferences
+
+**Confirmation Flow (Future):**
+1. Click "Reset Data"
+2. Modal appears with warning
+3. Must type "RESET" to confirm
+4. Enter password for verification
+5. Immediate deletion (no grace period)
+6. Cannot be undone
+
+---
+
+## API Reference
+
+### Get User Profile
+
+**Endpoint:**
+```bash
+GET /api/user/profile
+Authorization: Bearer YOUR_SESSION_TOKEN
+```
+
+**Response:**
+```json
+{
+  "user": {
+    "id": "user_abc123",
+    "name": "John Smith",
+    "email": "john@example.com",
+    "image": "https://...",
+    "company": "Acme Corp",
+    "phone": "+1-202-555-0123",
+    "timezone": "America/New_York"
+  }
+}
+```
+
+### Update User Profile
+
+**Endpoint:**
+```bash
+PUT /api/user/profile
+Authorization: Bearer YOUR_SESSION_TOKEN
+Content-Type: application/json
+
+{
+  "name": "John Smith",
+  "company": "Acme Corp",
+  "phone": "+1-202-555-0123",
+  "timezone": "America/New_York"
+}
+```
+
+**Response:**
+```json
+{
+  "user": {
+    "id": "user_abc123",
+    "name": "John Smith",
+    "email": "john@example.com",
+    "image": "https://...",
+    "company": "Acme Corp",
+    "phone": "+1-202-555-0123",
+    "timezone": "America/New_York"
+  }
+}
+```
+
+**Error Responses:**
+
+| Status | Error | Description |
+|--------|-------|-------------|
+| `401` | `Unauthorized` | Not authenticated |
+| `400` | `Invalid email` | Email format invalid |
+| `400` | `Invalid phone` | Phone format invalid |
+| `500` | `Server error` | Internal server error |
+
+---
+
+## Timezone Auto-Detection
+
+### How It Works
+
+**First Login:**
+1. User logs in to TalkifAI
+2. Browser timezone detected via JavaScript
+3. `TimezoneInit` component runs
+4. Sends timezone to backend
+5. Saved to user profile
+
+**JavaScript Code:**
+```javascript
+const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+// Example: "America/New_York"
+```
+
+**Backend API:**
+```bash
+POST /api/user/timezone
+Content-Type: application/json
+
+{
+  "timezone": "America/New_York"
+}
+```
+
+**Behavior:**
+- Only saves if `user.timezone` is null
+- Doesn't overwrite existing timezone
+- Runs once on first login
+- User can manually change later
+
+### Supported Timezones
+
+**All IANA timezones supported (425+):**
+
+**Americas:**
+- `America/New_York` (EST/EDT)
+- `America/Chicago` (CST/CDT)
+- `America/Denver` (MST/MDT)
+- `America/Los_Angeles` (PST/PDT)
+- `America/Sao_Paulo` (BRT)
+- `America/Mexico_City` (CST)
+
+**Europe:**
+- `Europe/London` (GMT/BST)
+- `Europe/Paris` (CET/CEST)
+- `Europe/Berlin` (CET/CEST)
+- `Europe/Moscow` (MSK)
+- `Europe/Istanbul` (TRT)
+
+**Asia:**
+- `Asia/Dubai` (GST)
+- `Asia/Karachi` (PKT)
+- `Asia/Kolkata` (IST)
+- `Asia/Bangkok` (ICT)
+- `Asia/Singapore` (SGT)
+- `Asia/Tokyo` (JST)
+- `Asia/Shanghai` (CST)
+
+**Africa:**
+- `Africa/Cairo` (EET)
+- `Africa/Johannesburg` (SAST)
+- `Africa/Lagos` (WAT)
+- `Africa/Nairobi` (EAT)
+
+**Australia/Pacific:**
+- `Australia/Sydney` (AEST/AEDT)
+- `Australia/Melbourne` (AEST/AEDT)
+- `Pacific/Auckland` (NZST/NZDT)
+- `Pacific/Fiji` (FJT)
+
+**UTC:**
+- `UTC` (Coordinated Universal Time)
+
+---
+
+## Keyboard Shortcuts
+
+**Not currently implemented**
+
+**Future:**
+- `Ctrl+S` — Save changes
+- `Ctrl+1` — Profile tab
+- `Ctrl+2` — Notifications tab
+- `Ctrl+3` — Security tab
+- `Ctrl+4` — Integrations tab
+- `Ctrl+5` — Danger Zone tab
+
+---
+
+## Mobile Responsiveness
+
+### Desktop (≥1024px)
+
+- **Layout:** Two-column (sidebar + content)
+- **Navigation:** Vertical sidebar (left)
+- **Content:** 3/4 width
+- **Cards:** Full-width
+- **Form:** 2-column grid
+
+### Tablet (768px - 1023px)
+
+- **Layout:** Single column
+- **Navigation:** Horizontal tabs (top)
+- **Content:** Full width
+- **Cards:** Full-width
+- **Form:** 2-column grid
+
+### Mobile (under 768px)
+
+- **Layout:** Single column
+- **Navigation:** Horizontal icon tabs (top)
+- **Content:** Full width with padding
+- **Cards:** Full-width with mobile padding
+- **Form:** 1-column grid
+- **Buttons:** Full width
+- **Avatar:** Centered
+
+---
+
+## Error States
+
+### API Errors
+
+**Fetch Profile Error:**
+- **Message:** "Failed to fetch user profile"
+- **Display:** Console error only
+- **Recovery:** Retry on page reload
+
+**Save Profile Error:**
+- **Message:** Toast notification (red)
+- **Display:** "Something went wrong. Please try again."
+- **Recovery:** Click "Save Changes" again
+
+### Validation Errors
+
+**Missing Name:**
+- **Error:** "Name is required"
+- **Display:** Inline error below field
+- **Fix:** Enter name (min 2 chars)
+
+**Invalid Phone:**
+- **Error:** "Invalid phone number format"
+- **Display:** Inline error below field
+- **Fix:** Use E.164 format (+1234567890)
+
+**Invalid Timezone:**
+- **Error:** "Invalid timezone"
+- **Display:** Toast notification
+- **Fix:** Select from dropdown
+
+---
+
+## Related Documentation
+
+- [Organization Management](/platform/organization) — Manage organizations
+- [API Keys](/platform/api-keys) — Manage API keys
+- [Telephony](/platform/telephony) — Configure telephony integrations
+- [Team Management](/platform/team-management) — Manage team members

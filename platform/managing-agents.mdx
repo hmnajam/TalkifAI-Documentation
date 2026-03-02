@@ -1,0 +1,656 @@
+---
+title: "Managing Agents"
+description: "View, test, edit, and manage your voice AI agents from the Studio dashboard."
+---
+
+## Overview
+
+The **Agents** page is your central hub for managing all voice AI agents. View all agents in a card-based layout, test agents in real-time, edit configurations, and monitor usage statistics.
+
+**Navigation:** **Studio → Agents**
+
+**URL:** `/agents`
+
+---
+
+## Page Layout
+
+### Header Section
+
+**Top Header:**
+- **Title:** "Voice AI Agents"
+- **Icon:** Bot icon (purple gradient background)
+- **Description:** "Create and manage intelligent voice agents that can handle calls, provide support, and drive sales"
+
+**Action Buttons (Top Right):**
+1. **Active Agents Counter**
+   - Shows total number of active agents
+   - Icon: Activity (pulse animation)
+   - Real-time updates
+
+2. **Create Agent Button**
+   - Blue button with dropdown
+   - Three options:
+     - Pipeline Agent (Voice)
+     - Realtime Agent (Voice)
+     - Chat Agent (Text)
+
+### Main Content
+
+**Section Header:**
+- **Title:** "Your Voice Agents"
+- **Subtitle:** "Manage, test, and iterate on your active voice agents"
+
+**Agent Cards Grid:**
+- Responsive grid layout
+- Auto-adjusts columns based on screen size:
+  - **Desktop (lg):** 3 columns
+  - **Tablet (md):** 2 columns
+  - **Mobile (sm):** 1 column
+- Cards have hover effects (shadow elevation)
+
+---
+
+## Agent Card Details
+
+Each agent card displays comprehensive information:
+
+### Card Header
+
+**Top Section:**
+- **Agent Icon** (left)
+  - Purple gradient background
+  - Bot icon
+  - Rounded square (48x48px)
+
+- **Agent Name** (bold, large)
+  - Truncated if too long
+  - Clickable (leads to edit page)
+
+- **Description** (below name)
+  - Gray text
+  - 2-line max (truncated with ellipsis)
+  - Internal notes about agent purpose
+
+**Delete Button** (top-right corner):
+- Trash icon
+- Gray by default
+- Turns red on hover
+- Requires confirmation dialog
+
+### Card Body
+
+**Information Grid (2 columns):**
+
+| Field | Description | Example |
+|-------|-------------|---------|
+| **Voice** | TTS voice name (not shown for Text agents) | "Cartesia - Warm" |
+| **LLM** | Language model used | "GPT-4o-mini", "OpenAI (Live)", "Gemini (Live)" |
+| **Architecture** | Agent type badge | "Voice (Pipeline)", "Voice (Realtime)", "Chat (Text)" |
+
+**Architecture Badges:**
+- **Voice (Pipeline)** — Blue badge
+- **Voice (Realtime)** — Purple badge
+- **Chat (Text)** — Green badge
+
+### Card Footer (Actions)
+
+**Two Action Buttons:**
+
+1. **Left Button (Primary Action):**
+   - **If Agent Active:** "Pause" button
+     - Orange outline
+     - Pause icon
+     - Click to pause agent
+   - **If Agent Paused:** "Try Now" button
+     - Blue background
+     - Play icon
+     - Click to test agent
+
+2. **Right Button (Secondary Action):**
+   - **"Edit"** button
+   - Gray outline
+   - Hover: Dark background, white text
+   - Leads to agent configuration page
+
+---
+
+## Creating a New Agent
+
+### Step 1: Click "Create Agent"
+
+**Location:** Top-right corner of page
+
+**Button Features:**
+- Blue background
+- Plus icon
+- Dropdown arrow
+- Disabled if no organization selected
+
+### Step 2: Select Agent Type
+
+**Dropdown Menu (3 options):**
+
+| Option | Icon | Description | Use Case |
+|--------|------|-------------|----------|
+| **Pipeline Agent (Voice)** | 🎤 | Voice calls with full provider flexibility | Customer support, appointments |
+| **Realtime Agent (Voice)** | ⚡ | Ultra-low latency voice calls | Premium experiences, natural conversations |
+| **Chat Agent (Text)** | 💬 | Text-only chat interface | Website chatbots, SMS |
+
+### Step 3: Agent Created
+
+**What Happens:**
+1. System creates agent with default settings:
+   - Name: "New [Type] Agent"
+   - Description: Auto-generated based on type
+   - Architecture: Selected type
+   - Default model: Gemini-2.0-flash
+   - Default language: English
+2. Redirects to agent configuration page
+3. URL: `/agents/create-agent/{agentId}`
+
+**Default Settings by Type:**
+
+| Setting | Pipeline | Realtime | Chat |
+|---------|----------|----------|------|
+| **Architecture** | `pipeline` | `realtime` | `text` |
+| **Model** | `gemini-2.0-flash-001` | — | `gemini-2.0-flash-001` |
+| **STT** | `gemini` | — | — |
+| **Realtime Provider** | — | `gemini` | — |
+| **Voice** | — | `gemini-leda-en` | — |
+
+---
+
+## Testing an Agent
+
+### "Try Now" Button
+
+**When Visible:** Agent is paused/inactive
+
+**Click Action:**
+1. Opens demo page in new tab
+2. URL: `/demo?agentId={agentId}&agentName={name}`
+3. Pre-selects the agent
+4. Ready to start test call
+
+**Demo Page Features:**
+- Select from/to phone numbers
+- Start call button
+- Real-time transcription
+- Call duration timer
+- End call button
+
+### Testing Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Test Different Scenarios" icon="flask">
+  Test normal conversations, edge cases, angry users, and all functions.
+  </Card>
+  <Card title="Check All Functions" icon="check">
+  Verify each custom function and built-in function works correctly.
+  </Card>
+  <Card title="Test Voice Quality" icon="mic">
+  Listen for TTS quality, naturalness, and pronunciation issues.
+  </Card>
+  <Card title="Monitor Latency" icon="clock">
+  Measure response times. Pipeline: 500-800ms, Realtime: 200-400ms.
+  </Card>
+</CardGroup>
+
+---
+
+## Pausing/Activating an Agent
+
+### Pause an Agent
+
+**When:** Agent is currently active
+
+**How:**
+1. Click **Pause** button on agent card
+2. Agent status changes to "paused"
+3. Agent cannot receive new calls
+4. Existing calls complete normally
+
+**Use Cases:**
+- Outside business hours
+- Agent needs configuration updates
+- Temporary suspension
+
+### Activate an Agent
+
+**When:** Agent is paused/inactive
+
+**How:**
+1. Click **Try Now** to test first (recommended)
+2. Or go to agent edit page
+3. Agent status changes to "active"
+4. Agent can receive calls immediately
+
+**Note:** Agents are created in active state by default.
+
+---
+
+## Editing an Agent
+
+### Access Edit Page
+
+**Method 1: From Card**
+1. Click **Edit** button on agent card
+2. Opens configuration page
+3. URL: `/agents/create-agent/{agentId}`
+
+**Method 2: Direct URL**
+- Navigate to: `/agents/create-agent/{agentId}`
+- Replace `{agentId}` with actual agent ID
+
+### Editable Settings
+
+**All agent settings are editable:**
+- Name & Description
+- System Prompt
+- Architecture (cannot change after creation)
+- LLM Model
+- STT Provider
+- TTS Voice
+- Temperature
+- Inactivity Timeout
+- Greeting Configuration
+- Functions (Built-in & Custom)
+- Languages
+- Visibility Mode (Public/Private/Commercial)
+
+### Saving Changes
+
+**Button:** "Update Agent" (bottom-right)
+
+**Validation:**
+- Required fields checked
+- Architecture-specific validation
+- API key validation (if using My Keys mode)
+
+**Success:**
+- Toast notification: "Agent updated successfully!"
+- Redirects back to agents list
+- Agent card updates with new info
+
+---
+
+## Deleting an Agent
+
+### Delete from Card
+
+**Button:** Trash icon (top-right corner of card)
+
+**Process:**
+1. Click trash icon
+2. Confirmation dialog appears:
+   - "Are you sure you want to delete this agent?"
+   - "This action cannot be undone."
+3. Click **Confirm** or **Cancel**
+
+### What Gets Deleted
+
+**Deleted:**
+- Agent configuration
+- Agent languages
+- Associated subagents
+- Custom functions (if only used by this agent)
+
+**Preserved:**
+- Call logs (historical data)
+- Transcripts
+- Recordings
+- Analytics data
+- Billing records
+
+### After Deletion
+
+**Immediate Effects:**
+- Agent card removed from list
+- Agent cannot receive new calls
+- Active calls complete normally
+- API returns 404 for agent ID
+
+**Redirect:**
+- If on edit page → redirects to agents list
+- If on demo page → shows error
+
+---
+
+## Agent Status Indicators
+
+### Status Badge
+
+**Location:** Top-right of agent card (future feature)
+
+**Status Types:**
+
+| Status | Color | Description |
+|--------|-------|-------------|
+| **Active** | Green | Agent can receive calls |
+| **Paused** | Orange | Agent temporarily disabled |
+| **Error** | Red | Configuration error detected |
+
+### Status in List
+
+**Active Agents Counter:**
+- Shows in header
+- Counts only active agents
+- Updates in real-time
+
+**Card Actions Reflect Status:**
+- Active → Shows "Pause" button
+- Paused → Shows "Try Now" button
+
+---
+
+## Filtering & Search
+
+### Current Implementation
+
+**No filtering/search in current version**
+
+**Workarounds:**
+- Use browser search (Ctrl+F) to find agent by name
+- Scroll through cards (grid layout)
+- Agents ordered by creation date (newest first)
+
+### Future Features (Planned)
+
+**Planned Filters:**
+- Filter by architecture (Pipeline/Realtime/Text)
+- Filter by status (Active/Paused)
+- Filter by visibility (Public/Private/Commercial)
+- Filter by date range
+
+**Planned Search:**
+- Search by agent name
+- Search by description
+- Search by system prompt content
+
+---
+
+## Empty State
+
+### When No Agents Exist
+
+**Visual Elements:**
+1. **Icon:** Large bot icon (purple gradient circle)
+2. **Heading:** "No agents in {OrganizationName}"
+3. **Subtext:** "Create your first voice AI agent for this organization"
+4. **Action Button:** "Create Agent" with dropdown
+
+**Action:**
+- Click "Create Agent"
+- Select agent type from dropdown
+- Redirects to configuration page
+
+### When No Organization Selected
+
+**Warning Box (Yellow):**
+- **Icon:** Alert triangle
+- **Heading:** "No Organization Selected"
+- **Message:** "Please select an organization from the sidebar to view agents"
+
+**Action Required:**
+1. Go to sidebar
+2. Click organization selector
+3. Select an organization
+4. Agents list refreshes automatically
+
+---
+
+## Loading States
+
+### Skeleton Loading
+
+**When:** Fetching agents from API
+
+**Visual:**
+- Gray placeholder cards
+- Animated pulse effect
+- Shows card structure:
+  - Icon placeholder
+  - Title placeholder
+  - Description placeholder
+  - Stats placeholders
+  - Button placeholders
+
+**Duration:**
+- Typically 500-1000ms
+- Retries up to 3 times on failure
+
+### Error State
+
+**When:** API fails after 3 retries
+
+**Message:**
+- Toast notification: "Failed to load agents. Please refresh the page."
+
+**Action:**
+- Click refresh button in browser
+- Or press F5
+- Re-fetches agents
+
+---
+
+## Keyboard Shortcuts
+
+**Not currently implemented**
+
+**Common Patterns (Future):**
+- `N` — New agent
+- `Ctrl+F` — Search agents (browser native)
+- `Enter` — Open selected agent
+- `Delete` — Delete selected agent (with confirmation)
+
+---
+
+## Mobile Responsiveness
+
+### Layout Adaptations
+
+**Desktop (≥1024px):**
+- 3-column grid
+- Full card details visible
+- Side-by-side buttons
+
+**Tablet (768px - 1023px):**
+- 2-column grid
+- Compressed card details
+- Stacked buttons
+
+**Mobile (under 768px):**
+- 1-column grid
+- Simplified card layout
+- Full-width buttons
+- Collapsible details
+
+### Touch Interactions
+
+**Mobile-Optimized:**
+- Larger tap targets (44px minimum)
+- Swipe gestures (future)
+- Pull-to-refresh (future)
+- Bottom sheet for actions (future)
+
+---
+
+## Real-Time Updates
+
+### Auto-Refresh
+
+**Current Behavior:**
+- Manual refresh required
+- Click browser refresh button
+- Or press F5
+
+**Future Features:**
+- Auto-refresh every 30 seconds
+- WebSocket for real-time updates
+- Toast notifications for changes
+
+### Cross-Tab Sync
+
+**Implementation:**
+- Uses `CustomEvent` for cross-tab communication
+- Event name: `agentUpdated`
+
+**Events:**
+- `created` — New agent created
+- `updated` — Agent configuration changed
+- `deleted` — Agent removed
+
+**Behavior:**
+- If agent updated in one tab
+- Other tabs receive event
+- Agents list refreshes automatically
+- No manual refresh needed
+
+---
+
+## Agent Statistics
+
+### Displayed Stats
+
+**Per Agent:**
+- Architecture type
+- LLM model
+- Voice (if applicable)
+- Status (Active/Paused)
+
+**Aggregate Stats (Header):**
+- Total active agents count
+- Real-time counter
+
+### Future Stats (Planned)
+
+**Per Agent:**
+- Calls today
+- Total calls
+- Success rate
+- Average duration
+- Last used timestamp
+
+**Aggregate:**
+- Total calls across all agents
+- Total minutes used
+- Success rate average
+- Top performing agents
+
+---
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Agents not loading">
+    **Problem:** Cards show loading skeleton indefinitely
+
+    **Solutions:**
+    1. Check organization is selected
+    2. Refresh page (F5)
+    3. Check browser console for errors
+    4. Verify API endpoint: `/api/agents`
+    5. Clear browser cache
+  </Accordion>
+
+  <Accordion title="Cannot create agent">
+    **Problem:** Create button disabled or error on creation
+
+    **Check:**
+    1. Organization selected?
+    2. User has permission (Owner/Admin/Member)?
+    3. Browser console for errors
+    4. Network tab for API response
+
+    **Fix:** Select organization, retry creation
+  </Accordion>
+
+  <Accordion title="Agent card shows wrong info">
+    **Problem:** Outdated information displayed
+
+    **Solution:**
+    1. Refresh page
+    2. Check if other tab updated agent
+    3. Clear browser cache
+    4. Verify in edit page
+  </Accordion>
+
+  <Accordion title="Delete button not working">
+    **Problem:** Clicking trash icon does nothing
+
+    **Check:**
+    1. Confirmation dialog may be hidden
+    2. Check browser pop-up blocker
+    3. Try in different browser
+    4. Check console for errors
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Related Documentation
+
+- [Create an Agent](/platform/create-agent) — Step-by-step agent creation guide
+- [Agent Architectures](/platform/agent-architectures) — Pipeline vs Realtime vs Text
+- [Testing Agents](/platform/agent-testing) — How to test your agents
+- [Subagents](/platform/subagents) — Create multi-agent hierarchies
+- [API Reference](/api-reference/agents) — Programmatic agent management
+
+---
+
+## API Endpoints
+
+### List Agents
+
+```bash
+GET /api/agents?organizationId={orgId}
+Authorization: Bearer YOUR_SESSION_TOKEN
+```
+
+**Response:**
+```json
+{
+  "agents": [
+    {
+      "id": "agent_abc123",
+      "name": "Customer Support Bot",
+      "description": "Handles customer inquiries",
+      "agentArchitecture": "pipeline",
+      "model": "gpt_4o_mini",
+      "stt": "deepgram",
+      "voiceId": "cartesia-voice-123",
+      "realtimeProvider": null,
+      "status": "active",
+      "callsToday": 15,
+      "successRate": 0.95
+    }
+  ]
+}
+```
+
+### Create Agent
+
+```bash
+POST /api/agents
+Content-Type: application/json
+
+{
+  "name": "New Agent",
+  "description": "My new agent",
+  "languages": ["english"],
+  "agentArchitecture": "pipeline",
+  "model": "gpt_4o_mini",
+  "stt": "deepgram",
+  "voiceId": "cartesia-voice-123",
+  "sysMsg": "You are a helpful assistant",
+  "organizationId": "org_123"
+}
+```
+
+### Delete Agent
+
+```bash
+DELETE /api/agents/{agentId}
+Authorization: Bearer YOUR_SESSION_TOKEN
+```

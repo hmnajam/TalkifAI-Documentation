@@ -1,0 +1,62 @@
+---
+title: "Initiate Outbound Call"
+openapi: "POST /telephony/outbound-call"
+description: "Triggers an outbound voice call from your registered phone number to a destination."
+---
+
+## Prerequisites
+
+Before making outbound calls:
+
+1. **Register a phone number** in Studio → Phone Numbers
+2. **Assign an outbound agent** to that phone number
+3. **Configure SIP trunk** with your carrier (Twilio, Telnyx, etc.)
+4. **Ensure sufficient credits** in your organization account
+
+<Warning>
+  The agent assigned to `from_number` must use **Pipeline** or **Realtime** architecture. Text-only agents cannot make voice calls and will return a `400` error.
+</Warning>
+
+## How It Works
+
+```
+1. Validate phone numbers (E.164 format)
+         │
+         ▼
+2. Look up from_number in database
+         ├── Not found → 404 Error
+         └── Found → Get assigned outbound agent
+                   │
+                   ▼
+3. Check agent architecture
+         ├── Text agent → 400 Error
+         └── Voice agent → Continue
+                   │
+                   ▼
+4. Decrypt SIP credentials
+         │
+         ▼
+5. Generate room: outbound_{agentId}_{toNumber}_{timestamp}
+         │
+         ▼
+6. Initiate SIP call via LiveKit
+         ├── Success → Return room_name
+         └── Timeout (60s) → 408 Error
+```
+
+## Phone Number Format
+
+Both numbers must be in **E.164 format**:
+
+| Format | Valid? |
+|--------|--------|
+| `+12025550123` | ✅ |
+| `+442071838750` | ✅ |
+| `2025550123` | ❌ Missing `+` and country code |
+| `1-202-555-0123` | ❌ Contains dashes |
+
+## Related
+
+- [Phone Numbers](/api-reference/phone-numbers) — Register and configure numbers
+- [Batch Calling](/guides/batch-calling) — Run large-scale outbound campaigns
+- [Telephony Guide](/platform/telephony) — SIP trunk setup

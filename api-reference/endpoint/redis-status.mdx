@@ -1,0 +1,249 @@
+---
+title: "Get Redis Job Status"
+openapi: "GET /batch/jobs/{batch_job_id}/redis-status"
+description: "Get Redis job status for debugging scheduled batch jobs. Verifies if job exists in Redis defer queue."
+---
+
+## Overview
+
+Retrieves the Redis-side status of a scheduled batch job. This endpoint is primarily for **debugging and troubleshooting** scheduled jobs.
+
+**Use this to:**
+- Verify a scheduled job was created correctly
+- Check if job still exists in Redis before cancellation
+- Confirm job was removed after cancellation
+- Debug scheduling issues
+
+<Note>
+  This endpoint is for **debugging purposes only**. For normal operations, use [Get Batch Job Detail](/api-reference/endpoint/get-batch-job).
+</Note>
+
+## Request
+
+```bash
+GET /batch/jobs/{batch_job_id}/redis-status
+```
+
+## Path Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `batch_job_id` | string | ✅ | Unique batch job identifier |
+
+## Response
+
+```json
+{
+  "batchJobId": "batch_xyz789",
+  "databaseStatus": "scheduled",
+  "scheduledJobId": "arq_job_abc123",
+  "scheduledStartTime": "2025-03-01T14:00:00Z",
+  "redisJobInfo": {
+    "job_id": "arq_job_abc123",
+    "in_defer_queue": false,
+    "job_metadata_exists": true,
+    "scheduled_time": "2025-03-01T14:00:00+00:00",
+    "note": "ARQ 0.26.3+ stores deferred jobs as individual keys, not in a defer queue"
+  }
+}
+```
+
+### Response Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `batchJobId` | string | Batch job ID |
+| `databaseStatus` | string | Job status in database |
+| `scheduledJobId` | string | Redis/ARQ job ID |
+| `scheduledStartTime` | string | Scheduled time (ISO 8601, UTC) |
+| `redisJobInfo` | object | Redis-side job information |
+
+### Redis Job Info Object
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `job_id` | string | ARQ job identifier |
+| `in_defer_queue` | boolean | Whether in defer queue (always false for ARQ 0.26.3+) |
+| `job_metadata_exists` | boolean | Whether job key exists in Redis |
+| `scheduled_time` | string | Scheduled execution time from Redis |
+| `note` | string | Implementation note about ARQ version |
+
+## Examples
+
+### Example 1: Check Scheduled Job Status
+
+```bash
+curl -X GET "https://api.talkifai.com/batch/jobs/batch_xyz789/redis-status" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+**Response (Job Exists):**
+```json
+{
+  "batchJobId": "batch_xyz789",
+  "databaseStatus": "scheduled",
+  "scheduledJobId": "arq_job_abc123",
+  "scheduledStartTime": "2025-03-01T14:00:00Z",
+  "redisJobInfo": {
+    "job_id": "arq_job_abc123",
+    "in_defer_queue": false,
+    "job_metadata_exists": true,
+    "scheduled_time": "2025-03-01T14:00:00+00:00",
+    "note": "ARQ 0.26.3+ stores deferred jobs as individual keys, not in a defer queue"
+  }
+}
+```
+
+**Response (Job Not Found in Redis):**
+```json
+{
+  "batchJobId": "batch_xyz789",
+  "databaseStatus": "scheduled",
+  "scheduledJobId": "arq_job_abc123",
+  "scheduledStartTime": "2025-03-01T14:00:00Z",
+  "redisJobInfo": {
+    "job_id": "arq_job_abc123",
+    "in_defer_queue": false,
+    "job_metadata_exists": false,
+    "scheduled_time": null,
+    "note": "ARQ 0.26.3+ stores deferred jobs as individual keys, not in a defer queue"
+  }
+}
+```
+
+### Example 2: Check Non-Scheduled Job
+
+```bash
+curl -X GET "https://api.talkifai.com/batch/jobs/batch_running/redis-status" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+**Response:**
+```json
+{
+  "batchJobId": "batch_running",
+  "databaseStatus": "running",
+  "scheduledJobId": null,
+  "scheduledStartTime": null,
+  "redisJobInfo": null
+}
+```
+
+### Example 3: Debug Cancellation
+
+Before cancelling a scheduled job, verify it exists:
+
+```bash
+# Check if job exists in Redis
+curl -X GET "https://api.talkifai.com/batch/jobs/batch_xyz789/redis-status" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+
+# If redisJobInfo.job_metadata_exists is true, proceed with cancellation
+curl -X POST "https://api.talkifai.com/batch/jobs/batch_xyz789/cancel" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+## Interpretation Guide
+
+### Job Exists in Redis
+
+```json
+{
+  "redisJobInfo": {
+    "job_metadata_exists": true,
+    "scheduled_time": "2025-03-01T14:00:00+00:00"
+  }
+}
+```
+
+**Meaning:** Job is properly scheduled and will execute at the scheduled time.
+
+### Job Not Found in Redis
+
+```json
+{
+  "redisJobInfo": {
+    "job_metadata_exists": false,
+    "scheduled_time": null
+  }
+}
+```
+
+**Possible causes:**
+- Job already executed (dequeued by worker)
+- Job was cancelled previously
+- Database and Redis are out of sync
+- Job creation failed silently
+
+### No Scheduled Job ID
+
+```json
+{
+  "scheduledJobId": null,
+  "redisJobInfo": null
+}
+```
+
+**Meaning:** Job is not scheduled (either `running`, `completed`, `pending`, or was never scheduled).
+
+## Error Handling
+
+### 404 Not Found
+
+```json
+{
+  "detail": "Batch job not found"
+}
+```
+
+### 500 Internal Server Error
+
+```json
+{
+  "detail": "Failed to get Redis job status"
+}
+```
+
+## Troubleshooting
+
+### Issue: Job Shows "scheduled" But Never Started
+
+**Check Redis status:**
+```bash
+curl -X GET "https://api.talkifai.com/batch/jobs/batch_xyz789/redis-status"
+```
+
+**If `job_metadata_exists` is false:**
+- Job may have been lost (Redis restart, crash)
+- Database and Redis are out of sync
+- **Solution:** Use [Start Batch Job](/api-reference/endpoint/start-batch-job) to manually start
+
+### Issue: Cancellation Returns "Job Not Found"
+
+**Check Redis status first:**
+```bash
+curl -X GET "https://api.talkifai.com/batch/jobs/batch_xyz789/redis-status"
+```
+
+**If `job_metadata_exists` is false:**
+- Job already executed or was never in Redis
+- Cancellation will still update database
+- **Expected behavior:** `redisJobCancelled: false` in response
+
+### Issue: Scheduled Time Wrong
+
+**Verify timezone conversion:**
+```bash
+curl -X GET "https://api.talkifai.com/batch/jobs/batch_xyz789/redis-status"
+```
+
+Compare `scheduledStartTime` (database) with `redisJobInfo.scheduled_time` (Redis):
+- They should match (within seconds)
+- If different, there may be a timezone conversion issue
+
+## Related
+
+- [Get Batch Job Detail](/api-reference/endpoint/get-batch-job) — Get complete job info
+- [Cancel Batch Job](/api-reference/endpoint/cancel-batch-job) — Cancel a scheduled job
+- [Reschedule Batch Job](/api-reference/endpoint/reschedule-batch-job) — Change scheduled time
+- [Batch Calling Guide](/guides/batch-calling) — Complete guide to batch campaigns
