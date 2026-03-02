@@ -7,66 +7,133 @@ description: "Create and manage API keys for programmatic access, and choose bet
 
 TalkifAI has two types of API keys:
 
-1. **TalkifAI API Keys** — Keys that authenticate your requests to the TalkifAI API (for calling agents, managing resources programmatically)
+1. **TalkifAI API Keys** — Keys that authenticate your requests to the TalkifAI API (for Chat API, accessing call logs, etc.)
 2. **Provider API Keys (BYOK)** — Your own OpenAI, Google, Deepgram, and Cartesia keys that agents use to power AI providers
 
-Both are managed in **Settings → API Keys**.
+Both are managed in **Organization → API Keys**.
 
 ---
 
 ## TalkifAI API Keys
 
-Use these keys to authenticate programmatic access to the TalkifAI API — for creating sessions, managing agents, accessing call logs, and more.
+Use these keys to authenticate programmatic access to the TalkifAI API — primarily for the Chat API and other public endpoints.
 
-### Create an API Key
+### Navigation
 
-**Owners only:**
+**URL:** `/organization/api-key`
 
-1. Go to **Settings → API Keys**
-2. Click **Create API Key**
-3. Enter a name (e.g., "Production Server", "Dev Testing")
-4. Optionally set:
-   - **Rate limit**: Max requests per hour (default: unlimited)
-   - **Expiry date**: Auto-expire the key on a specific date
-5. Click **Create**
-6. **Copy the key immediately** — it will only be shown once
+**Access:** **Organization → API Keys** (sidebar)
+
+**Permissions:** Owners can create and manage keys. Admins and Members can view keys.
 
 <Frame>
   ![API Keys list](/images/api-keys-list.png)
 </Frame>
 
+### Create an API Key
+
+**Steps:**
+
+1. Go to **Organization → API Keys**
+2. Click **Generate New API Key** section
+3. Enter a **Key Name** (e.g., "Production Server", "Dev Testing", "Website Chat")
+   - Required field
+   - Max 50 characters
+4. Click **Generate API Key**
+5. **Copy the key immediately** — it will only be shown once
+6. Store securely in environment variables
+
+**Key Generation Process:**
+
+```
+1. Enter key name
+2. Click "Generate API Key"
+3. System creates key via Better Auth
+4. Key shown once in dark gray box
+5. Click "Copy" to copy to clipboard
+6. Click "Generate Another Key" to create more
+```
+
 <Warning>
-  API keys start with `tk_live_` and are shown only once at creation. Store them securely in environment variables, never in code or version control.
+  **Security Warning:** API keys are shown only once at creation. You won't be able to see the key again after leaving the page. Store it securely in a password manager or environment variables.
 </Warning>
 
 ### Key Format
 
+TalkifAI API keys are random strings (no special prefix):
+
 ```
-tk_live_a8f3k2j9d1m4n7p0q5r8t2u6v3w9x1y
+a8f3k2j9d1m4n7p0q5r8t2u6v3w9x1y...
 ```
+
+**Characteristics:**
+- 64-character random string
+- No special prefix (not `tk_live_`)
+- URL-safe characters only
+- Unique per key
+
+### Key Details
+
+After generation, key details are shown:
+
+| Field | Description |
+|-------|-------------|
+| **Created** | Creation date (e.g., "Jan 15, 2024") |
+| **Expires** | Expiration date (1 year from creation) |
+| **Name** | Your custom key name |
+| **Organization** | Organization ID the key is scoped to |
+
+### API Key Uses
+
+TalkifAI API keys are used for:
+
+| Use Case | Endpoint |
+|----------|----------|
+| **Chat API** | `https://api.talkifai.dev/v1/chat` |
+| **Data Export** | `https://api.talkifai.dev/api/export` |
+| **Public APIs** | All `/api/*` endpoints |
 
 ### Manage Existing Keys
 
-Go to **Settings → API Keys** to:
+**Location:** **Organization → API Keys** → "Your API Keys" section
 
-| Action | How |
-|--------|-----|
-| **Rename** a key | Click the pencil icon |
-| **Revoke** a key | Click Delete — immediate effect |
-| **View usage** | See last used time and request count |
-| **Rotate** a key | Delete old key, create new key, update your code |
+**Available Actions:**
 
-### Rate Limiting
+| Action | How | Status |
+|--------|-----|--------|
+| **View List** | Scroll to "Your API Keys" | ✅ Available |
+| **Copy Key** | Not available (shown once only) | ❌ Not available |
+| **Revoke** | Click trash icon, confirm deletion | ✅ Available |
+| **Rename** | Not implemented | ❌ Coming soon |
+| **View Usage** | Not implemented | ❌ Coming soon |
+| **Rate Limit** | Not implemented | ❌ Coming soon |
+| **Set Expiry** | Not implemented | ❌ Coming soon |
 
-Each key can have its own rate limit. If exceeded, requests return `429 Too Many Requests`.
+**Key List Shows:**
+- Key name
+- Creation date
+- Expiration date
+- Organization ID
+- Revoke button (trash icon)
 
-```json
-{
-  "error": "rate_limit_exceeded",
-  "message": "API key limit: 100 requests per 3600 seconds",
-  "retryAfter": 1800
-}
-```
+### Revoke a Key
+
+**Process:**
+
+1. Go to **Organization → API Keys**
+2. Find the key in "Your API Keys" list
+3. Click **trash icon** (red button)
+4. Confirm deletion in dialog
+5. Key is immediately revoked
+
+<Warning>
+  **Irreversible Action:** Once revoked, the key cannot be recovered. You'll need to generate a new key and update your applications.
+</Warning>
+
+**Immediate Effects:**
+- Key returns `401 Unauthorized` on all requests
+- Active sessions using the key are terminated
+- Applications must update to new key
 
 ---
 
@@ -89,71 +156,138 @@ Your organization operates in one of three modes (set by the Owner):
     **Default mode.** TalkifAI provides all AI provider keys. Simplest setup — just pay TalkifAI credits per minute.
 
     **Best for:** Getting started, small teams, quick deployments.
+
+    **Required keys:** None (platform manages all)
   </Card>
-  <Card title="My Keys (BYOK)" icon="key">
+  <Card title="Only Use My Keys" icon="key">
     **Bring Your Own Keys.** All agents use your provider keys exclusively. You're billed directly by OpenAI, Deepgram, etc.
 
     **Best for:** High-volume deployments, cost optimization, compliance.
+
+    **Required keys:** Google (Gemini) key required
   </Card>
   <Card title="Hybrid" icon="code-merge">
     **Mixed mode.** Use your keys where available, fall back to TalkifAI keys where not.
 
     **Best for:** Transitioning from TalkifAI keys, partial BYOK setup.
+
+    **Required keys:** None (fallback to platform keys)
   </Card>
 </CardGroup>
 
 ### Switch Key Mode
 
-**Owner only:**
+**Location:** **Organization → API Keys** → "API Keys Configuration" dialog
 
-1. Go to **Settings → API Keys → Provider Keys**
-2. Under **Key Mode**, select your preferred mode
-3. Click **Save**
+**Access:** Owners only
+
+**Steps:**
+
+1. Go to **Organization → API Keys**
+2. Click on API Keys Configuration (or opens automatically)
+3. Select **Key Mode** from dropdown:
+   - **TalkifAI Keys** (default)
+   - **Only Use My Keys**
+   - **Hybrid**
+4. Click **Save**
+
+**Mode Selection Dialog:**
+
+```
+┌─────────────────────────────────────────┐
+│  API Keys Configuration                 │
+├─────────────────────────────────────────┤
+│  Key Mode:                              │
+│  ○ TalkifAI Keys                        │
+│  ○ Only Use My Keys                     │
+│  ○ Hybrid                               │
+├─────────────────────────────────────────┤
+│  [Cancel]  [Save]                       │
+└─────────────────────────────────────────┘
+```
 
 <Warning>
-  Switching to **My Keys** mode without adding your provider keys will cause agents to fail. Always add keys before switching.
+  **Important:** Switching to "Only Use My Keys" mode requires at least a Google (Gemini) API key. Agents will fail without required keys configured.
 </Warning>
 
 ---
 
 ## Adding Provider Keys (BYOK Setup)
 
-### Step 1: Navigate to Provider Keys
+### Step 1: Open API Keys Configuration
 
-1. Go to **Settings → API Keys → Provider Keys**
-2. You'll see fields for each provider
+**Location:** **Organization → API Keys**
+
+**Access:** The configuration dialog may open automatically, or click to configure.
+
+### Step 2: Select Key Mode
+
+**For "Only Use My Keys" or "Hybrid" mode:**
+
+1. Select mode from dropdown
+2. API key fields appear
+3. Fill in your provider keys
 
 <Frame>
   ![Provider Keys — BYOK configuration](/images/api-keys-provider-keys.png)
 </Frame>
 
-### Step 2: Add Your Keys
+### Step 3: Add Your Keys
 
-| Provider | Where to Get It | Used For |
-|----------|----------------|----------|
-| **OpenAI** | platform.openai.com → API Keys | GPT-4o, GPT-4o-mini (LLM) |
-| **Google** | console.cloud.google.com → API Credentials | Gemini models (LLM) |
-| **Deepgram** | console.deepgram.com | Speech-to-Text (STT) |
-| **Cartesia** | play.cartesia.ai → API Keys | Text-to-Speech (TTS) |
+**Key Fields:**
 
-### Step 3: Validate and Save
+| Provider | Field Name | Required | Used For |
+|----------|------------|----------|----------|
+| **OpenAI** | OpenAI Key | ❌ Optional | GPT-4o, GPT-4o-mini (LLM), Realtime |
+| **Google** | Google Key | ⚠️ Required for "Only Use My Keys" | Gemini models (LLM), Realtime |
+| **Deepgram** | Deepgram Key | ❌ Optional | Speech-to-Text (STT) |
+| **Cartesia** | Cartesia Key | ❌ Optional | Text-to-Speech (TTS) |
 
-1. Enter each key in the corresponding field
-2. Click **Validate** to test the key is working
-3. Click **Save** when all required keys are entered
+**Where to Get Keys:**
+
+| Provider | URL |
+|----------|-----|
+| **OpenAI** | [platform.openai.com → API Keys](https://platform.openai.com/api-keys) |
+| **Google** | [console.cloud.google.com → API Credentials](https://console.cloud.google.com/apis/credentials) |
+| **Deepgram** | [console.deepgram.com](https://console.deepgram.com) |
+| **Cartesia** | [play.cartesia.ai → API Keys](https://play.cartesia.ai) |
+
+### Step 4: Validate and Save
+
+**Validation:**
+
+- **"Only Use My Keys" mode:** Google key is **required**
+  - Error if missing: `Google (Gemini) key is required in "Only Use My Keys" mode`
+- **"Hybrid" mode:** All keys optional (fallback to TalkifAI keys)
+- **"TalkifAI Keys" mode:** No keys needed
+
+**Save Process:**
+
+1. Click **Save**
+2. System validates required keys
+3. Keys encrypted with Fernet encryption
+4. Stored securely in database
+5. Success toast: "API keys saved successfully"
 
 <Info>
-  Keys are encrypted using **Fernet encryption** before storage. They are never transmitted or logged in plaintext.
+  **Security:** Keys are encrypted using **Fernet encryption** before storage. They are never transmitted or logged in plaintext. The encryption key is set once and should never be changed.
 </Info>
 
 ### Provider Key Requirements by Architecture
 
-| Architecture | Required Keys |
-|-------------|--------------|
-| **Pipeline** | Deepgram (STT) + OpenAI or Google (LLM) + Cartesia (TTS) |
-| **Realtime (OpenAI)** | OpenAI key only |
-| **Realtime (Gemini)** | Google key only |
-| **Text Agent** | OpenAI or Google (LLM) |
+| Architecture | Required Keys (My Keys Mode) |
+|--------------|------------------------------|
+| **Pipeline** | Google (or OpenAI) + Deepgram (or Google) + Cartesia (or Google) |
+| **Realtime (OpenAI)** | OpenAI key |
+| **Realtime (Gemini)** | Google key |
+| **Text Agent** | Google (or OpenAI) |
+
+**Fallback Behavior (Hybrid Mode):**
+
+If a key is missing in Hybrid mode:
+- System uses TalkifAI platform key
+- No agent failure
+- Billed to organization credits
 
 ---
 
@@ -165,23 +299,23 @@ Your organization operates in one of three modes (set by the Owner):
 
     ```bash
     # .env
-    TALKIFAI_API_KEY=tk_live_xxx
+    TALKIFAI_API_KEY=your_key_here
     ```
   </Card>
   <Card title="One Key Per Environment" icon="layers">
     Create separate keys for development, staging, and production. This limits blast radius if a key is compromised.
   </Card>
-  <Card title="Set Expiry Dates" icon="calendar">
-    For temporary integrations or contractors, set an expiry date so keys automatically deactivate.
-  </Card>
   <Card title="Rotate Regularly" icon="rotate">
-    Rotate API keys every 90 days as a security hygiene practice. TalkifAI makes this easy — create new key, update code, delete old key.
+    Rotate API keys every 90 days as a security hygiene practice. Create new key, update code, revoke old key.
   </Card>
   <Card title="Principle of Least Privilege" icon="lock">
     Create separate API keys for different services/applications. Revoke access per service without affecting others.
   </Card>
   <Card title="Monitor Usage" icon="chart-line">
     Check the "Last Used" timestamp on each key regularly. Unused keys are a security risk — revoke them.
+  </Card>
+  <Card title="Secure Storage" icon="shield">
+    Use a password manager or secrets manager (AWS Secrets Manager, HashiCorp Vault) to store keys securely.
   </Card>
 </CardGroup>
 
@@ -191,9 +325,10 @@ Your organization operates in one of three modes (set by the Owner):
 
 ### List API Keys
 
+**Endpoint:**
 ```bash
 GET /api/api-keys
-Authorization: Bearer YOUR_API_KEY
+Authorization: Bearer YOUR_SESSION_TOKEN
 ```
 
 **Response:**
@@ -204,28 +339,53 @@ Authorization: Bearer YOUR_API_KEY
     {
       "id": "key_abc123",
       "name": "Production Server",
-      "prefix": "tk_live_a8f3...",
-      "lastUsedAt": "2024-01-20T14:30:00Z",
-      "requestCount": 1234,
-      "expiresAt": null,
-      "createdAt": "2024-01-01T00:00:00Z"
+      "createdAt": "2024-01-01T00:00:00Z",
+      "expiresAt": "2025-01-01T00:00:00Z",
+      "enabled": true,
+      "metadata": {
+        "organizationId": "org_xyz789"
+      }
     }
   ]
 }
 ```
 
-### Create API Key
+**Note:** Full key values are NOT returned for security. Keys are only shown once at creation.
 
+### Generate API Key
+
+**Endpoint:**
 ```bash
-POST /api/api-keys
-Authorization: Bearer YOUR_API_KEY
+POST /api/generate-api-key?organizationId={orgId}&name={keyName}
+Authorization: Bearer YOUR_SESSION_TOKEN
+```
+
+**Request:**
+- `organizationId` (query param) — Organization to scope key to
+- `name` (query param) — Key name (max 50 chars)
+
+**Response:**
+```json
+{
+  "success": true,
+  "key": "full_random_key_shown_once_only",
+  "keyId": "key_abc123",
+  "expiresAt": "2025-01-15T10:00:00Z"
+}
+```
+
+**Important:** The `key` field is shown ONLY ONCE. Store it immediately.
+
+### Revoke API Key
+
+**Endpoint:**
+```bash
+DELETE /api/api-keys
+Authorization: Bearer YOUR_SESSION_TOKEN
 Content-Type: application/json
 
 {
-  "name": "My Integration",
-  "rateLimit": 1000,
-  "rateLimitWindow": 3600,
-  "expiresAt": "2025-01-01T00:00:00Z"
+  "keyId": "key_abc123"
 }
 ```
 
@@ -233,20 +393,56 @@ Content-Type: application/json
 ```json
 {
   "success": true,
-  "apiKey": {
-    "id": "key_xyz789",
-    "name": "My Integration",
-    "key": "tk_live_full_key_shown_once_only",
-    "createdAt": "2024-01-15T10:00:00Z"
+  "message": "API key revoked successfully"
+}
+```
+
+### Get Key Mode
+
+**Endpoint:**
+```bash
+GET /api/organizations/key-mode?organizationId={orgId}
+Authorization: Bearer YOUR_SESSION_TOKEN
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "keyMode": "talkifai_keys",
+  "keys": {
+    "id": "keys_abc123",
+    "openaiKey": null,
+    "googleKey": "encrypted_key",
+    "deepgramKey": null,
+    "cartesiaKey": null
   }
 }
 ```
 
-### Revoke API Key
+### Update Key Mode
 
+**Endpoint:**
 ```bash
-DELETE /api/api-keys/{keyId}
-Authorization: Bearer YOUR_API_KEY
+PUT /api/organizations/key-mode
+Authorization: Bearer YOUR_SESSION_TOKEN
+Content-Type: application/json
+
+{
+  "organizationId": "org_xyz789",
+  "keyMode": "my_keys",
+  "keys": {
+    "googleKey": "your_google_key_here"
+  }
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Key mode updated successfully"
+}
 ```
 
 ---
@@ -256,56 +452,89 @@ Authorization: Bearer YOUR_API_KEY
 <AccordionGroup>
   <Accordion title="401 Unauthorized on API calls">
     **Check:**
-    1. Is the key correctly formatted (starts with `tk_live_`)?
+    1. Is the API key correct? (no typos, full 64 chars)
     2. Has the key been revoked?
-    3. Has the key expired (if you set an expiry)?
-    4. Are you sending it in the correct header (`X-API-Key` for Chat API, `Authorization: Bearer` for others)?
+    3. Has the key expired? (1 year from creation)
+    4. Are you sending it in the correct header?
+       - Chat API: `Authorization: Bearer YOUR_KEY`
+       - Other APIs: Check documentation
+
+    **Fix:** Generate a new key and update your application.
   </Accordion>
 
-  <Accordion title="Agents failing with BYOK mode">
-    **Problem:** Agents return errors after switching to "My Keys" mode.
+  <Accordion title="Agents failing with 'Only Use My Keys' mode">
+    **Problem:** Agents return errors after switching to "Only Use My Keys" mode.
 
     **Check:**
-    1. Are all required provider keys added for your agent's architecture?
-    2. Are the provider keys valid and not expired?
-    3. Do your provider accounts have sufficient credits/quota?
+    1. Is Google (Gemini) key configured? (required)
+    2. Are other required keys added for your architecture?
+    3. Are the provider keys valid and not expired?
+    4. Do your provider accounts have sufficient credits/quota?
 
-    **Tip:** Use the **Validate** button in Settings to test each key before saving.
+    **Fix:** 
+    - Add Google key at minimum
+    - Test keys using provider dashboards
+    - Switch to "Hybrid" mode for fallback
   </Accordion>
 
-  <Accordion title="Rate limit exceeded">
-    **Problem:** Getting 429 errors from the TalkifAI API.
+  <Accordion title="Can't find Organization → API Keys">
+    **Problem:** API Keys page not visible in sidebar.
 
-    **Options:**
-    1. Increase the rate limit on your API key (Settings → API Keys → Edit)
-    2. Distribute load across multiple API keys
-    3. Implement exponential backoff in your integration code
+    **Check:**
+    1. Are you logged in?
+    2. Is an organization selected?
+    3. Do you have Owner or Admin role?
+
+    **Note:** Members can view but not create keys. Contact your organization Owner if you need key management access.
   </Accordion>
 
-  <Accordion title="Can't find Settings → API Keys">
-    **API Key management requires Owner role.** If you don't see this section, you may be an Admin or Member.
+  <Accordion title="Key not working after copy">
+    **Problem:** Newly generated key returns 401 errors.
 
-    Contact your organization Owner to:
-    - Create keys on your behalf
-    - Elevate your role to Owner
+    **Check:**
+    1. Was the full key copied? (no truncation)
+    2. Are there extra spaces or newlines?
+    3. Is the key in the correct header format?
+
+    **Fix:** 
+    - Use the Copy button (don't manually select)
+    - Trim whitespace
+    - Check header format: `Authorization: Bearer YOUR_KEY`
+  </Accordion>
+
+  <Accordion title="Provider key validation failed">
+    **Problem:** Error when saving provider keys.
+
+    **Check:**
+    1. Is the key format correct? (no extra characters)
+    2. Is the key active in provider dashboard?
+    3. Does the key have required permissions?
+
+    **Fix:** 
+    - Copy key directly from provider dashboard
+    - Check key permissions in provider settings
+    - Try "Hybrid" mode for fallback
   </Accordion>
 </AccordionGroup>
 
 ---
 
-## Next Steps
+## Related Documentation
 
-<CardGroup cols={2}>
-  <Card title="API Reference" icon="code">
-    Explore all available API endpoints and parameters.
-  </Card>
-  <Card title="Build a Chat Widget" icon="message">
-    Use your API key to embed a text chat agent on your website.
-  </Card>
-  <Card title="Organization Settings" icon="building">
-    Manage your team and organization settings.
-  </Card>
-  <Card title="Custom Functions" icon="function">
-    Build custom function integrations using the API.
-  </Card>
-</CardGroup>
+- [Organization Management](/platform/organization) — Manage organizations and team settings
+- [Chat API](/guides/chat-api) — Use API keys for Chat API authentication
+- [Agent Architectures](/platform/agent-architectures) — Understand provider requirements
+- [Security Best Practices](/platform/security) — General security guidelines
+
+---
+
+## Coming Soon
+
+The following features are planned for future releases:
+
+- **Key Usage Analytics** — View request counts and last used timestamps
+- **Rate Limiting** — Set custom rate limits per key
+- **Key Renaming** — Update key names without revoking
+- **Expiry Notifications** — Email alerts before key expiration
+- **Key Rotation** — Automated key rotation workflow
+- **Audit Logs** — Track key creation, usage, and revocation

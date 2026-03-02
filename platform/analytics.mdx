@@ -1,101 +1,271 @@
 ---
-title: "Analytics & Monitoring"
-description: "Track call performance, usage, and agent quality with TalkifAI's built-in analytics."
+title: "Analytics & Call Logs"
+description: "Track call performance, monitor usage credits, and analyze conversation quality with TalkifAI's built-in analytics."
 ---
 
-## Dashboard Overview
+## Overview
 
-The TalkifAI analytics dashboard gives you real-time visibility into your voice agents' performance.
+TalkifAI provides two separate analytics pages:
 
-Navigate to **Studio → Analytics** to access your metrics.
+1. **Analytics** (`/analytics`) — Usage metrics, credit tracking, and quota monitoring
+2. **Call Logs** (`/call-logs`) — Detailed call records with transcripts, recordings, and post-call analysis
 
----
-
-## Call Logs
-
-Every voice session is automatically logged with:
-
-| Field | Description |
-|-------|-------------|
-| **Session ID** | Unique identifier for the call |
-| **Agent** | Which agent handled the call |
-| **Duration** | Total call length in seconds |
-| **Start Time** | When the call began |
-| **End Time** | When the call ended |
-| **Direction** | Inbound or outbound |
-| **Phone Number** | Caller/destination number |
-| **Status** | Completed, failed, no-answer |
-
-### Filtering Logs
-
-Filter your call logs by:
-- Date range
-- Agent
-- Direction (inbound/outbound)
-- Duration range
-- Status
+Navigate via **Studio → Analytics** or **Studio → Call Logs** to access your metrics.
 
 ---
 
-## Usage & Quotas
+## Analytics Page
 
-### Developer Quotas
+**URL:** `/analytics`
 
-Users with the **Developer** role have monthly minute limits to prevent runaway costs.
+The Analytics page shows high-level usage metrics and credit consumption.
 
-| Setting | Default |
-|---------|---------|
-| Monthly limit | 3,000 minutes |
-| Quota scope | Per user, per organization |
-| Reset | 1st of each month |
+### Summary Cards
 
-Check current usage:
+Four key metrics displayed at the top:
 
+| Card | Description | Color |
+|------|-------------|-------|
+| **Total Sessions** | Total number of voice/chat interactions | Purple gradient |
+| **Total Usage Time** | Cumulative duration of all sessions | Gray gradient |
+| **Tier / Credits** | Your plan tier and remaining credits | White |
+| **Active Agents** | Number of unique agents used | Black gradient |
+
+### Credit System
+
+TalkifAI uses a **credit-based billing system** (not minute quotas).
+
+**Free Tier:**
+- **300 credits** per month
+- Resets on the 1st of each month
+- Shown as progress bar with percentage used
+
+**Developer Tier:**
+- **Custom credit limit** (e.g., 3,000 credits)
+- Per-user, per-organization
+- Shown as "X% of Developer quota used"
+
+**Credit Consumption:**
+- Voice calls: ~$0.073/minute average
+- Chat sessions: ~$0.001/message average
+- Deducted automatically after each session
+
+<Info>
+  **Credits vs Minutes:** The system now uses credits instead of minute quotas. One credit = $1.00 USD.
+</Info>
+
+### Check Credit Balance
+
+**Via UI:**
+- View remaining credits on Analytics page
+- Green bar = healthy balance
+- Red bar = low balance warning
+
+**Via API:**
 ```bash
 GET /api/call-logs/check-usage
-Authorization: Bearer YOUR_API_KEY
+Authorization: Bearer YOUR_SESSION_TOKEN
 ```
 
 **Response:**
 ```json
 {
-  "used": 142,
-  "limit": 3000,
-  "remaining": 2858,
-  "resetDate": "2024-02-01"
+  "canProceed": true,
+  "remaining": 250.50,
+  "balanceData": {
+    "balance": 250.50,
+    "gracePeriodLimit": 5.00
+  },
+  "hasSufficientBalance": true,
+  "organizationId": "org_abc123",
+  "role": "user"
 }
 ```
 
-### Organization Usage
+**Response Fields:**
+| Field | Type | Description |
+|-------|------|-------------|
+| `canProceed` | boolean | Whether user has sufficient credits |
+| `remaining` | number | Remaining credit balance |
+| `hasSufficientBalance` | boolean | Includes grace period logic |
+| `balanceData` | object | Full balance details |
+| `role` | string | User role (user/developer/owner/admin) |
 
-Organization owners can view aggregate usage across all members in **Settings → Usage**.
+### Low Balance Alerts
+
+**Automatic Warnings:**
+- **< 20% remaining:** Dashboard warning appears
+- **< $5.00:** Low balance toast notification
+- **$0.00:** Cannot initiate new calls (grace period may apply)
+
+**Grace Period:**
+- Default: $5.00 grace period
+- Allows completing ongoing calls even at $0.00
+- Must add credits to restore positive balance
 
 ---
 
-## Transcripts
+## Call Logs Page
 
-All calls are transcribed automatically (when transcription is enabled on the agent).
+**URL:** `/call-logs`
 
-**Accessing transcripts:**
-1. Go to **Call Logs → select a call → View Transcript**
-2. Or via API: `GET /api/transcripts/{sessionId}`
+The Call Logs page shows detailed records of every voice and chat session.
 
-Transcripts are stored in full with speaker labels:
-```
-[Agent] Hello! How can I help you today?
-[User] I need help with my billing.
-[Agent] Of course. Can you give me your account number?
-```
+### Summary Cards
+
+| Card | Description |
+|------|-------------|
+| **Total Calls** | Total number of calls |
+| **Successful Calls** | Calls completed successfully |
+| **Success Rate** | Percentage of successful calls |
+| **Avg Duration** | Average call length |
+| **Active Agents** | Unique agents used |
+
+### Call Log Fields
+
+Every session is automatically logged with:
+
+| Field | Description |
+|-------|-------------|
+| **Session ID** | Unique identifier (click to view details) |
+| **Agent** | Which agent handled the call |
+| **Source Type** | Voice, Phone, or Chatbot |
+| **Duration** | Total call length in seconds |
+| **Start Time** | When the call began (with timezone) |
+| **End Time** | When the call ended |
+| **Direction** | Inbound or outbound |
+| **Phone Number** | Caller/destination number |
+| **Status** | Completed, failed, abandoned |
+| **Cost** | Total cost in credits |
+
+### Filtering Call Logs
+
+Filter your call logs by:
+
+| Filter | Options |
+|--------|---------|
+| **Date Range** | Custom start/end dates |
+| **Agent** | Select specific agent |
+| **Source Type** | Voice / Phone / Chatbot |
+| **Status** | Completed / Failed / Abandoned |
+| **Search** | Search by phone number or session ID |
+
+**Pagination:**
+- Default: 50 calls per page
+- Options: 25, 50, 100 per page
+- Shows: "Showing X to Y of Z calls"
 
 ---
 
-## Recordings
+## Session Detail Panel
 
-Call recordings are stored in **Google Cloud Storage** and accessible from the call log detail view.
+Click any call in the list to open the **Session Detail Panel**.
+
+### Panel Tabs
+
+The panel has three tabs:
+
+#### Tab 1: Transcript
+
+**Displays:**
+- Full conversation transcript
+- Speaker labels (User / Agent)
+- Timestamps for each segment
+- Confidence scores (if available)
+
+**Features:**
+- Scrollable transcript
+- Timezone-aware timestamps
+- Copy to clipboard option
+
+**Example:**
+```
+[00:00] Agent: Hello! How can I help you today?
+[00:03] User: I need help with my billing.
+[00:05] Agent: Of course. Can you give me your account number?
+```
+
+**Accessing Transcripts:**
+1. Go to **Call Logs** page
+2. Click on any call session
+3. Select **Transcript** tab
+4. View or copy transcript
+
+#### Tab 2: Recording
+
+**Displays:**
+- Audio player for call recording
+- Playback controls (play, pause, speed)
+- Download button
+- Recording metadata (duration, format)
+
+**Features:**
+- Variable playback speed (0.5x - 2x)
+- Download recording as MP3
+- Waveform visualization
 
 <Note>
-  Recordings must be enabled per-agent in **Agent Settings → Recording**. Ensure compliance with local recording consent laws before enabling.
+  **Recording Requirements:**
+  - Must be enabled per-agent in **Agent Settings → Recording**
+  - Ensure compliance with local recording consent laws
+  - Recordings stored securely with access control
 </Note>
+
+**Accessing Recordings:**
+1. Go to **Call Logs** page
+2. Click on any call session
+3. Select **Recording** tab
+4. Play or download recording
+
+#### Tab 3: Analysis
+
+**Displays:**
+- Post-call analysis results (if configured)
+- QA form responses
+- Sentiment analysis
+- Custom metrics
+
+**Features:**
+- Structured analysis data
+- Export analysis results
+- View by question type
+
+**Accessing Analysis:**
+1. Go to **Call Logs** page
+2. Click on any call session
+3. Select **Analysis** tab
+4. View post-call analysis results
+
+---
+
+## Chat Sessions
+
+For text-based chat sessions (Chat API):
+
+### Chat Messages Viewer
+
+**Displays:**
+- Full message history
+- User and assistant messages
+- Timestamps for each message
+- Token counts (input/output)
+
+**Features:**
+- Scrollable message list
+- Message-by-message breakdown
+- Total token count
+
+### Chat Session Costs
+
+**Pricing:**
+- Per-message billing
+- Input tokens: ~$0.0001/100 tokens
+- Output tokens: ~$0.0003/100 tokens
+
+**Cost Display:**
+- Total cost shown in session details
+- Cost per message breakdown
+- Cumulative session cost
 
 ---
 
@@ -105,41 +275,209 @@ Configure custom QA forms to automatically analyze calls after they end.
 
 ### Setting Up Forms
 
-1. Go to **Agent Settings → Post-Call Analysis**
-2. Click **Add Question**
-3. Configure:
-   - Question text
-   - Type: Text, Yes/No, Rating (1-5), Multiple choice
-   - Required or optional
+**Location:** **Agent Settings → Post-Call Analysis**
 
-**Example form:**
+**Steps:**
+1. Go to your agent → **Settings**
+2. Scroll to **Post-Call Analysis** section
+3. Click **Add Field**
+4. Configure each field:
+   - **Field Name:** Internal identifier
+   - **Label:** Display name
+   - **Type:** Text / Yes-No / Rating (1-5) / Number
+   - **Required:** Yes/No
+   - **Order:** Drag to reorder fields
+
+**Example Form:**
 ```
-1. Was the customer's issue resolved? (Yes/No)
-2. Customer sentiment: (Positive / Neutral / Negative)
+1. Was the customer's issue resolved? (Yes/No) ✅ Required
+2. Customer sentiment: (Positive / Neutral / Negative) ✅ Required
 3. Follow-up required? (Yes/No)
 4. Notes: (Text)
 ```
 
+### Analysis Model Selection
+
+**Available Models:**
+- **GPT-5 Mini** (default)
+- **GPT-5 Nano**
+- **Gemini 2.5 Flash**
+- **Gemini 2.5 Flash Lite**
+
+**Model Settings:**
+- Select model from dropdown
+- Different models for different agents
+- Balance cost vs accuracy
+
 ### Viewing Results
 
-Results are available per-call in the call log view, or exported via API:
+**Per-Call Results:**
+1. Go to **Call Logs**
+2. Click on a call session
+3. Select **Analysis** tab
+4. View completed form responses
 
+**Aggregate Results:**
+- Export all analysis data
+- Filter by date range
+- Analyze trends over time
+
+**Via API:**
 ```bash
-GET /api/post-call-analysis/{agentId}/results
-Authorization: Bearer YOUR_API_KEY
+GET /api/post-call-analysis/room/{roomName}
+Authorization: Bearer YOUR_SESSION_TOKEN
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "analysis": {
+    "roomName": "agent_xyz_1705320000_user123",
+    "agentId": "agent_xyz",
+    "agentName": "Customer Support Bot",
+    "analysisData": {
+      "issueResolved": true,
+      "sentiment": "positive",
+      "followUpRequired": false,
+      "notes": "Customer satisfied with resolution"
+    },
+    "createdAt": "2024-01-15T10:35:00Z"
+  }
+}
 ```
 
 ---
 
-## Alerts & Notifications
+## Export Data
 
-TalkifAI sends automatic notifications for:
+### Export Call Logs
 
-| Event | Notification |
-|-------|-------------|
-| Credit balance low | Email alert at 20% remaining |
-| Credit depleted | Email + dashboard banner |
-| Monthly quota at 80% | Email warning |
-| Agent error rate high | Dashboard alert |
+**Location:** **Call Logs → Export Logs** button
 
-Configure notification preferences in **Settings → Notifications**.
+**Format:** CSV file
+
+**Includes:**
+- All call log fields
+- Filtered by current filters
+- Date range selection
+- Transcript option (if enabled)
+- Post-call analysis option (if enabled)
+
+**Steps:**
+1. Apply desired filters
+2. Click **Export Logs** button
+3. Select export options
+4. Download CSV file
+
+### Export Transcripts
+
+**Location:** Session Detail Panel → Transcript tab
+
+**Format:** Text file or JSON
+
+**Includes:**
+- Full conversation transcript
+- Speaker labels
+- Timestamps
+- Confidence scores
+
+---
+
+## Usage Monitoring
+
+### Real-Time Updates
+
+**Auto-Refresh:**
+- Analytics page updates every 30 seconds
+- Call Logs page updates every 30 seconds
+- Manual refresh button available
+
+**Cross-Tab Sync:**
+- Changes sync across browser tabs
+- Uses `CustomEvent` for communication
+- No manual refresh needed
+
+### Cost Tracking
+
+**Per-Session Costs:**
+- Voice calls: Duration-based pricing
+- Chat sessions: Message-based pricing
+- Real-time cost calculation
+
+**Cost Breakdown:**
+- Base cost (infrastructure)
+- LLM cost (AI processing)
+- STT cost (speech-to-text, voice only)
+- TTS cost (text-to-speech, voice only)
+
+**View Costs:**
+- Session detail panel → Cost section
+- Call Logs → Cost column
+- Analytics → Total usage card
+
+---
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Transcript not available">
+    **Problem:** No transcript shown for a call.
+
+    **Check:**
+    1. Was transcription enabled on the agent?
+    2. Did the call complete successfully?
+    3. Is the session type "chat" (uses ChatMessages instead)?
+
+    **Fix:** Enable transcription in agent settings for future calls.
+  </Accordion>
+
+  <Accordion title="Recording not playing">
+    **Problem:** Recording player shows error.
+
+    **Check:**
+    1. Was recording enabled on the agent?
+    2. Is the recording file still available?
+    3. Try downloading and playing locally
+
+    **Fix:** Contact support if recording is missing.
+  </Accordion>
+
+  <Accordion title="Post-call analysis not showing">
+    **Problem:** Analysis tab is empty.
+
+    **Check:**
+    1. Is post-call analysis configured for this agent?
+    2. Has analysis completed processing? (takes 10-30 seconds)
+    3. Check agent's analysis model selection
+
+    **Fix:** Configure post-call analysis in agent settings.
+  </Accordion>
+
+  <Accordion title="Low balance warning">
+    **Problem:** Red balance warning appears.
+
+    **Solution:**
+    1. Add credits via **Billing → Add Credits**
+    2. Review usage in Analytics page
+    3. Set up auto-recharge (coming soon)
+  </Accordion>
+
+  <Accordion title="Export fails or times out">
+    **Problem:** Export button doesn't work.
+
+    **Solution:**
+    1. Reduce date range (export less data)
+    2. Apply filters to reduce result set
+    3. Try again in a few moments
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Related Documentation
+
+- [Billing & Credits](/platform/billing-credits) — Manage your credit balance
+- [Telephony](/platform/telephony) — Configure phone numbers
+- [Agent Settings](/platform/agent-settings) — Configure transcription and recording
+- [Chat API](/guides/chat-api) — Text-based chat sessions
