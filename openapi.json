@@ -623,12 +623,6 @@
   },
   "paths": {
     "/v1/agents": {
-      "servers": [
-        {
-          "url": "https://livekit.talkifai.dev",
-          "description": "TalkifAI Production API"
-        }
-      ],
       "get": {
         "operationId": "listAgents",
         "summary": "List Agents",
@@ -846,12 +840,6 @@
       }
     },
     "/v1/agents/{agentId}": {
-      "servers": [
-        {
-          "url": "https://livekit.talkifai.dev",
-          "description": "TalkifAI Production API"
-        }
-      ],
       "get": {
         "operationId": "getAgent",
         "summary": "Get Agent",
