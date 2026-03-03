@@ -11,136 +11,372 @@
       "description": "Production"
     }
   ],
-  "security": [{ "bearerAuth": [] }],
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
   "components": {
     "securitySchemes": {
       "bearerAuth": {
         "type": "http",
         "scheme": "bearer",
         "bearerFormat": "tk_live_...",
-        "description": "Your TalkifAI API key. Get it from Studio → Settings → API Keys."
+        "description": "Your TalkifAI API key. Get it from Studio \u00e2\u2020\u2019 Settings \u00e2\u2020\u2019 API Keys."
       },
       "apiKeyHeader": {
         "type": "apiKey",
         "in": "header",
-        "name": "X-API-Key",
-        "description": "Used only for POST /chat/sessions (session creation). Your tk_live_... key."
+        "name": "x-api-key",
+        "description": "Your TalkifAI API key. Generate from Studio \u2192 Settings \u2192 API Keys. Format: `tk_live_...`"
       }
     },
     "schemas": {
       "Agent": {
         "type": "object",
         "properties": {
-          "id": { "type": "string", "example": "5b710eca-ee67-4c3a-aeb6-8b541f451b40" },
-          "name": { "type": "string", "example": "Customer Support Bot" },
-          "description": { "type": "string", "nullable": true, "example": "Handles tier-1 support queries" },
+          "id": {
+            "type": "string",
+            "example": "5b710eca-ee67-4c3a-aeb6-8b541f451b40"
+          },
+          "name": {
+            "type": "string",
+            "example": "Customer Support Bot"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true,
+            "example": "Handles tier-1 support queries"
+          },
           "agentArchitecture": {
             "type": "string",
-            "enum": ["pipeline", "realtime", "text"],
+            "enum": [
+              "pipeline",
+              "realtime",
+              "text"
+            ],
             "example": "pipeline"
           },
-          "model": { "type": "string", "nullable": true, "example": "gpt_4o_mini", "description": "LLM model. Set for pipeline and text architectures; null for realtime." },
-          "stt": { "type": "string", "nullable": true, "example": "deepgram", "description": "Speech-to-text provider. Set for pipeline; null for realtime and text." },
-          "voiceId": { "type": "string", "nullable": true, "example": "gemini-leda-en", "description": "TTS voice ID. Required for pipeline; optional for realtime (used only when greetingType is agentFirst)." },
-          "realtimeProvider": { "type": "string", "nullable": true, "example": "openai", "description": "Realtime provider. Set for realtime architecture; null for pipeline and text." },
-          "sysMsg": { "type": "string", "nullable": true, "example": "You are a helpful customer support agent for Acme Corp. Be concise and friendly." },
+          "model": {
+            "type": "string",
+            "nullable": true,
+            "example": "gpt_4o_mini",
+            "description": "LLM model. Set for pipeline and text architectures; null for realtime."
+          },
+          "stt": {
+            "type": "string",
+            "nullable": true,
+            "example": "deepgram",
+            "description": "Speech-to-text provider. Set for pipeline; null for realtime and text."
+          },
+          "voiceId": {
+            "type": "string",
+            "nullable": true,
+            "example": "gemini-leda-en",
+            "description": "TTS voice ID. Required for pipeline; optional for realtime (used only when greetingType is agentFirst)."
+          },
+          "realtimeProvider": {
+            "type": "string",
+            "nullable": true,
+            "example": "openai",
+            "description": "Realtime provider. Set for realtime architecture; null for pipeline and text."
+          },
+          "sysMsg": {
+            "type": "string",
+            "nullable": true,
+            "example": "You are a helpful customer support agent for Acme Corp. Be concise and friendly."
+          },
           "greetingType": {
             "type": "string",
-            "enum": ["agentFirst", "userFirst"],
+            "enum": [
+              "agentFirst",
+              "userFirst"
+            ],
             "example": "agentFirst",
             "description": "Controls who speaks first when the call connects."
           },
-          "greetingMessage": { "type": "string", "nullable": true, "example": "Hello! How can I help you today?", "description": "Opening message spoken by the agent. Only used when greetingType is agentFirst." },
-          "temperature": { "type": "number", "example": 0.7, "description": "LLM sampling temperature (0–2)." },
-          "inactivityTimeout": { "type": "integer", "example": 30, "description": "Seconds of user silence before the agent ends the call. Range: 10–60." },
-          "lastMessage": { "type": "string", "nullable": true, "example": "Is there anything else I can help you with?", "description": "Final message spoken by the agent before ending the call." },
-          "mode": { "type": "string", "enum": ["public", "private", "commercial"], "example": "public", "description": "Visibility mode. public: all org members. private: creator + admins/owners only. commercial: globally accessible." },
-          "functionCallingEnabled": { "type": "boolean", "example": false },
-          "enabledFunctions": { "type": "array", "items": { "type": "string" }, "description": "IDs of built-in functions enabled for this agent." },
-          "enabledCustomFunctions": { "type": "array", "items": { "type": "string" }, "description": "IDs of custom (webhook) functions enabled for this agent." },
+          "greetingMessage": {
+            "type": "string",
+            "nullable": true,
+            "example": "Hello! How can I help you today?",
+            "description": "Opening message spoken by the agent. Only used when greetingType is agentFirst."
+          },
+          "temperature": {
+            "type": "number",
+            "example": 0.7,
+            "description": "LLM sampling temperature (0\u00e2\u20ac\u201c2)."
+          },
+          "inactivityTimeout": {
+            "type": "integer",
+            "example": 30,
+            "description": "Seconds of user silence before the agent ends the call. Range: 10\u00e2\u20ac\u201c60."
+          },
+          "lastMessage": {
+            "type": "string",
+            "nullable": true,
+            "example": "Is there anything else I can help you with?",
+            "description": "Final message spoken by the agent before ending the call."
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "public",
+              "private",
+              "commercial"
+            ],
+            "example": "public",
+            "description": "Visibility mode. public: all org members. private: creator + admins/owners only. commercial: globally accessible."
+          },
+          "functionCallingEnabled": {
+            "type": "boolean",
+            "example": false
+          },
+          "enabledFunctions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "IDs of built-in functions enabled for this agent."
+          },
+          "enabledCustomFunctions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "IDs of custom (webhook) functions enabled for this agent."
+          },
           "languages": {
             "type": "array",
             "items": {
               "type": "object",
               "properties": {
-                "id": { "type": "string" },
-                "language": { "type": "string", "example": "en" }
+                "id": {
+                  "type": "string"
+                },
+                "language": {
+                  "type": "string",
+                  "example": "en"
+                }
               }
             },
             "description": "Languages the agent is configured to support."
           },
-          "userId": { "type": "string", "description": "ID of the user who created this agent." },
-          "organizationId": { "type": "string", "description": "ID of the organization this agent belongs to." },
-          "createdAt": { "type": "string", "format": "date-time" },
-          "updatedAt": { "type": "string", "format": "date-time" }
+          "userId": {
+            "type": "string",
+            "description": "ID of the user who created this agent."
+          },
+          "organizationId": {
+            "type": "string",
+            "description": "ID of the organization this agent belongs to."
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
         }
       },
       "CallSession": {
         "type": "object",
         "properties": {
-          "callId": { "type": "string", "example": "call_abc123" },
-          "sessionId": { "type": "string", "example": "sess_xyz789" },
-          "agentId": { "type": "string", "example": "5b710eca-ee67-4c3a-aeb6-8b541f451b40" },
-          "direction": { "type": "string", "enum": ["inbound", "outbound"] },
-          "to": { "type": "string", "example": "+12025550123" },
-          "from": { "type": "string", "example": "+18885550100" },
-          "duration": { "type": "integer", "example": 245 },
+          "callId": {
+            "type": "string",
+            "example": "call_abc123"
+          },
+          "sessionId": {
+            "type": "string",
+            "example": "sess_xyz789"
+          },
+          "agentId": {
+            "type": "string",
+            "example": "5b710eca-ee67-4c3a-aeb6-8b541f451b40"
+          },
+          "direction": {
+            "type": "string",
+            "enum": [
+              "inbound",
+              "outbound"
+            ]
+          },
+          "to": {
+            "type": "string",
+            "example": "+12025550123"
+          },
+          "from": {
+            "type": "string",
+            "example": "+18885550100"
+          },
+          "duration": {
+            "type": "integer",
+            "example": 245
+          },
           "status": {
             "type": "string",
-            "enum": ["initiating", "ringing", "in_progress", "completed", "failed", "no_answer"]
+            "enum": [
+              "initiating",
+              "ringing",
+              "in_progress",
+              "completed",
+              "failed",
+              "no_answer"
+            ]
           },
-          "startTime": { "type": "string", "format": "date-time" },
-          "endTime": { "type": "string", "format": "date-time" },
-          "recordingUrl": { "type": "string" },
-          "metadata": { "type": "object" }
+          "startTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "endTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "recordingUrl": {
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object"
+          }
         }
       },
       "Pagination": {
         "type": "object",
         "properties": {
-          "page": { "type": "integer", "example": 1 },
-          "limit": { "type": "integer", "example": 20 },
-          "total": { "type": "integer", "example": 48 },
-          "hasNext": { "type": "boolean" },
-          "hasPrev": { "type": "boolean" }
+          "page": {
+            "type": "integer",
+            "example": 1
+          },
+          "limit": {
+            "type": "integer",
+            "example": 20
+          },
+          "total": {
+            "type": "integer",
+            "example": 48
+          },
+          "hasNext": {
+            "type": "boolean"
+          },
+          "hasPrev": {
+            "type": "boolean"
+          }
         }
       },
       "Error": {
         "type": "object",
         "properties": {
-          "success": { "type": "boolean", "example": false },
-          "error": { "type": "string", "example": "Error message" },
-          "code": { "type": "string", "example": "ERROR_CODE" }
+          "success": {
+            "type": "boolean",
+            "example": false
+          },
+          "error": {
+            "type": "string",
+            "example": "Error message"
+          },
+          "code": {
+            "type": "string",
+            "example": "ERROR_CODE"
+          }
         }
       },
       "BatchJob": {
         "type": "object",
         "properties": {
-          "id": { "type": "string", "example": "batch_xyz789" },
-          "name": { "type": "string", "example": "January Renewal Campaign" },
-          "description": { "type": "string", "nullable": true, "example": "Follow up on expiring subscriptions" },
+          "id": {
+            "type": "string",
+            "example": "batch_xyz789"
+          },
+          "name": {
+            "type": "string",
+            "example": "January Renewal Campaign"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true,
+            "example": "Follow up on expiring subscriptions"
+          },
           "status": {
             "type": "string",
-            "enum": ["pending", "scheduled", "running", "completed", "failed", "cancelled"],
+            "enum": [
+              "pending",
+              "scheduled",
+              "running",
+              "completed",
+              "failed",
+              "cancelled"
+            ],
             "example": "running"
           },
-          "organizationId": { "type": "string", "example": "org_abc123" },
-          "agentId": { "type": "string", "example": "agent_def456" },
-          "fromPhoneNumberId": { "type": "string", "example": "phone_ghi789" },
-          "totalContacts": { "type": "integer", "example": 100 },
-          "contactsProcessed": { "type": "integer", "example": 42 },
-          "successfulCalls": { "type": "integer", "example": 35 },
-          "failedCalls": { "type": "integer", "example": 7 },
-          "scheduledStartTime": { "type": "string", "format": "date-time", "nullable": true },
-          "actualStartTime": { "type": "string", "format": "date-time", "nullable": true },
-          "completedAt": { "type": "string", "format": "date-time", "nullable": true },
-          "createdAt": { "type": "string", "format": "date-time" },
-          "concurrentCallLimit": { "type": "integer", "example": 5 },
+          "organizationId": {
+            "type": "string",
+            "example": "org_abc123"
+          },
+          "agentId": {
+            "type": "string",
+            "example": "agent_def456"
+          },
+          "fromPhoneNumberId": {
+            "type": "string",
+            "example": "phone_ghi789"
+          },
+          "totalContacts": {
+            "type": "integer",
+            "example": 100
+          },
+          "contactsProcessed": {
+            "type": "integer",
+            "example": 42
+          },
+          "successfulCalls": {
+            "type": "integer",
+            "example": 35
+          },
+          "failedCalls": {
+            "type": "integer",
+            "example": 7
+          },
+          "scheduledStartTime": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "actualStartTime": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "completedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "concurrentCallLimit": {
+            "type": "integer",
+            "example": 5
+          },
           "retryPolicy": {
             "type": "object",
             "properties": {
-              "maxAttempts": { "type": "integer", "example": 3 },
-              "retryableStatuses": { "type": "array", "items": { "type": "string" }, "example": ["no_answer", "busy", "timeout"] }
+              "maxAttempts": {
+                "type": "integer",
+                "example": 3
+              },
+              "retryableStatuses": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "example": [
+                  "no_answer",
+                  "busy",
+                  "timeout"
+                ]
+              }
             }
           }
         }
@@ -148,61 +384,197 @@
       "BatchContact": {
         "type": "object",
         "properties": {
-          "id": { "type": "string", "example": "contact_001" },
-          "phoneNumber": { "type": "string", "example": "+12025550101" },
-          "contactData": { "type": "object", "example": { "phone": "+12025550101", "name": "John Smith", "customerName": "John Smith" } },
+          "id": {
+            "type": "string",
+            "example": "contact_001"
+          },
+          "phoneNumber": {
+            "type": "string",
+            "example": "+12025550101"
+          },
+          "contactData": {
+            "type": "object",
+            "example": {
+              "phone": "+12025550101",
+              "name": "John Smith",
+              "customerName": "John Smith"
+            }
+          },
           "status": {
             "type": "string",
-            "enum": ["pending", "queued", "dialing", "completed", "no_answer", "busy", "timeout", "blocked", "invalid_number", "carrier_error", "failed", "cancelled"],
+            "enum": [
+              "pending",
+              "queued",
+              "dialing",
+              "completed",
+              "no_answer",
+              "busy",
+              "timeout",
+              "blocked",
+              "invalid_number",
+              "carrier_error",
+              "failed",
+              "cancelled"
+            ],
             "example": "completed"
           },
-          "errorCode": { "type": "string", "nullable": true, "example": "480" },
-          "attemptCount": { "type": "integer", "example": 1 },
-          "maxAttempts": { "type": "integer", "example": 3 },
-          "lastAttemptAt": { "type": "string", "format": "date-time", "nullable": true },
-          "nextRetryAt": { "type": "string", "format": "date-time", "nullable": true },
-          "completedAt": { "type": "string", "format": "date-time", "nullable": true },
-          "roomName": { "type": "string", "nullable": true },
-          "failureReason": { "type": "string", "nullable": true },
-          "callDuration": { "type": "integer", "nullable": true, "description": "Call duration in seconds" }
+          "errorCode": {
+            "type": "string",
+            "nullable": true,
+            "example": "480"
+          },
+          "attemptCount": {
+            "type": "integer",
+            "example": 1
+          },
+          "maxAttempts": {
+            "type": "integer",
+            "example": 3
+          },
+          "lastAttemptAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "nextRetryAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "completedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "roomName": {
+            "type": "string",
+            "nullable": true
+          },
+          "failureReason": {
+            "type": "string",
+            "nullable": true
+          },
+          "callDuration": {
+            "type": "integer",
+            "nullable": true,
+            "description": "Call duration in seconds"
+          }
         }
       },
       "BatchJobListResponse": {
         "type": "object",
         "properties": {
-          "batchJobs": { "type": "array", "items": { "$ref": "#/components/schemas/BatchJob" } },
-          "total": { "type": "integer", "example": 47 },
-          "page": { "type": "integer", "example": 1 },
-          "pageSize": { "type": "integer", "example": 20 }
+          "batchJobs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BatchJob"
+            }
+          },
+          "total": {
+            "type": "integer",
+            "example": 47
+          },
+          "page": {
+            "type": "integer",
+            "example": 1
+          },
+          "pageSize": {
+            "type": "integer",
+            "example": 20
+          }
         }
       },
       "BatchJobDetailResponse": {
         "type": "object",
         "properties": {
-          "id": { "type": "string" },
-          "name": { "type": "string" },
-          "description": { "type": "string", "nullable": true },
-          "status": { "type": "string" },
-          "organizationId": { "type": "string" },
-          "agentId": { "type": "string" },
-          "fromPhoneNumberId": { "type": "string" },
-          "totalContacts": { "type": "integer" },
-          "contactsProcessed": { "type": "integer" },
-          "successfulCalls": { "type": "integer" },
-          "failedCalls": { "type": "integer" },
-          "statusBreakdown": { "type": "object", "additionalProperties": { "type": "integer" } },
-          "scheduledStartTime": { "type": "string", "format": "date-time", "nullable": true },
-          "actualStartTime": { "type": "string", "format": "date-time", "nullable": true },
-          "completedAt": { "type": "string", "format": "date-time", "nullable": true },
-          "estimatedCompletionTime": { "type": "string", "format": "date-time", "nullable": true },
-          "createdAt": { "type": "string", "format": "date-time" },
-          "concurrentCallLimit": { "type": "integer" },
-          "retryPolicy": { "type": "object" },
-          "contacts": { "type": "array", "items": { "$ref": "#/components/schemas/BatchContact" } },
-          "contactsTotal": { "type": "integer" },
-          "contactsPage": { "type": "integer" },
-          "contactsPageSize": { "type": "integer" },
-          "contactsHasMore": { "type": "boolean" }
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string"
+          },
+          "organizationId": {
+            "type": "string"
+          },
+          "agentId": {
+            "type": "string"
+          },
+          "fromPhoneNumberId": {
+            "type": "string"
+          },
+          "totalContacts": {
+            "type": "integer"
+          },
+          "contactsProcessed": {
+            "type": "integer"
+          },
+          "successfulCalls": {
+            "type": "integer"
+          },
+          "failedCalls": {
+            "type": "integer"
+          },
+          "statusBreakdown": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "integer"
+            }
+          },
+          "scheduledStartTime": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "actualStartTime": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "completedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "estimatedCompletionTime": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "concurrentCallLimit": {
+            "type": "integer"
+          },
+          "retryPolicy": {
+            "type": "object"
+          },
+          "contacts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BatchContact"
+            }
+          },
+          "contactsTotal": {
+            "type": "integer"
+          },
+          "contactsPage": {
+            "type": "integer"
+          },
+          "contactsPageSize": {
+            "type": "integer"
+          },
+          "contactsHasMore": {
+            "type": "boolean"
+          }
         }
       }
     },
@@ -211,8 +583,14 @@
         "description": "Invalid or missing API key",
         "content": {
           "application/json": {
-            "schema": { "$ref": "#/components/schemas/Error" },
-            "example": { "success": false, "error": "Invalid API key", "code": "invalid_api_key" }
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            },
+            "example": {
+              "success": false,
+              "error": "Invalid API key",
+              "code": "invalid_api_key"
+            }
           }
         }
       },
@@ -220,8 +598,14 @@
         "description": "Resource not found",
         "content": {
           "application/json": {
-            "schema": { "$ref": "#/components/schemas/Error" },
-            "example": { "success": false, "error": "Not found", "code": "not_found" }
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            },
+            "example": {
+              "success": false,
+              "error": "Not found",
+              "code": "not_found"
+            }
           }
         }
       },
@@ -229,35 +613,32 @@
         "description": "Insufficient permissions",
         "content": {
           "application/json": {
-            "schema": { "$ref": "#/components/schemas/Error" }
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
           }
         }
       }
     }
   },
   "paths": {
-    "/agents": {
+    "/v1/agents": {
+      "servers": [
+        {
+          "url": "https://livekit.talkifai.dev",
+          "description": "TalkifAI Production API"
+        }
+      ],
       "get": {
         "operationId": "listAgents",
         "summary": "List Agents",
-        "description": "Returns all agents in your organization.",
-        "tags": ["Agents"],
-        "parameters": [
+        "description": "Returns all agents (public and private) in the organization associated with the API key.",
+        "tags": [
+          "Agents"
+        ],
+        "security": [
           {
-            "name": "mode",
-            "in": "query",
-            "description": "Filter by visibility mode",
-            "schema": { "type": "string", "enum": ["public", "private", "commercial"] }
-          },
-          {
-            "name": "page",
-            "in": "query",
-            "schema": { "type": "integer", "default": 1 }
-          },
-          {
-            "name": "limit",
-            "in": "query",
-            "schema": { "type": "integer", "default": 20, "maximum": 100 }
+            "apiKeyHeader": []
           }
         ],
         "responses": {
@@ -268,84 +649,163 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "success": { "type": "boolean", "example": true },
-                    "data": { "type": "array", "items": { "$ref": "#/components/schemas/Agent" } },
-                    "pagination": { "$ref": "#/components/schemas/Pagination" }
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "agents": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/Agent"
+                          }
+                        },
+                        "count": {
+                          "type": "integer"
+                        }
+                      }
+                    }
                   }
                 }
               }
             }
           },
-          "401": { "$ref": "#/components/responses/Unauthorized" }
+          "401": {
+            "description": "Invalid or missing API key"
+          },
+          "403": {
+            "description": "API key disabled, expired, or no active organization"
+          }
         }
       },
       "post": {
         "operationId": "createAgent",
         "summary": "Create Agent",
-        "description": "Creates a new agent. Supported architectures: pipeline, realtime, text.",
-        "tags": ["Agents"],
+        "description": "Creates a new agent in your organization.\n\n**Architecture-specific required fields:**\n- `pipeline`: `model` + `stt` required\n- `realtime`: `realtimeProvider` required (`openai` or `gemini`)\n- `text`: `model` required",
+        "tags": [
+          "Agents"
+        ],
+        "security": [
+          {
+            "apiKeyHeader": []
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["name", "agentArchitecture", "systemPrompt"],
+                "required": [
+                  "name",
+                  "description",
+                  "sysMsg"
+                ],
                 "properties": {
-                  "name": { "type": "string", "example": "Sales Bot" },
+                  "name": {
+                    "type": "string",
+                    "example": "Customer Support Bot"
+                  },
+                  "description": {
+                    "type": "string",
+                    "example": "Handles tier-1 support queries"
+                  },
+                  "sysMsg": {
+                    "type": "string",
+                    "example": "You are a helpful customer support agent."
+                  },
                   "agentArchitecture": {
                     "type": "string",
-                    "enum": ["pipeline", "realtime", "text"],
-                    "example": "pipeline"
+                    "enum": [
+                      "pipeline",
+                      "realtime",
+                      "text"
+                    ],
+                    "default": "pipeline"
                   },
-                  "model": { "type": "string", "example": "gpt-4o", "description": "Required for pipeline and text" },
-                  "stt": { "type": "string", "example": "deepgram", "description": "Required for pipeline" },
-                  "tts": { "type": "string", "example": "cartesia", "description": "Required for pipeline" },
-                  "voiceId": { "type": "string", "example": "sonic-english" },
-                  "realtimeProvider": { "type": "string", "example": "openai", "description": "Required for realtime" },
-                  "systemPrompt": { "type": "string", "example": "You are a helpful sales agent..." },
-                  "language": { "type": "string", "example": "en" },
-                  "mode": { "type": "string", "enum": ["public", "private", "commercial"], "default": "private" },
-                  "temperature": { "type": "number", "example": 0.7, "minimum": 0, "maximum": 2 }
-                }
-              },
-              "examples": {
-                "pipeline": {
-                  "summary": "Pipeline (voice + text)",
-                  "value": {
-                    "name": "Customer Support",
-                    "agentArchitecture": "pipeline",
-                    "model": "gpt-4o",
-                    "stt": "deepgram",
-                    "tts": "cartesia",
-                    "voiceId": "sonic-english",
-                    "systemPrompt": "You are a helpful customer support agent for Acme Corp.",
-                    "language": "en",
-                    "mode": "private",
-                    "temperature": 0.7
-                  }
-                },
-                "realtime": {
-                  "summary": "Realtime (lowest latency)",
-                  "value": {
-                    "name": "Low Latency Bot",
-                    "agentArchitecture": "realtime",
-                    "realtimeProvider": "openai",
-                    "voiceId": "alloy",
-                    "systemPrompt": "You are a fast-responding support agent.",
-                    "language": "en",
-                    "mode": "private"
-                  }
-                },
-                "text": {
-                  "summary": "Text (chat only)",
-                  "value": {
-                    "name": "Website Chatbot",
-                    "agentArchitecture": "text",
-                    "model": "gpt-4o-mini",
-                    "systemPrompt": "You are a helpful website assistant.",
-                    "language": "en",
-                    "mode": "public"
+                  "model": {
+                    "type": "string",
+                    "example": "gpt_4o_mini",
+                    "description": "Required for pipeline and text"
+                  },
+                  "stt": {
+                    "type": "string",
+                    "example": "deepgram",
+                    "description": "Required for pipeline"
+                  },
+                  "voiceId": {
+                    "type": "string",
+                    "example": "gemini-leda-en",
+                    "description": "Defaults to gemini-leda-en for pipeline if omitted"
+                  },
+                  "realtimeProvider": {
+                    "type": "string",
+                    "enum": [
+                      "openai",
+                      "gemini"
+                    ],
+                    "description": "Required for realtime"
+                  },
+                  "greetingType": {
+                    "type": "string",
+                    "enum": [
+                      "agentFirst",
+                      "userFirst"
+                    ],
+                    "default": "agentFirst"
+                  },
+                  "greetingMessage": {
+                    "type": "string",
+                    "example": "Hello! How can I help you today?"
+                  },
+                  "temperature": {
+                    "type": "number",
+                    "default": 0.7,
+                    "minimum": 0,
+                    "maximum": 2
+                  },
+                  "inactivityTimeout": {
+                    "type": "integer",
+                    "default": 30,
+                    "minimum": 10,
+                    "maximum": 60
+                  },
+                  "mode": {
+                    "type": "string",
+                    "enum": [
+                      "public",
+                      "private",
+                      "commercial"
+                    ],
+                    "default": "public"
+                  },
+                  "languages": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "example": [
+                      "english"
+                    ]
+                  },
+                  "functionCallingEnabled": {
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "enabledFunctions": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "default": []
+                  },
+                  "enabledCustomFunctions": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "default": []
                   }
                 }
               }
@@ -354,40 +814,65 @@
         },
         "responses": {
           "201": {
-            "description": "Agent created",
+            "description": "Agent created successfully",
             "content": {
               "application/json": {
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "success": { "type": "boolean", "example": true },
-                    "data": { "$ref": "#/components/schemas/Agent" }
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "agent": {
+                          "$ref": "#/components/schemas/Agent"
+                        }
+                      }
+                    }
                   }
                 }
               }
             }
           },
           "400": {
-            "description": "Missing or invalid fields",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+            "description": "Missing required fields or validation error"
           },
-          "401": { "$ref": "#/components/responses/Unauthorized" }
+          "401": {
+            "description": "Invalid or missing API key"
+          }
         }
       }
     },
-    "/agents/{agentId}": {
+    "/v1/agents/{agentId}": {
+      "servers": [
+        {
+          "url": "https://livekit.talkifai.dev",
+          "description": "TalkifAI Production API"
+        }
+      ],
       "get": {
         "operationId": "getAgent",
         "summary": "Get Agent",
-        "description": "Returns full details for a specific agent.",
-        "tags": ["Agents"],
+        "description": "Returns full configuration for a specific agent. The agent must belong to your organization.",
+        "tags": [
+          "Agents"
+        ],
+        "security": [
+          {
+            "apiKeyHeader": []
+          }
+        ],
         "parameters": [
           {
             "name": "agentId",
             "in": "path",
             "required": true,
-            "schema": { "type": "string" },
-            "example": "5b710eca-ee67-4c3a-aeb6-8b541f451b40"
+            "schema": {
+              "type": "string"
+            },
+            "example": "01JK5XYZ..."
           }
         ],
         "responses": {
@@ -398,32 +883,51 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "success": { "type": "boolean", "example": true },
-                    "data": { "$ref": "#/components/schemas/Agent" }
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "agent": {
+                          "$ref": "#/components/schemas/Agent"
+                        }
+                      }
+                    }
                   }
                 }
               }
             }
           },
-          "401": { "$ref": "#/components/responses/Unauthorized" },
-          "403": {
-            "description": "Forbidden. Either the caller is not a member of the agent's organization, or the agent is private and the caller is not its creator or an org admin/owner.",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+          "401": {
+            "description": "Invalid or missing API key"
           },
-          "404": { "$ref": "#/components/responses/NotFound" }
+          "404": {
+            "description": "Agent not found"
+          }
         }
       },
-      "patch": {
+      "put": {
         "operationId": "updateAgent",
         "summary": "Update Agent",
-        "description": "Updates one or more fields on an agent. Send only the fields you want to change.",
-        "tags": ["Agents"],
+        "description": "Updates one or more fields on an existing agent. Only send fields you want to change. Architecture cannot be changed after creation.",
+        "tags": [
+          "Agents"
+        ],
+        "security": [
+          {
+            "apiKeyHeader": []
+          }
+        ],
         "parameters": [
           {
             "name": "agentId",
             "in": "path",
             "required": true,
-            "schema": { "type": "string" }
+            "schema": {
+              "type": "string"
+            },
+            "example": "01JK5XYZ..."
           }
         ],
         "requestBody": {
@@ -433,19 +937,82 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "name": { "type": "string" },
-                  "systemPrompt": { "type": "string" },
-                  "model": { "type": "string" },
-                  "voiceId": { "type": "string" },
-                  "temperature": { "type": "number" },
-                  "active": { "type": "boolean" },
-                  "mode": { "type": "string", "enum": ["public", "private", "commercial"] }
+                  "name": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "sysMsg": {
+                    "type": "string"
+                  },
+                  "model": {
+                    "type": "string"
+                  },
+                  "stt": {
+                    "type": "string"
+                  },
+                  "voiceId": {
+                    "type": "string"
+                  },
+                  "realtimeProvider": {
+                    "type": "string",
+                    "enum": [
+                      "openai",
+                      "gemini"
+                    ]
+                  },
+                  "greetingType": {
+                    "type": "string",
+                    "enum": [
+                      "agentFirst",
+                      "userFirst"
+                    ]
+                  },
+                  "greetingMessage": {
+                    "type": "string"
+                  },
+                  "lastMessage": {
+                    "type": "string"
+                  },
+                  "temperature": {
+                    "type": "number"
+                  },
+                  "inactivityTimeout": {
+                    "type": "integer",
+                    "minimum": 10,
+                    "maximum": 60
+                  },
+                  "mode": {
+                    "type": "string",
+                    "enum": [
+                      "public",
+                      "private",
+                      "commercial"
+                    ]
+                  },
+                  "languages": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "functionCallingEnabled": {
+                    "type": "boolean"
+                  },
+                  "enabledFunctions": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "enabledCustomFunctions": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
                 }
-              },
-              "example": {
-                "systemPrompt": "Updated instructions for the agent...",
-                "temperature": 0.5,
-                "active": true
               }
             }
           }
@@ -458,44 +1025,15 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "success": { "type": "boolean", "example": true },
-                    "data": { "$ref": "#/components/schemas/Agent" }
-                  }
-                }
-              }
-            }
-          },
-          "401": { "$ref": "#/components/responses/Unauthorized" },
-          "403": { "$ref": "#/components/responses/Forbidden" },
-          "404": { "$ref": "#/components/responses/NotFound" }
-        }
-      },
-      "delete": {
-        "operationId": "deleteAgent",
-        "summary": "Delete Agent",
-        "description": "Permanently deletes an agent. This action cannot be undone.",
-        "tags": ["Agents"],
-        "parameters": [
-          {
-            "name": "agentId",
-            "in": "path",
-            "required": true,
-            "schema": { "type": "string" }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Agent deleted",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "success": { "type": "boolean", "example": true },
+                    "success": {
+                      "type": "boolean"
+                    },
                     "data": {
                       "type": "object",
                       "properties": {
-                        "message": { "type": "string", "example": "Agent deleted successfully" }
+                        "agent": {
+                          "$ref": "#/components/schemas/Agent"
+                        }
                       }
                     }
                   }
@@ -503,9 +1041,50 @@
               }
             }
           },
-          "401": { "$ref": "#/components/responses/Unauthorized" },
-          "403": { "$ref": "#/components/responses/Forbidden" },
-          "404": { "$ref": "#/components/responses/NotFound" }
+          "400": {
+            "description": "Validation error"
+          },
+          "401": {
+            "description": "Invalid or missing API key"
+          },
+          "404": {
+            "description": "Agent not found"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteAgent",
+        "summary": "Delete Agent",
+        "description": "Permanently deletes an agent and all related data including subagents, knowledge base links, and FalkorDB memory graphs. **This action cannot be undone.**",
+        "tags": [
+          "Agents"
+        ],
+        "security": [
+          {
+            "apiKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "agentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "01JK5XYZ..."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Agent deleted successfully"
+          },
+          "401": {
+            "description": "Invalid or missing API key"
+          },
+          "404": {
+            "description": "Agent not found"
+          }
         }
       }
     },
@@ -513,15 +1092,23 @@
       "post": {
         "operationId": "initiateCall",
         "summary": "Initiate Outbound Call",
-        "description": "Triggers an outbound voice call from your registered phone number to a destination. The `from_number` must have an outbound agent assigned in Studio → Phone Numbers.",
-        "tags": ["Voice Calls"],
-        "security": [{ "bearerAuth": [] }],
+        "description": "Triggers an outbound voice call from your registered phone number to a destination. The `from_number` must have an outbound agent assigned in Studio \u00e2\u2020\u2019 Phone Numbers.",
+        "tags": [
+          "Voice Calls"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
         "parameters": [
           {
             "name": "to_number",
             "in": "query",
             "required": true,
-            "schema": { "type": "string" },
+            "schema": {
+              "type": "string"
+            },
             "description": "Destination phone number in E.164 format",
             "example": "+12025550123"
           },
@@ -529,7 +1116,9 @@
             "name": "from_number",
             "in": "query",
             "required": true,
-            "schema": { "type": "string" },
+            "schema": {
+              "type": "string"
+            },
             "description": "Your registered TalkifAI phone number in E.164 format",
             "example": "+12025550100"
           }
@@ -542,18 +1131,39 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "success": { "type": "boolean", "example": true },
-                    "message": { "type": "string", "example": "Call initiated successfully" },
-                    "room_name": { "type": "string", "example": "outbound_agent_abc123_12025550123_1705320000" },
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Call initiated successfully"
+                    },
+                    "room_name": {
+                      "type": "string",
+                      "example": "outbound_agent_abc123_12025550123_1705320000"
+                    },
                     "agent": {
                       "type": "object",
                       "properties": {
-                        "id": { "type": "string", "example": "agent_abc123" },
-                        "name": { "type": "string", "example": "Sales Agent" }
+                        "id": {
+                          "type": "string",
+                          "example": "agent_abc123"
+                        },
+                        "name": {
+                          "type": "string",
+                          "example": "Sales Agent"
+                        }
                       }
                     },
-                    "from_number": { "type": "string", "example": "+12025550100" },
-                    "to_number": { "type": "string", "example": "+12025550123" }
+                    "from_number": {
+                      "type": "string",
+                      "example": "+12025550100"
+                    },
+                    "to_number": {
+                      "type": "string",
+                      "example": "+12025550123"
+                    }
                   }
                 }
               }
@@ -563,21 +1173,37 @@
             "description": "Invalid phone number format or text-only agent assigned",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/Error" },
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
                 "examples": {
-                  "invalid_number": { "value": { "detail": "Invalid phone number format" } },
-                  "text_agent": { "value": { "detail": "Agent 'Chat Bot' is a text-only agent and cannot make voice calls" } }
+                  "invalid_number": {
+                    "value": {
+                      "detail": "Invalid phone number format"
+                    }
+                  },
+                  "text_agent": {
+                    "value": {
+                      "detail": "Agent 'Chat Bot' is a text-only agent and cannot make voice calls"
+                    }
+                  }
                 }
               }
             }
           },
-          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
           "402": {
             "description": "Insufficient credits",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/Error" },
-                "example": { "detail": "Insufficient balance to make call" }
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "detail": "Insufficient balance to make call"
+                }
               }
             }
           },
@@ -585,23 +1211,37 @@
             "description": "Phone number not found or no outbound agent assigned",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/Error" },
-                "example": { "detail": "Phone number +12025550100 not found or has no outbound agent assigned" }
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "detail": "Phone number +12025550100 not found or has no outbound agent assigned"
+                }
               }
             }
           },
           "408": {
-            "description": "Call timed out — not answered within 60 seconds",
+            "description": "Call timed out \u00e2\u20ac\u201d not answered within 60 seconds",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/Error" },
-                "example": { "detail": "Call timed out (no answer)" }
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "detail": "Call timed out (no answer)"
+                }
               }
             }
           },
           "500": {
             "description": "Internal server error or SIP trunk failure",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         }
       }
@@ -611,7 +1251,9 @@
         "operationId": "listCalls",
         "summary": "List Call Sessions",
         "description": "Returns all call sessions for your active organization including transcripts, post-call analysis, cost breakdowns, daily usage, and per-agent usage. Requires an active organization in session.",
-        "tags": ["Voice Calls"],
+        "tags": [
+          "Voice Calls"
+        ],
         "responses": {
           "200": {
             "description": "Call sessions and usage data",
@@ -620,35 +1262,123 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "totalSessions": { "type": "integer", "example": 150 },
-                    "totalUsage": { "type": "number", "example": 45.75 },
+                    "totalSessions": {
+                      "type": "integer",
+                      "example": 150
+                    },
+                    "totalUsage": {
+                      "type": "number",
+                      "example": 45.75
+                    },
                     "sessions": {
                       "type": "array",
                       "items": {
                         "type": "object",
                         "properties": {
-                          "id": { "type": "string", "example": "session_abc123" },
-                          "roomName": { "type": "string" },
-                          "agentId": { "type": "string" },
-                          "agentName": { "type": "string" },
-                          "sessionType": { "type": "string", "enum": ["webcall", "inbound_telephony", "outbound_telephony", "chat"] },
-                          "startTime": { "type": "string", "format": "date-time" },
-                          "endTime": { "type": "string", "format": "date-time" },
-                          "duration": { "type": "integer", "description": "Duration in seconds" },
-                          "sourceType": { "type": "string", "enum": ["website", "phone", "chatbot"] },
-                          "callerPhone": { "type": "string", "nullable": true },
-                          "calleePhone": { "type": "string", "nullable": true },
-                          "callDirection": { "type": "string", "enum": ["inbound", "outbound"], "nullable": true },
-                          "status": { "type": "string", "enum": ["completed", "ongoing", "failed", "abandoned"] },
-                          "agentModel": { "type": "string", "example": "gpt_4o_mini" },
-                          "keyMode": { "type": "string", "enum": ["talkifai_keys", "my_keys"] },
-                          "totalCost": { "type": "number", "example": 0.15 },
-                          "baseCost": { "type": "number" },
-                          "modelCost": { "type": "number" },
-                          "sttCost": { "type": "number", "nullable": true },
-                          "voiceCost": { "type": "number", "nullable": true },
-                          "transcript": { "type": "string", "nullable": true },
-                          "analysisData": { "type": "object", "nullable": true }
+                          "id": {
+                            "type": "string",
+                            "example": "session_abc123"
+                          },
+                          "roomName": {
+                            "type": "string"
+                          },
+                          "agentId": {
+                            "type": "string"
+                          },
+                          "agentName": {
+                            "type": "string"
+                          },
+                          "sessionType": {
+                            "type": "string",
+                            "enum": [
+                              "webcall",
+                              "inbound_telephony",
+                              "outbound_telephony",
+                              "chat"
+                            ]
+                          },
+                          "startTime": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "endTime": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "duration": {
+                            "type": "integer",
+                            "description": "Duration in seconds"
+                          },
+                          "sourceType": {
+                            "type": "string",
+                            "enum": [
+                              "website",
+                              "phone",
+                              "chatbot"
+                            ]
+                          },
+                          "callerPhone": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "calleePhone": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "callDirection": {
+                            "type": "string",
+                            "enum": [
+                              "inbound",
+                              "outbound"
+                            ],
+                            "nullable": true
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "completed",
+                              "ongoing",
+                              "failed",
+                              "abandoned"
+                            ]
+                          },
+                          "agentModel": {
+                            "type": "string",
+                            "example": "gpt_4o_mini"
+                          },
+                          "keyMode": {
+                            "type": "string",
+                            "enum": [
+                              "talkifai_keys",
+                              "my_keys"
+                            ]
+                          },
+                          "totalCost": {
+                            "type": "number",
+                            "example": 0.15
+                          },
+                          "baseCost": {
+                            "type": "number"
+                          },
+                          "modelCost": {
+                            "type": "number"
+                          },
+                          "sttCost": {
+                            "type": "number",
+                            "nullable": true
+                          },
+                          "voiceCost": {
+                            "type": "number",
+                            "nullable": true
+                          },
+                          "transcript": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "analysisData": {
+                            "type": "object",
+                            "nullable": true
+                          }
                         }
                       }
                     },
@@ -657,13 +1387,28 @@
                       "items": {
                         "type": "object",
                         "properties": {
-                          "date": { "type": "string", "example": "2024-01-15" },
-                          "duration": { "type": "integer" },
-                          "totalCalls": { "type": "integer" },
-                          "websiteCalls": { "type": "integer" },
-                          "phoneCalls": { "type": "integer" },
-                          "chatbotCalls": { "type": "integer" },
-                          "totalCost": { "type": "number" }
+                          "date": {
+                            "type": "string",
+                            "example": "2024-01-15"
+                          },
+                          "duration": {
+                            "type": "integer"
+                          },
+                          "totalCalls": {
+                            "type": "integer"
+                          },
+                          "websiteCalls": {
+                            "type": "integer"
+                          },
+                          "phoneCalls": {
+                            "type": "integer"
+                          },
+                          "chatbotCalls": {
+                            "type": "integer"
+                          },
+                          "totalCost": {
+                            "type": "number"
+                          }
                         }
                       }
                     },
@@ -672,26 +1417,57 @@
                       "items": {
                         "type": "object",
                         "properties": {
-                          "agentId": { "type": "string" },
-                          "agentName": { "type": "string" },
-                          "duration": { "type": "integer" },
-                          "sessions": { "type": "integer" },
-                          "totalCost": { "type": "number" }
+                          "agentId": {
+                            "type": "string"
+                          },
+                          "agentName": {
+                            "type": "string"
+                          },
+                          "duration": {
+                            "type": "integer"
+                          },
+                          "sessions": {
+                            "type": "integer"
+                          },
+                          "totalCost": {
+                            "type": "number"
+                          }
                         }
                       }
                     },
                     "creditSystem": {
                       "type": "object",
                       "properties": {
-                        "enabled": { "type": "boolean" },
-                        "creditBalance": { "type": "number", "example": 100.00 },
-                        "availableCredits": { "type": "number", "example": 54.25 },
-                        "canMakeCalls": { "type": "boolean" },
-                        "inGracePeriod": { "type": "boolean" }
+                        "enabled": {
+                          "type": "boolean"
+                        },
+                        "creditBalance": {
+                          "type": "number",
+                          "example": 100.0
+                        },
+                        "availableCredits": {
+                          "type": "number",
+                          "example": 54.25
+                        },
+                        "canMakeCalls": {
+                          "type": "boolean"
+                        },
+                        "inGracePeriod": {
+                          "type": "boolean"
+                        }
                       }
                     },
-                    "organizationId": { "type": "string" },
-                    "role": { "type": "string", "enum": ["user", "admin", "owner"] }
+                    "organizationId": {
+                      "type": "string"
+                    },
+                    "role": {
+                      "type": "string",
+                      "enum": [
+                        "user",
+                        "admin",
+                        "owner"
+                      ]
+                    }
                   }
                 }
               }
@@ -699,12 +1475,26 @@
           },
           "400": {
             "description": "No active organization selected",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
-          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
           "403": {
             "description": "Not a member of the selected organization",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         }
       }
@@ -714,7 +1504,9 @@
         "operationId": "checkUsage",
         "summary": "Check Usage Quota",
         "description": "Returns your current voice minutes usage and remaining quota for the billing period.",
-        "tags": ["Voice Calls"],
+        "tags": [
+          "Voice Calls"
+        ],
         "responses": {
           "200": {
             "description": "Usage quota details",
@@ -723,15 +1515,33 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "success": { "type": "boolean", "example": true },
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
                     "data": {
                       "type": "object",
                       "properties": {
-                        "minutesUsed": { "type": "integer", "example": 142 },
-                        "minutesLimit": { "type": "integer", "example": 3000 },
-                        "minutesRemaining": { "type": "integer", "example": 2858 },
-                        "percentUsed": { "type": "number", "example": 4.7 },
-                        "resetDate": { "type": "string", "example": "2024-02-01" }
+                        "minutesUsed": {
+                          "type": "integer",
+                          "example": 142
+                        },
+                        "minutesLimit": {
+                          "type": "integer",
+                          "example": 3000
+                        },
+                        "minutesRemaining": {
+                          "type": "integer",
+                          "example": 2858
+                        },
+                        "percentUsed": {
+                          "type": "number",
+                          "example": 4.7
+                        },
+                        "resetDate": {
+                          "type": "string",
+                          "example": "2024-02-01"
+                        }
                       }
                     }
                   }
@@ -739,7 +1549,9 @@
               }
             }
           },
-          "401": { "$ref": "#/components/responses/Unauthorized" }
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          }
         }
       }
     },
@@ -748,13 +1560,17 @@
         "operationId": "getCall",
         "summary": "Get Call Details",
         "description": "Returns full details for a specific call session, including post-call analysis if available.",
-        "tags": ["Voice Calls"],
+        "tags": [
+          "Voice Calls"
+        ],
         "parameters": [
           {
             "name": "callId",
             "in": "path",
             "required": true,
-            "schema": { "type": "string" },
+            "schema": {
+              "type": "string"
+            },
             "example": "call_abc123"
           }
         ],
@@ -766,15 +1582,24 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "success": { "type": "boolean", "example": true },
-                    "data": { "$ref": "#/components/schemas/CallSession" }
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/CallSession"
+                    }
                   }
                 }
               }
             }
           },
-          "401": { "$ref": "#/components/responses/Unauthorized" },
-          "404": { "$ref": "#/components/responses/NotFound" }
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
         }
       }
     },
@@ -783,13 +1608,17 @@
         "operationId": "getTranscript",
         "summary": "Get Call Transcript",
         "description": "Returns the full conversation transcript for a completed call.",
-        "tags": ["Voice Calls"],
+        "tags": [
+          "Voice Calls"
+        ],
         "parameters": [
           {
             "name": "callId",
             "in": "path",
             "required": true,
-            "schema": { "type": "string" },
+            "schema": {
+              "type": "string"
+            },
             "example": "call_abc123"
           }
         ],
@@ -801,19 +1630,34 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "success": { "type": "boolean", "example": true },
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
                     "data": {
                       "type": "object",
                       "properties": {
-                        "callId": { "type": "string" },
+                        "callId": {
+                          "type": "string"
+                        },
                         "transcript": {
                           "type": "array",
                           "items": {
                             "type": "object",
                             "properties": {
-                              "speaker": { "type": "string", "enum": ["agent", "user"] },
-                              "text": { "type": "string" },
-                              "timestamp": { "type": "number" }
+                              "speaker": {
+                                "type": "string",
+                                "enum": [
+                                  "agent",
+                                  "user"
+                                ]
+                              },
+                              "text": {
+                                "type": "string"
+                              },
+                              "timestamp": {
+                                "type": "number"
+                              }
                             }
                           }
                         }
@@ -824,8 +1668,12 @@
               }
             }
           },
-          "401": { "$ref": "#/components/responses/Unauthorized" },
-          "404": { "$ref": "#/components/responses/NotFound" }
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
         }
       }
     },
@@ -834,15 +1682,23 @@
         "operationId": "createChatSession",
         "summary": "Create Chat Session",
         "description": "Creates a new text chat session. Returns a session token for authenticating subsequent messages.\n\n**Auth:** Use `X-API-Key` header (not `Authorization: Bearer`) for this endpoint. Call from your backend server only.",
-        "tags": ["Text Chat"],
-        "security": [{ "apiKeyHeader": [] }],
+        "tags": [
+          "Text Chat"
+        ],
+        "security": [
+          {
+            "apiKeyHeader": []
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["agent_id"],
+                "required": [
+                  "agent_id"
+                ],
                 "properties": {
                   "agent_id": {
                     "type": "string",
@@ -862,11 +1718,27 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "conversation_id": { "type": "string", "example": "chat_5b710eca_user123_1705312800000" },
-                    "session_token": { "type": "string", "description": "JWT valid for 24 hours" },
-                    "agent_name": { "type": "string", "example": "Support Agent" },
-                    "greeting": { "type": "string", "example": "Hello! How can I help you today?", "nullable": true },
-                    "agent_model": { "type": "string", "example": "gpt-4o-mini" }
+                    "conversation_id": {
+                      "type": "string",
+                      "example": "chat_5b710eca_user123_1705312800000"
+                    },
+                    "session_token": {
+                      "type": "string",
+                      "description": "JWT valid for 24 hours"
+                    },
+                    "agent_name": {
+                      "type": "string",
+                      "example": "Support Agent"
+                    },
+                    "greeting": {
+                      "type": "string",
+                      "example": "Hello! How can I help you today?",
+                      "nullable": true
+                    },
+                    "agent_model": {
+                      "type": "string",
+                      "example": "gpt-4o-mini"
+                    }
                   }
                 }
               }
@@ -874,12 +1746,26 @@
           },
           "400": {
             "description": "Agent is not text architecture",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
-          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
           "402": {
             "description": "Insufficient credits",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         }
       }
@@ -889,13 +1775,17 @@
         "operationId": "sendMessage",
         "summary": "Send Message",
         "description": "Sends a user message and streams the agent's response via Server-Sent Events (SSE).\n\n**Auth:** Use `Authorization: Bearer {session_token}` (the token from Create Session).\n\nThe response is a `text/event-stream`. Each event has `event:` and `data:` lines separated by blank lines.",
-        "tags": ["Text Chat"],
+        "tags": [
+          "Text Chat"
+        ],
         "parameters": [
           {
             "name": "conversationId",
             "in": "path",
             "required": true,
-            "schema": { "type": "string" },
+            "schema": {
+              "type": "string"
+            },
             "example": "chat_5b710eca_user123_1705312800000"
           }
         ],
@@ -905,7 +1795,9 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["message"],
+                "required": [
+                  "message"
+                ],
                 "properties": {
                   "message": {
                     "type": "string",
@@ -922,19 +1814,35 @@
             "description": "SSE stream of response chunks",
             "content": {
               "text/event-stream": {
-                "schema": { "type": "string" },
-                "example": "event: chunk\ndata: {\"delta\": \"Our business hours \"}\n\nevent: chunk\ndata: {\"delta\": \"are 9am–6pm EST.\"}\n\nevent: stream_end\ndata: {\"usage\": {\"input_tokens\": 12, \"output_tokens\": 18}, \"end_session\": false}\n"
+                "schema": {
+                  "type": "string"
+                },
+                "example": "event: chunk\ndata: {\"delta\": \"Our business hours \"}\n\nevent: chunk\ndata: {\"delta\": \"are 9am\u00e2\u20ac\u201c6pm EST.\"}\n\nevent: stream_end\ndata: {\"usage\": {\"input_tokens\": 12, \"output_tokens\": 18}, \"end_session\": false}\n"
               }
             }
           },
-          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
           "404": {
             "description": "Session not found or expired",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           },
           "409": {
             "description": "Another message is already processing",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         }
       },
@@ -942,16 +1850,34 @@
         "operationId": "getChatHistory",
         "summary": "Get Message History",
         "description": "Returns the conversation history for a chat session.",
-        "tags": ["Text Chat"],
+        "tags": [
+          "Text Chat"
+        ],
         "parameters": [
           {
             "name": "conversationId",
             "in": "path",
             "required": true,
-            "schema": { "type": "string" }
+            "schema": {
+              "type": "string"
+            }
           },
-          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 50 } },
-          { "name": "offset", "in": "query", "schema": { "type": "integer", "default": 0 } }
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 50
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 0
+            }
+          }
         ],
         "responses": {
           "200": {
@@ -966,21 +1892,41 @@
                       "items": {
                         "type": "object",
                         "properties": {
-                          "role": { "type": "string", "enum": ["user", "assistant"] },
-                          "content": { "type": "string" },
-                          "timestamp": { "type": "string", "format": "date-time" },
-                          "token_count": { "type": "integer", "nullable": true }
+                          "role": {
+                            "type": "string",
+                            "enum": [
+                              "user",
+                              "assistant"
+                            ]
+                          },
+                          "content": {
+                            "type": "string"
+                          },
+                          "timestamp": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "token_count": {
+                            "type": "integer",
+                            "nullable": true
+                          }
                         }
                       }
                     },
-                    "count": { "type": "integer" }
+                    "count": {
+                      "type": "integer"
+                    }
                   }
                 }
               }
             }
           },
-          "401": { "$ref": "#/components/responses/Unauthorized" },
-          "404": { "$ref": "#/components/responses/NotFound" }
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
         }
       }
     },
@@ -989,13 +1935,17 @@
         "operationId": "endChatSession",
         "summary": "End Chat Session",
         "description": "Ends the chat session. Triggers billing finalization, memory ingestion (Graphiti), post-call analysis, and webhooks.",
-        "tags": ["Text Chat"],
+        "tags": [
+          "Text Chat"
+        ],
         "parameters": [
           {
             "name": "conversationId",
             "in": "path",
             "required": true,
-            "schema": { "type": "string" }
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -1006,15 +1956,25 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "success": { "type": "boolean", "example": true },
-                    "message": { "type": "string", "example": "Session ended successfully" }
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Session ended successfully"
+                    }
                   }
                 }
               }
             }
           },
-          "401": { "$ref": "#/components/responses/Unauthorized" },
-          "404": { "$ref": "#/components/responses/NotFound" }
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
         }
       }
     },
@@ -1023,15 +1983,25 @@
         "operationId": "createBatchJob",
         "summary": "Create Batch Job",
         "description": "Create a new batch calling job by uploading a CSV file or sending contacts via JSON. Supports up to 10,000 contacts.",
-        "tags": ["Batch Calling"],
-        "security": [{ "bearerAuth": [] }],
+        "tags": [
+          "Batch Calling"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
             "multipart/form-data": {
               "schema": {
                 "type": "object",
-                "required": ["file", "fromPhoneNumberId", "name"],
+                "required": [
+                  "file",
+                  "fromPhoneNumberId",
+                  "name"
+                ],
                 "properties": {
                   "file": {
                     "type": "string",
@@ -1078,29 +2048,61 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["fromPhoneNumberId", "name", "contacts"],
+                "required": [
+                  "fromPhoneNumberId",
+                  "name",
+                  "contacts"
+                ],
                 "properties": {
-                  "fromPhoneNumberId": { "type": "string" },
-                  "name": { "type": "string" },
-                  "description": { "type": "string", "nullable": true },
+                  "fromPhoneNumberId": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string",
+                    "nullable": true
+                  },
                   "contacts": {
                     "type": "array",
                     "items": {
                       "type": "object",
-                      "required": ["phone"],
+                      "required": [
+                        "phone"
+                      ],
                       "properties": {
-                        "phone": { "type": "string", "description": "E.164 format" },
-                        "name": { "type": "string", "nullable": true }
+                        "phone": {
+                          "type": "string",
+                          "description": "E.164 format"
+                        },
+                        "name": {
+                          "type": "string",
+                          "nullable": true
+                        }
                       },
                       "additionalProperties": true
                     },
                     "minItems": 1,
                     "maxItems": 10000
                   },
-                  "concurrentCallLimit": { "type": "integer", "default": 5 },
-                  "maxAttempts": { "type": "integer", "default": 3 },
-                  "scheduledStartTime": { "type": "string", "format": "date-time", "nullable": true },
-                  "timezone": { "type": "string", "default": "UTC" }
+                  "concurrentCallLimit": {
+                    "type": "integer",
+                    "default": 5
+                  },
+                  "maxAttempts": {
+                    "type": "integer",
+                    "default": 3
+                  },
+                  "scheduledStartTime": {
+                    "type": "string",
+                    "format": "date-time",
+                    "nullable": true
+                  },
+                  "timezone": {
+                    "type": "string",
+                    "default": "UTC"
+                  }
                 }
               }
             }
@@ -1114,14 +2116,38 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "success": { "type": "boolean", "example": true },
-                    "batchJobId": { "type": "string", "example": "batch_xyz789" },
-                    "totalContacts": { "type": "integer", "example": 100 },
-                    "estimatedDuration": { "type": "string", "example": "15 minutes" },
-                    "estimatedCost": { "type": "string", "example": "$3.50" },
-                    "status": { "type": "string", "example": "scheduled" },
-                    "scheduledStartTime": { "type": "string", "format": "date-time", "nullable": true },
-                    "message": { "type": "string" }
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "batchJobId": {
+                      "type": "string",
+                      "example": "batch_xyz789"
+                    },
+                    "totalContacts": {
+                      "type": "integer",
+                      "example": 100
+                    },
+                    "estimatedDuration": {
+                      "type": "string",
+                      "example": "15 minutes"
+                    },
+                    "estimatedCost": {
+                      "type": "string",
+                      "example": "$3.50"
+                    },
+                    "status": {
+                      "type": "string",
+                      "example": "scheduled"
+                    },
+                    "scheduledStartTime": {
+                      "type": "string",
+                      "format": "date-time",
+                      "nullable": true
+                    },
+                    "message": {
+                      "type": "string"
+                    }
                   }
                 }
               }
@@ -1131,23 +2157,47 @@
             "description": "Invalid request",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/Error" },
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
                 "examples": {
-                  "invalid_csv": { "value": { "detail": "CSV must have 'phone' column" } },
-                  "invalid_phone": { "value": { "detail": "Invalid phone number format: +12345" } },
-                  "invalid_timezone": { "value": { "detail": "Invalid timezone 'Invalid/Zone'" } },
-                  "insufficient_credits": { "value": { "detail": "Insufficient credits. Required: $3.50, Available: $1.00" } }
+                  "invalid_csv": {
+                    "value": {
+                      "detail": "CSV must have 'phone' column"
+                    }
+                  },
+                  "invalid_phone": {
+                    "value": {
+                      "detail": "Invalid phone number format: +12345"
+                    }
+                  },
+                  "invalid_timezone": {
+                    "value": {
+                      "detail": "Invalid timezone 'Invalid/Zone'"
+                    }
+                  },
+                  "insufficient_credits": {
+                    "value": {
+                      "detail": "Insufficient credits. Required: $3.50, Available: $1.00"
+                    }
+                  }
                 }
               }
             }
           },
-          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
           "404": {
             "description": "Phone number not found",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/Error" },
-                "example": { "detail": "Phone number phone_abc123 not found" }
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "detail": "Phone number phone_abc123 not found"
+                }
               }
             }
           },
@@ -1155,7 +2205,9 @@
             "description": "Internal server error",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/Error" }
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
               }
             }
           }
@@ -1167,33 +2219,60 @@
         "operationId": "listBatchJobs",
         "summary": "List Batch Jobs",
         "description": "Returns a paginated list of batch calling jobs for an organization.",
-        "tags": ["Batch Calling"],
-        "security": [{ "bearerAuth": [] }],
+        "tags": [
+          "Batch Calling"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
         "parameters": [
           {
             "name": "organizationId",
             "in": "query",
             "required": true,
-            "schema": { "type": "string" },
+            "schema": {
+              "type": "string"
+            },
             "description": "Organization ID to filter by"
           },
           {
             "name": "status",
             "in": "query",
             "required": false,
-            "schema": { "type": "string", "enum": ["pending", "scheduled", "running", "completed", "failed", "cancelled"] },
+            "schema": {
+              "type": "string",
+              "enum": [
+                "pending",
+                "scheduled",
+                "running",
+                "completed",
+                "failed",
+                "cancelled"
+              ]
+            },
             "description": "Filter by job status"
           },
           {
             "name": "page",
             "in": "query",
-            "schema": { "type": "integer", "default": 1, "minimum": 1 },
+            "schema": {
+              "type": "integer",
+              "default": 1,
+              "minimum": 1
+            },
             "description": "Page number"
           },
           {
             "name": "pageSize",
             "in": "query",
-            "schema": { "type": "integer", "default": 20, "minimum": 1, "maximum": 100 },
+            "schema": {
+              "type": "integer",
+              "default": 20,
+              "minimum": 1,
+              "maximum": 100
+            },
             "description": "Items per page"
           }
         ],
@@ -1202,7 +2281,9 @@
             "description": "List of batch jobs",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/BatchJobListResponse" }
+                "schema": {
+                  "$ref": "#/components/schemas/BatchJobListResponse"
+                }
               }
             }
           },
@@ -1210,16 +2291,22 @@
             "description": "Invalid parameters",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/Error" }
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
               }
             }
           },
-          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
           "500": {
             "description": "Internal server error",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/Error" }
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
               }
             }
           }
@@ -1231,31 +2318,64 @@
         "operationId": "getBatchJob",
         "summary": "Get Batch Job Detail",
         "description": "Get complete details of a batch job including progress stats and paginated contacts.",
-        "tags": ["Batch Calling"],
-        "security": [{ "bearerAuth": [] }],
+        "tags": [
+          "Batch Calling"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
         "parameters": [
           {
             "name": "batch_job_id",
             "in": "path",
             "required": true,
-            "schema": { "type": "string" }
+            "schema": {
+              "type": "string"
+            }
           },
           {
             "name": "contactStatus",
             "in": "query",
             "required": false,
-            "schema": { "type": "string", "enum": ["pending", "queued", "dialing", "completed", "no_answer", "busy", "timeout", "blocked", "invalid_number", "carrier_error", "failed", "cancelled"] },
+            "schema": {
+              "type": "string",
+              "enum": [
+                "pending",
+                "queued",
+                "dialing",
+                "completed",
+                "no_answer",
+                "busy",
+                "timeout",
+                "blocked",
+                "invalid_number",
+                "carrier_error",
+                "failed",
+                "cancelled"
+              ]
+            },
             "description": "Filter contacts by status"
           },
           {
             "name": "contactsPage",
             "in": "query",
-            "schema": { "type": "integer", "default": 1, "minimum": 1 }
+            "schema": {
+              "type": "integer",
+              "default": 1,
+              "minimum": 1
+            }
           },
           {
             "name": "contactsPageSize",
             "in": "query",
-            "schema": { "type": "integer", "default": 50, "minimum": 1, "maximum": 500 }
+            "schema": {
+              "type": "integer",
+              "default": 50,
+              "minimum": 1,
+              "maximum": 500
+            }
           }
         ],
         "responses": {
@@ -1263,17 +2383,25 @@
             "description": "Batch job details",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/BatchJobDetailResponse" }
+                "schema": {
+                  "$ref": "#/components/schemas/BatchJobDetailResponse"
+                }
               }
             }
           },
-          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
           "404": {
             "description": "Batch job not found",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/Error" },
-                "example": { "detail": "Batch job not found" }
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "detail": "Batch job not found"
+                }
               }
             }
           },
@@ -1281,7 +2409,9 @@
             "description": "Internal server error",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/Error" }
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
               }
             }
           }
@@ -1293,14 +2423,22 @@
         "operationId": "cancelBatchJob",
         "summary": "Cancel Batch Job",
         "description": "Cancel a scheduled, pending, or running batch job. Stops new calls and marks remaining contacts as cancelled.",
-        "tags": ["Batch Calling"],
-        "security": [{ "bearerAuth": [] }],
+        "tags": [
+          "Batch Calling"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
         "parameters": [
           {
             "name": "batch_job_id",
             "in": "path",
             "required": true,
-            "schema": { "type": "string" }
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -1311,11 +2449,23 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "success": { "type": "boolean", "example": true },
-                    "message": { "type": "string", "example": "Scheduled job cancelled successfully" },
-                    "batchJobId": { "type": "string" },
-                    "redisJobCancelled": { "type": "boolean" },
-                    "contactsCancelled": { "type": "integer" }
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Scheduled job cancelled successfully"
+                    },
+                    "batchJobId": {
+                      "type": "string"
+                    },
+                    "redisJobCancelled": {
+                      "type": "boolean"
+                    },
+                    "contactsCancelled": {
+                      "type": "integer"
+                    }
                   }
                 }
               }
@@ -1325,17 +2475,25 @@
             "description": "Cannot cancel job in terminal status",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/Error" },
-                "example": { "detail": "Cannot cancel job in 'completed' status" }
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "detail": "Cannot cancel job in 'completed' status"
+                }
               }
             }
           },
-          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
           "404": {
             "description": "Batch job not found",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/Error" }
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
               }
             }
           },
@@ -1343,7 +2501,9 @@
             "description": "Internal server error",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/Error" }
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
               }
             }
           }
@@ -1355,14 +2515,22 @@
         "operationId": "startBatchJob",
         "summary": "Start Batch Job Immediately",
         "description": "Manually start a scheduled or pending batch job immediately, bypassing the scheduled start time.",
-        "tags": ["Batch Calling"],
-        "security": [{ "bearerAuth": [] }],
+        "tags": [
+          "Batch Calling"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
         "parameters": [
           {
             "name": "batch_job_id",
             "in": "path",
             "required": true,
-            "schema": { "type": "string" }
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -1373,13 +2541,31 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "success": { "type": "boolean", "example": true },
-                    "message": { "type": "string", "example": "Cancelled scheduled job, starting immediately" },
-                    "batchJobId": { "type": "string" },
-                    "status": { "type": "string", "example": "running" },
-                    "contactsEnqueued": { "type": "integer" },
-                    "redisJobCancelled": { "type": "boolean" },
-                    "startedAt": { "type": "string", "format": "date-time" }
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Cancelled scheduled job, starting immediately"
+                    },
+                    "batchJobId": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string",
+                      "example": "running"
+                    },
+                    "contactsEnqueued": {
+                      "type": "integer"
+                    },
+                    "redisJobCancelled": {
+                      "type": "boolean"
+                    },
+                    "startedAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
                   }
                 }
               }
@@ -1389,17 +2575,25 @@
             "description": "Cannot start job in invalid status",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/Error" },
-                "example": { "detail": "Cannot start job in 'running' status" }
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
+                "example": {
+                  "detail": "Cannot start job in 'running' status"
+                }
               }
             }
           },
-          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
           "404": {
             "description": "Batch job not found",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/Error" }
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
               }
             }
           },
@@ -1407,7 +2601,9 @@
             "description": "Internal server error",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/Error" }
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
               }
             }
           }
@@ -1419,27 +2615,41 @@
         "operationId": "rescheduleBatchJob",
         "summary": "Reschedule Batch Job",
         "description": "Reschedule a scheduled or pending batch job to a new start time.",
-        "tags": ["Batch Calling"],
-        "security": [{ "bearerAuth": [] }],
+        "tags": [
+          "Batch Calling"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
         "parameters": [
           {
             "name": "batch_job_id",
             "in": "path",
             "required": true,
-            "schema": { "type": "string" }
+            "schema": {
+              "type": "string"
+            }
           },
           {
             "name": "scheduledStartTime",
             "in": "query",
             "required": true,
-            "schema": { "type": "string", "format": "date-time" },
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            },
             "description": "New scheduled start time (ISO 8601)"
           },
           {
             "name": "timezone",
             "in": "query",
             "required": false,
-            "schema": { "type": "string", "default": "UTC" },
+            "schema": {
+              "type": "string",
+              "default": "UTC"
+            },
             "description": "IANA timezone for the scheduled time"
           }
         ],
@@ -1451,13 +2661,31 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "success": { "type": "boolean", "example": true },
-                    "message": { "type": "string", "example": "Rescheduled successfully" },
-                    "batchJobId": { "type": "string" },
-                    "scheduledStartTime": { "type": "string", "format": "date-time" },
-                    "status": { "type": "string", "example": "scheduled" },
-                    "oldJobCancelled": { "type": "boolean" },
-                    "newScheduledJobId": { "type": "string" }
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Rescheduled successfully"
+                    },
+                    "batchJobId": {
+                      "type": "string"
+                    },
+                    "scheduledStartTime": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "status": {
+                      "type": "string",
+                      "example": "scheduled"
+                    },
+                    "oldJobCancelled": {
+                      "type": "boolean"
+                    },
+                    "newScheduledJobId": {
+                      "type": "string"
+                    }
                   }
                 }
               }
@@ -1467,21 +2695,39 @@
             "description": "Invalid request",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/Error" },
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                },
                 "examples": {
-                  "invalid_status": { "value": { "detail": "Cannot reschedule job in 'running' status" } },
-                  "invalid_timezone": { "value": { "detail": "Invalid timezone 'Invalid/Zone'" } },
-                  "past_time": { "value": { "detail": "Scheduled time must be in the future" } }
+                  "invalid_status": {
+                    "value": {
+                      "detail": "Cannot reschedule job in 'running' status"
+                    }
+                  },
+                  "invalid_timezone": {
+                    "value": {
+                      "detail": "Invalid timezone 'Invalid/Zone'"
+                    }
+                  },
+                  "past_time": {
+                    "value": {
+                      "detail": "Scheduled time must be in the future"
+                    }
+                  }
                 }
               }
             }
           },
-          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
           "404": {
             "description": "Batch job not found",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/Error" }
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
               }
             }
           },
@@ -1489,7 +2735,9 @@
             "description": "Internal server error",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/Error" }
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
               }
             }
           }
@@ -1501,14 +2749,22 @@
         "operationId": "getRedisJobStatus",
         "summary": "Get Redis Job Status",
         "description": "Get Redis job status for debugging scheduled batch jobs. Verifies if job exists in Redis defer queue.",
-        "tags": ["Batch Calling"],
-        "security": [{ "bearerAuth": [] }],
+        "tags": [
+          "Batch Calling"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
         "parameters": [
           {
             "name": "batch_job_id",
             "in": "path",
             "required": true,
-            "schema": { "type": "string" }
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -1519,19 +2775,43 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "batchJobId": { "type": "string" },
-                    "databaseStatus": { "type": "string", "example": "scheduled" },
-                    "scheduledJobId": { "type": "string", "nullable": true },
-                    "scheduledStartTime": { "type": "string", "format": "date-time", "nullable": true },
+                    "batchJobId": {
+                      "type": "string"
+                    },
+                    "databaseStatus": {
+                      "type": "string",
+                      "example": "scheduled"
+                    },
+                    "scheduledJobId": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "scheduledStartTime": {
+                      "type": "string",
+                      "format": "date-time",
+                      "nullable": true
+                    },
                     "redisJobInfo": {
                       "type": "object",
                       "nullable": true,
                       "properties": {
-                        "job_id": { "type": "string" },
-                        "in_defer_queue": { "type": "boolean" },
-                        "job_metadata_exists": { "type": "boolean" },
-                        "scheduled_time": { "type": "string", "format": "date-time", "nullable": true },
-                        "note": { "type": "string" }
+                        "job_id": {
+                          "type": "string"
+                        },
+                        "in_defer_queue": {
+                          "type": "boolean"
+                        },
+                        "job_metadata_exists": {
+                          "type": "boolean"
+                        },
+                        "scheduled_time": {
+                          "type": "string",
+                          "format": "date-time",
+                          "nullable": true
+                        },
+                        "note": {
+                          "type": "string"
+                        }
                       }
                     }
                   }
@@ -1539,12 +2819,16 @@
               }
             }
           },
-          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
           "404": {
             "description": "Batch job not found",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/Error" }
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
               }
             }
           },
@@ -1552,18 +2836,114 @@
             "description": "Internal server error",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/Error" }
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
               }
             }
+          }
+        }
+      }
+    },
+    "/export/conversation": {
+      "post": {
+        "operationId": "exportConversation",
+        "summary": "Export Conversation",
+        "description": "Export complete conversation data including transcript, post-call analysis, and recording URL.",
+        "tags": [
+          "Export"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "conversationId"
+                ],
+                "properties": {
+                  "conversationId": {
+                    "type": "string",
+                    "description": "Room name or conversation ID to export",
+                    "example": "agent_abc123_1705320000_user123"
+                  },
+                  "includeTranscript": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Include transcript data"
+                  },
+                  "includeAnalysis": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Include post-call analysis"
+                  },
+                  "includeRecording": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Include recording signed URL"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Exported conversation JSON file",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "exportMetadata": {
+                      "type": "object"
+                    },
+                    "conversation": {
+                      "type": "object"
+                    },
+                    "summary": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "404": {
+            "description": "Conversation not found"
+          },
+          "500": {
+            "description": "Export failed"
           }
         }
       }
     }
   },
   "tags": [
-    { "name": "Agents", "description": "Create and manage voice and chat agents" },
-    { "name": "Voice Calls", "description": "Initiate outbound calls and retrieve call data" },
-    { "name": "Text Chat", "description": "Text chat sessions via REST + SSE" },
-    { "name": "Batch Calling", "description": "Run large-scale outbound call campaigns" }
+    {
+      "name": "Agents",
+      "description": "Create and manage voice and chat agents"
+    },
+    {
+      "name": "Voice Calls",
+      "description": "Initiate outbound calls and retrieve call data"
+    },
+    {
+      "name": "Text Chat",
+      "description": "Text chat sessions via REST + SSE"
+    },
+    {
+      "name": "Batch Calling",
+      "description": "Run large-scale outbound call campaigns"
+    }
   ]
 }

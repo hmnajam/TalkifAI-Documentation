@@ -1,5 +1,266 @@
 ---
 title: "Get Agent"
-openapi: "GET /agents/{agentId}"
+openapi: "GET /v1/agents/{agentId}"
 description: "Returns full configuration details for a specific agent. Returns 403 if the agent is private and the caller is not its creator or an org admin/owner."
 ---
+
+## Overview
+
+Retrieves complete configuration for a single agent by ID. Includes all settings, languages, voice configuration, and related metadata.
+
+**Authentication:** Session-based (Better Auth)
+**Scope:** Active organization from session
+
+## Request
+
+**Path Parameters:**
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `agentId` | string | ✅ | Agent ID (ULID format) |
+
+**Headers:**
+```
+Authorization: Bearer YOUR_SESSION_TOKEN
+```
+
+## Response
+
+**Status:** `200 OK`
+
+```json
+{
+  "agent": {
+    "id": "agent_abc123",
+    "name": "Customer Support Bot",
+    "description": "Handles customer inquiries and support tickets",
+    "agentArchitecture": "pipeline",
+    "mode": "public",
+    "model": "gpt_4o_mini",
+    "stt": "deepgram",
+    "voiceId": "cartesia-voice-123",
+    "realtimeProvider": null,
+    "sysMsg": "You are a helpful customer support agent for Acme Corp. Your job is to resolve customer issues efficiently...",
+    "functionCallingEnabled": true,
+    "enabledFunctions": ["web_search", "end_call"],
+    "enabledCustomFunctions": ["func_custom123"],
+    "temperature": 0.7,
+    "inactivityTimeout": 30,
+    "greetingType": "agentFirst",
+    "greetingMessage": "Hello! Thank you for calling Acme Corp. How can I help you today?",
+    "lastMessage": "Thank you for calling! Have a great day.",
+    "createdAt": "2024-01-10T09:00:00Z",
+    "updatedAt": "2024-01-15T14:30:00Z",
+    "userId": "user_xyz789",
+    "organizationId": "org_123",
+    "languages": [
+      {
+        "id": "lang_123",
+        "agentId": "agent_abc123",
+        "language": "english"
+      },
+      {
+        "id": "lang_124",
+        "agentId": "agent_abc123",
+        "language": "urdu"
+      }
+    ],
+    "VoiceOption": {
+      "voiceId": "cartesia-voice-123",
+      "voiceName": "Sonic English",
+      "provider": "cartesia",
+      "providerVoiceId": "sonic-english",
+      "gender": "neutral",
+      "accent": "American",
+      "age": "adult",
+      "description": "Clear, professional voice suitable for customer service",
+      "previewAudioUrl": "https://storage.googleapis.com/.../preview.mp3",
+      "language": "en-US",
+      "model": "sonic"
+    },
+    "user": {
+      "id": "user_xyz789",
+      "name": "John Doe",
+      "email": "john@example.com"
+    },
+    "organization": {
+      "id": "org_123",
+      "name": "Acme Corp",
+      "slug": "acme-corp"
+    }
+  }
+}
+```
+
+## Response Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `agent` | object | Agent configuration object |
+| `agent.id` | string | Agent ID (ULID) |
+| `agent.name` | string | Display name |
+| `agent.description` | string | Internal description (max 200 chars) |
+| `agent.agentArchitecture` | string | `pipeline`, `realtime`, or `text` |
+| `agent.mode` | string | `public`, `private`, or `commercial` |
+| `agent.model` | string | LLM model (pipeline/text only) |
+| `agent.stt` | string | STT provider (pipeline only) |
+| `agent.voiceId` | string | Voice ID (pipeline/realtime only) |
+| `agent.realtimeProvider` | string | `openai` or `gemini` (realtime only) |
+| `agent.sysMsg` | string | System prompt (max 5000 chars) |
+| `agent.functionCallingEnabled` | boolean | Functions enabled flag |
+| `agent.enabledFunctions` | array | Built-in function IDs |
+| `agent.enabledCustomFunctions` | array | Custom function IDs |
+| `agent.temperature` | number | 0.1–1.0 (default: 0.7) |
+| `agent.inactivityTimeout` | number | 10–60 seconds (default: 30) |
+| `agent.greetingType` | string | `agentFirst` or `userFirst` |
+| `agent.greetingMessage` | string | Custom greeting message |
+| `agent.lastMessage` | string | Farewell message |
+| `agent.languages` | array | Language configurations |
+| `agent.VoiceOption` | object | Voice configuration details |
+| `agent.user` | object | Agent creator information |
+| `agent.organization` | object | Organization information |
+
+## Access Control
+
+| User Role | Can Access |
+|-----------|------------|
+| **Owner** | ✅ Any agent in organization |
+| **Admin** | ✅ Any agent in organization |
+| **Member (Creator)** | ✅ Own agents (any mode) |
+| **Member (Not Creator)** | ✅ Public agents only / ❌ Private agents (403) |
+| **External User** | ❌ Commercial agents only |
+
+**403 Response:**
+```json
+{
+  "error": "You don't have permission to access this agent"
+}
+```
+
+## Error Responses
+
+### 401 Unauthorized
+```json
+{
+  "error": "Unauthorized"
+}
+```
+
+### 403 Forbidden
+```json
+{
+  "error": "You don't have permission to access this agent"
+}
+```
+
+### 404 Not Found
+```json
+{
+  "error": "Agent not found"
+}
+```
+
+### 500 Server Error
+```json
+{
+  "error": "Server error"
+}
+```
+
+## Examples
+
+### cURL
+```bash
+curl -X GET "https://studio.talkifai.dev/api/agents/agent_abc123" \
+  -H "Authorization: Bearer YOUR_SESSION_TOKEN"
+```
+
+### JavaScript (Fetch)
+```javascript
+const agentId = "agent_abc123";
+const response = await fetch(`/api/agents/${agentId}`, {
+  method: 'GET',
+  headers: {
+    'Authorization': `Bearer ${sessionToken}`
+  }
+});
+
+const data = await response.json();
+console.log(data.agent);
+```
+
+### Next.js (Server Component)
+```tsx
+import { auth } from "@/src/lib/auth";
+import { headers } from "next/headers";
+
+async function getAgent(agentId: string) {
+  const session = await auth.api.getSession({
+    headers: await headers()
+  });
+
+  const response = await fetch(
+    `${process.env.NEXT_PUBLIC_BASE_URL}/api/agents/${agentId}`,
+    {
+      headers: {
+        cookie: headers().get("cookie") ?? ""
+      },
+      cache: "no-store"
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error("Failed to fetch agent");
+  }
+
+  return response.json();
+}
+```
+
+## Use Cases
+
+### Display Agent Configuration
+```tsx
+function AgentConfigPage({ agentId }) {
+  const { data: agentData, error } = useSWR(`/api/agents/${agentId}`);
+  
+  if (error) return <div>Failed to load agent</div>;
+  if (!agentData) return <div>Loading...</div>;
+  
+  const agent = agentData.agent;
+  
+  return (
+    <div>
+      <h1>{agent.name}</h1>
+      <p>{agent.description}</p>
+      <div>Architecture: {agent.agentArchitecture}</div>
+      <div>Model: {agent.model}</div>
+      <div>Voice: {agent.VoiceOption?.voiceName}</div>
+      <div>Languages: {agent.languages.map(l => l.language).join(", ")}</div>
+    </div>
+  );
+}
+```
+
+### Check Agent Permissions
+```javascript
+function canEditAgent(agent, user) {
+  // Owners/admins can always edit
+  if (user.role === "owner" || user.role === "admin") {
+    return true;
+  }
+  
+  // Creators can edit their own agents (except commercial)
+  if (agent.userId === user.id && agent.mode !== "commercial") {
+    return true;
+  }
+  
+  return false;
+}
+```
+
+## Related Endpoints
+
+- [List Agents](/api-reference/endpoint/list-agents) — List all agents in organization
+- [Create Agent](/api-reference/endpoint/create-agent) — Create a new agent
+- [Update Agent](/api-reference/endpoint/update-agent) — Update agent configuration
+- [Delete Agent](/api-reference/endpoint/delete-agent) — Delete an agent

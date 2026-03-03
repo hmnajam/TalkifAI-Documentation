@@ -135,6 +135,7 @@ The system prompt is the agent's **soul**. It defines:
 
 ### Starter Template
 
+
 ```
 You are [AGENT_NAME], the [ROLE] at [COMPANY].
 
@@ -475,4 +476,284 @@ Your agent is now live. You can:
 
 ## API Reference
 
-Creating agents programmatically? See the [Agents API Reference →](/api-reference/agents)
+### Create Agent
+
+```bash
+POST /api/agents
+Authorization: Bearer YOUR_SESSION_TOKEN
+Content-Type: application/json
+
+{
+  "name": "Customer Support Bot",
+  "description": "Handles customer inquiries and support tickets",
+  "languages": ["english"],
+  "agentArchitecture": "pipeline",
+  "model": "gpt_4o_mini",
+  "stt": "deepgram",
+  "voiceId": "cartesia-voice-123",
+  "sysMsg": "You are a helpful customer support agent...",
+  "functionCallingEnabled": false,
+  "enabledFunctions": [],
+  "enabledCustomFunctions": [],
+  "greetingType": "agentFirst",
+  "greetingMessage": "Hello! How can I help you today?",
+  "temperature": 0.7,
+  "inactivityTimeout": 30,
+  "mode": "public"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "agent": {
+    "id": "agent_abc123",
+    "name": "Customer Support Bot",
+    "description": "Handles customer inquiries and support tickets",
+    "agentArchitecture": "pipeline",
+    "mode": "public",
+    "createdAt": "2024-01-15T10:00:00Z"
+  },
+  "message": "Agent created successfully"
+}
+```
+
+**Notes:**
+- Requires session authentication (Better Auth)
+- Automatically scoped to your active organization
+- Only Owners/Admins can create commercial agents
+- Default mode is "public" if not specified
+
+### List Agents (Current Organization)
+
+```bash
+GET /api/agents
+Authorization: Bearer YOUR_SESSION_TOKEN
+```
+
+**Response:**
+```json
+{
+  "agents": [
+    {
+      "id": "agent_abc123",
+      "name": "Customer Support Bot",
+      "description": "Handles customer inquiries",
+      "agentArchitecture": "pipeline",
+      "mode": "public",
+      "model": "gpt_4o_mini",
+      "stt": "deepgram",
+      "voiceId": "cartesia-voice-123",
+      "functionCallingEnabled": true,
+      "enabledFunctions": ["web_search", "end_call"],
+      "temperature": 0.7,
+      "inactivityTimeout": 30,
+      "createdAt": "2024-01-10T09:00:00Z",
+      "updatedAt": "2024-01-15T14:30:00Z",
+      "userId": "user_xyz789",
+      "languages": [
+        {
+          "id": "lang_123",
+          "language": "english"
+        }
+      ],
+      "VoiceOption": {
+        "voiceId": "cartesia-voice-123",
+        "voiceName": "Sonic English",
+        "provider": "cartesia",
+        "gender": "neutral"
+      },
+      "user": {
+        "id": "user_xyz789",
+        "name": "John Doe",
+        "email": "john@example.com"
+      },
+      "organization": {
+        "id": "org_123",
+        "name": "Acme Corp",
+        "slug": "acme-corp"
+      }
+    }
+  ]
+}
+```
+
+**Access Control:**
+- **Owners/Admins:** See all agents (public + private)
+- **Members:** See public agents + their own private agents
+
+### List All Agents (All Organizations)
+
+```bash
+GET /api/agents/all
+Authorization: Bearer YOUR_SESSION_TOKEN
+```
+
+**Response:**
+```json
+{
+  "agents": [
+    {
+      "id": "agent_abc123",
+      "name": "Customer Support Bot",
+      "organization": {
+        "id": "org_123",
+        "name": "Acme Corp"
+      },
+      "user": {
+        "id": "user_xyz789",
+        "name": "John Doe"
+      }
+      // ... other fields
+    }
+  ]
+}
+```
+
+**Note:** Returns agents from all organizations you're a member of.
+
+### Get Agent
+
+```bash
+GET /api/agents/{agentId}
+Authorization: Bearer YOUR_SESSION_TOKEN
+```
+
+**Response:**
+```json
+{
+  "agent": {
+    "id": "agent_abc123",
+    "name": "Customer Support Bot",
+    "description": "Handles customer inquiries",
+    "agentArchitecture": "pipeline",
+    "mode": "public",
+    "model": "gpt_4o_mini",
+    "stt": "deepgram",
+    "voiceId": "cartesia-voice-123",
+    "sysMsg": "You are a helpful customer support agent...",
+    "functionCallingEnabled": true,
+    "enabledFunctions": ["web_search", "end_call"],
+    "enabledCustomFunctions": [],
+    "greetingType": "agentFirst",
+    "greetingMessage": "Hello! How can I help you today?",
+    "temperature": 0.7,
+    "inactivityTimeout": 30,
+    "lastMessage": "Thank you for calling!",
+    "languages": [
+      {
+        "id": "lang_123",
+        "language": "english"
+      }
+    ],
+    "VoiceOption": {
+      "voiceId": "cartesia-voice-123",
+      "voiceName": "Sonic English",
+      "provider": "cartesia"
+    },
+    "user": {
+      "id": "user_xyz789",
+      "name": "John Doe"
+    },
+    "organization": {
+      "id": "org_123",
+      "name": "Acme Corp"
+    },
+    "createdAt": "2024-01-10T09:00:00Z",
+    "updatedAt": "2024-01-15T14:30:00Z"
+  }
+}
+```
+
+**Access Control:**
+- Returns 403 if agent is private and you're not the creator or an admin
+
+### Update Agent
+
+```bash
+PUT /api/agents/{agentId}
+Authorization: Bearer YOUR_SESSION_TOKEN
+Content-Type: application/json
+
+{
+  "name": "Updated Agent Name",
+  "description": "Updated description",
+  "sysMsg": "Updated system prompt...",
+  "languages": ["english", "urdu"],
+  "agentArchitecture": "pipeline",
+  "model": "gpt_4o_mini",
+  "stt": "deepgram",
+  "voiceId": "cartesia-voice-456",
+  "greetingType": "agentFirst",
+  "greetingMessage": "Hello! How can I assist you?",
+  "lastMessage": "Goodbye!",
+  "temperature": 0.7,
+  "inactivityTimeout": 30,
+  "mode": "public"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "agent": {
+    "id": "agent_abc123",
+    "name": "Updated Agent Name",
+    // ... full agent object
+  }
+}
+```
+
+**Notes:**
+- Only send fields you want to change
+- Architecture cannot be changed after creation
+- Only creators or Owners/Admins can update agents
+- Commercial agents can only be modified by Owners/Admins
+
+### Delete Agent
+
+```bash
+DELETE /api/agents/{agentId}
+Authorization: Bearer YOUR_SESSION_TOKEN
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Agent deleted successfully"
+}
+```
+
+**Notes:**
+- Deletes agent and all related data (subagents, functions, etc.)
+- Call logs and transcripts are preserved
+- Only creators or Owners/Admins can delete
+- Commercial agents can only be deleted by Owners/Admins
+
+### Error Responses
+
+| Status | Error | Description |
+|--------|-------|-------------|
+| `401` | `Unauthorized` | Not authenticated |
+| `403` | `Forbidden` | No permission for this action |
+| `400` | `Bad Request` | Invalid parameters or validation failed |
+| `404` | `Not Found` | Agent doesn't exist |
+| `500` | `Server Error` | Internal server error |
+
+**Example Error:**
+```json
+{
+  "error": "For pipeline architecture, voiceId, model, and STT are required"
+}
+```
+
+---
+
+## Related API Documentation
+
+- [Function Calling API](/api-reference/function-calling) — Manage agent functions
+- [Subagents API](/api-reference/subagents) — Manage subagent hierarchies
+- [Webhook API](/api-reference/webhooks) — Configure agent webhooks

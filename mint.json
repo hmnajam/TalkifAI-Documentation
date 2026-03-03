@@ -149,6 +149,12 @@
       ]
     },
     {
+      "group": "Export",
+      "pages": [
+        "api-reference/endpoint/export-conversation"
+      ]
+    },
+    {
       "group": "Text Chat",
       "pages": [
         "api-reference/endpoint/create-chat-session",
