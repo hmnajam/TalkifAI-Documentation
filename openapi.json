@@ -1665,7 +1665,7 @@
         }
       }
     },
-    "/chat/sessions": {
+    "/v1/chat/sessions": {
       "post": {
         "operationId": "createChatSession",
         "summary": "Create Chat Session",
@@ -1758,7 +1758,7 @@
         }
       }
     },
-    "/chat/sessions/{conversationId}/messages": {
+    "/v1/chat/sessions/{conversationId}/messages": {
       "post": {
         "operationId": "sendMessage",
         "summary": "Send Message",
@@ -1918,7 +1918,7 @@
         }
       }
     },
-    "/chat/sessions/{conversationId}/end": {
+    "/v1/chat/sessions/{conversationId}/end": {
       "post": {
         "operationId": "endChatSession",
         "summary": "End Chat Session",

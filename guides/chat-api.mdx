@@ -127,52 +127,67 @@ const response = await fetch(
 The response is a **Server-Sent Events (SSE) stream**. Each event has an `event:` type line and a `data:` line, separated by blank lines (`\n\n`). You must parse both to correctly handle all event types:
 
 ```javascript
+setIsLoading(true); // show loading state before fetch
+
 const reader = response.body.getReader();
 const decoder = new TextDecoder();
 let fullResponse = '';
 let buffer = '';
 
-while (true) {
-  const { done, value } = await reader.read();
-  if (done) break;
+try {
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
 
-  buffer += decoder.decode(value, { stream: true });
+    buffer += decoder.decode(value, { stream: true });
 
-  // SSE events are separated by blank lines
-  const blocks = buffer.split('\n\n');
-  buffer = blocks.pop(); // keep any incomplete trailing block
+    // SSE events are separated by blank lines
+    const blocks = buffer.split('\n\n');
+    buffer = blocks.pop(); // keep any incomplete trailing block
 
-  for (const block of blocks) {
-    let eventType = '';
-    let dataStr = '';
+    for (const block of blocks) {
+      let eventType = '';
+      let dataStr = '';
 
-    for (const line of block.split('\n')) {
-      if (line.startsWith('event: ')) eventType = line.slice(7).trim();
-      else if (line.startsWith('data: ')) dataStr = line.slice(6);
-    }
-
-    if (!dataStr) continue;
-    const data = JSON.parse(dataStr);
-
-    if (eventType === 'chunk') {
-      fullResponse += data.delta;
-      // Update UI with streaming text
-      chatBubble.textContent = fullResponse;
-    } else if (eventType === 'stream_end') {
-      // Response complete
-      console.log('Tokens used:', data.usage);
-      if (data.end_session) {
-        // Agent requested the session be closed
-        endSession();
+      for (const line of block.split('\n')) {
+        if (line.startsWith('event: ')) eventType = line.slice(7).trim();
+        else if (line.startsWith('data: ')) dataStr = line.slice(6);
       }
-    } else if (eventType === 'tool_call') {
-      console.log('Tool executing:', data.name);
-    } else if (eventType === 'tool_result') {
-      console.log('Tool completed:', data.name);
-    } else if (eventType === 'error') {
-      console.error('Stream error:', data.error);
+
+      if (!dataStr) continue;
+      const data = JSON.parse(dataStr);
+
+      if (eventType === 'stream_start') {
+        // Agent started streaming — loading indicator already shown
+      } else if (eventType === 'chunk') {
+        fullResponse += data.delta;
+        // Update UI with streaming text
+        chatBubble.textContent = fullResponse;
+      } else if (eventType === 'tool_call') {
+        // Optionally show "Searching..." / "Looking that up..." indicator
+        console.log('Tool executing:', data.name);
+      } else if (eventType === 'tool_result') {
+        console.log('Tool completed:', data.name);
+      } else if (eventType === 'handoff') {
+        // Agent handed off to a subagent: { from_agent, to_agent }
+        console.log(`Handing off to ${data.to_agent}`);
+      } else if (eventType === 'stream_end') {
+        setIsLoading(false); // clear loading state
+        console.log('Tokens used:', data.usage);
+        if (data.end_session) {
+          // Agent called end_chat tool — close the session
+          await endSession();
+        }
+      } else if (eventType === 'error') {
+        setIsLoading(false); // clear loading state so UI doesn't hang
+        setErrorMessage(data.error || 'An error occurred. Please try again.');
+        chatBubble.textContent = 'Something went wrong. Please try again.';
+      }
     }
   }
+} catch (err) {
+  setIsLoading(false);
+  setErrorMessage('Connection lost. Please try again.');
 }
 ```
 
@@ -180,13 +195,13 @@ while (true) {
 
 | Event | Data | Description |
 |-------|------|-------------|
-| `stream_start` | `{ "agent_name": "Support Agent" }` | Streaming started |
-| `chunk` | `{ "delta": "Hello! " }` | Incremental text chunk |
-| `tool_call` | `{ "name": "web_search", "status": "executing" }` | Tool execution started |
-| `tool_result` | `{ "name": "web_search", "status": "completed" }` | Tool execution completed |
-| `handoff` | subagent details | Multi-agent handoff occurring |
-| `stream_end` | `{ "usage": {"input_tokens": N, "output_tokens": N}, "end_session": false }` | Response complete |
-| `error` | `{ "error": "message" }` | An error occurred mid-stream |
+| `stream_start` | `{ "agent_name": "Support Agent" }` | Agent started generating a response — show loading indicator |
+| `chunk` | `{ "delta": "Hello! " }` | Incremental text — append to the chat bubble |
+| `tool_call` | `{ "name": "web_search", "status": "executing" }` | Agent called a tool — optionally show "Looking that up..." |
+| `tool_result` | `{ "name": "web_search", "status": "completed" }` | Tool finished — agent will continue responding |
+| `handoff` | `{ "from_agent": "Main Bot", "to_agent": "Billing Agent" }` | Multi-agent handoff — a subagent is taking over the conversation |
+| `stream_end` | `{ "usage": {"input_tokens": N, "output_tokens": N}, "end_session": false }` | Response complete — clear loading. If `end_session: true`, call `/end` immediately |
+| `error` | `{ "error": "message" }` | Error mid-stream — **clear loading state and show error to user** |
 
 ---
 
@@ -483,6 +498,146 @@ Here's a full working example with a simple chat UI:
     ```
   </Tab>
 </Tabs>
+
+---
+
+## React / Next.js Integration
+
+A minimal React hook that handles session lifecycle, SSE streaming, error display, and reliable cleanup on unmount or tab close:
+
+```tsx
+import { useState, useEffect, useRef } from 'react';
+
+export function useChatSession(agentId: string) {
+  const [messages, setMessages] = useState<{ role: string; text: string }[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const sessionTokenRef = useRef<string | null>(null);
+  const conversationIdRef = useRef<string | null>(null);
+
+  // Initialize session on mount
+  useEffect(() => {
+    async function init() {
+      const res = await fetch('/api/chat/start', { method: 'POST' });
+      const data = await res.json();
+      sessionTokenRef.current = data.session_token;
+      conversationIdRef.current = data.conversation_id;
+      if (data.greeting) {
+        setMessages([{ role: 'assistant', text: data.greeting }]);
+      }
+    }
+    init();
+
+    // End session on unmount or tab close — keepalive ensures the request
+    // completes even if the page is being unloaded
+    return () => {
+      const token = sessionTokenRef.current;
+      const convId = conversationIdRef.current;
+      if (token && convId) {
+        fetch(`https://api.talkifai.dev/v1/chat/sessions/${convId}/end`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` },
+          keepalive: true, // survives tab close / component unmount
+        });
+      }
+    };
+  }, []);
+
+  async function sendMessage(userText: string) {
+    if (!sessionTokenRef.current || !conversationIdRef.current) return;
+
+    setMessages(prev => [...prev, { role: 'user', text: userText }]);
+    setIsLoading(true);
+    setError(null);
+
+    const response = await fetch(
+      `https://api.talkifai.dev/v1/chat/sessions/${conversationIdRef.current}/messages`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${sessionTokenRef.current}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ message: userText }),
+      }
+    );
+
+    let fullText = '';
+    let buffer = '';
+    const reader = response.body!.getReader();
+    const decoder = new TextDecoder();
+
+    // Add empty assistant bubble for streaming into
+    setMessages(prev => [...prev, { role: 'assistant', text: '' }]);
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const blocks = buffer.split('\n\n');
+        buffer = blocks.pop()!;
+
+        for (const block of blocks) {
+          let eventType = '';
+          let dataStr = '';
+          for (const line of block.split('\n')) {
+            if (line.startsWith('event: ')) eventType = line.slice(7).trim();
+            else if (line.startsWith('data: ')) dataStr = line.slice(6);
+          }
+          if (!dataStr) continue;
+          const data = JSON.parse(dataStr);
+
+          if (eventType === 'chunk') {
+            fullText += data.delta;
+            // Update the last (streaming) bubble in place
+            setMessages(prev => [
+              ...prev.slice(0, -1),
+              { role: 'assistant', text: fullText },
+            ]);
+          } else if (eventType === 'stream_end') {
+            setIsLoading(false);
+            if (data.end_session) {
+              await endSession();
+            }
+          } else if (eventType === 'error') {
+            // Clear loading and surface the error — don't leave UI hanging
+            setIsLoading(false);
+            setError(data.error || 'Something went wrong. Please try again.');
+            setMessages(prev => [
+              ...prev.slice(0, -1),
+              { role: 'assistant', text: 'Something went wrong. Please try again.' },
+            ]);
+          }
+        }
+      }
+    } catch {
+      setIsLoading(false);
+      setError('Connection lost. Please try again.');
+    }
+  }
+
+  async function endSession() {
+    const token = sessionTokenRef.current;
+    const convId = conversationIdRef.current;
+    if (!token || !convId) return;
+    await fetch(`https://api.talkifai.dev/v1/chat/sessions/${convId}/end`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    sessionTokenRef.current = null;
+    conversationIdRef.current = null;
+  }
+
+  return { messages, isLoading, error, sendMessage };
+}
+```
+
+<Note>
+  The `keepalive: true` flag in the cleanup `fetch` is critical. Without it, browsers cancel in-flight requests when the page unloads — the `/end` call would never reach the server, leaving billing sessions open and memory ingestion skipped.
+</Note>
 
 ---
 
