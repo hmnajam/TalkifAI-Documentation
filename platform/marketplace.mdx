@@ -66,41 +66,46 @@ Before publishing:
 2. Select **Commercial**
 3. Fill in marketplace details:
    - **Category**: Customer Support, Sales, Healthcare, etc.
-   - **Pricing**: Free or paid (coming soon)
-   - **Demo**: Enable public testing (recommended)
-4. Click **Submit for Review**
+   - **Pricing**: Free (paid coming soon)
+4. Click **Create Agent** (for new agents) or **Update Agent** (for existing)
+
+**Note:** Your agent will appear in the marketplace immediately after creation. There's currently no formal review process, but ensure your agent meets quality standards.
 
 **Via API:**
 
 ```bash
-PATCH /v1/agents/{agentId}
-Authorization: Bearer YOUR_API_KEY
+POST /api/agents
+Authorization: Bearer YOUR_SESSION_TOKEN
+Content-Type: application/json
 
 {
+  "name": "E-Commerce Support Pro",
+  "description": "Professional customer support agent for e-commerce...",
   "mode": "commercial",
-  "category": "customer_support",
-  "publicDescription": "Professional customer support agent for e-commerce..."
+  "agentArchitecture": "pipeline",
+  "model": "gpt_4o_mini",
+  "stt": "deepgram",
+  "voiceId": "cartesia-voice-123",
+  "sysMsg": "You are a professional customer support agent...",
+  "languages": ["english"],
+  "organizationId": "org_your123"
 }
 ```
 
-### Step 4: Review Process
+**Response:**
+```json
+{
+  "success": true,
+  "agent": {
+    "id": "agent_commercial123",
+    "name": "E-Commerce Support Pro",
+    "mode": "commercial",
+    "message": "Commercial agent created successfully. It will be available in the marketplace."
+  }
+}
+```
 
-All commercial agents go through a review:
-
-**Review Criteria:**
-- ✅ Agent functions correctly
-- ✅ System prompt is appropriate and safe
-- ✅ No harmful or misleading content
-- ✅ Voice and audio quality meet standards
-- ✅ Functions work as described
-- ✅ Compliance with terms of service
-
-**Timeline:** 1-3 business days
-
-**If Rejected:**
-- You'll receive feedback via email
-- Fix issues and resubmit
-- Unlimited resubmissions allowed
+**Permissions:** Only organization **Owners** and **Admins** can create commercial agents. Members can only create private or public agents.
 
 ---
 
@@ -109,72 +114,97 @@ All commercial agents go through a review:
 ### Browse Available Agents
 
 1. Go to **Studio → Marketplace**
-2. Filter by:
-   - **Category**: Support, Sales, Healthcare, Finance, etc.
-   - **Price**: Free or Paid
-   - **Rating**: User reviews
-   - **Architecture**: Pipeline or Realtime
+2. Browse all commercial agents
+3. Filter by:
+   - **Search**: Search by name, description, or organization
+   - **Category**: Support, Sales, Healthcare, Finance, etc. (coming soon)
 
-### Agent Details Page
+**Current Implementation:** All commercial agents from all organizations are shown. Filtering by category is planned for future releases.
+
+### Agent Card Display
 
 Each agent shows:
 
-| Section | Information |
-|---------|-------------|
-| **Overview** | Description, features, use cases |
-| **Specifications** | Architecture, LLM, voice, languages |
-| **Pricing** | Cost structure (if paid) |
-| **Reviews** | User ratings and feedback |
-| **Documentation** | Setup guide, API reference |
-| **Support** | Contact information |
+| Field | Information |
+|-------|-------------|
+| **Name** | Agent name |
+| **Description** | Brief description |
+| **Organization** | Creator organization name |
+| **Architecture** | Pipeline or Realtime |
+| **Actions** | Try Now, Delete (if owner/admin) |
 
-### Try Before You Buy
+### Try Before You Create
 
 **Demo Mode:**
-- Most agents offer free demo calls
-- Test in browser before activating
+- Click **Try Now** on any agent card
+- Opens demo page at `/demo?agentId={id}`
+- Test in browser with voice or chat
 - No credit card required for demo
+- No activation or commitment needed
 
 ---
 
 ## Using Commercial Agents
 
-### Activate an Agent
+### Try an Agent (Demo)
+
+**Demo Mode:**
+- Click **Try Now** on any agent card
+- Opens demo page in browser
+- Test the agent with voice or chat
+- No credit card required
+- No activation needed
+
+### Activate an Agent (Copy to Your Org)
+
+**Important:** Commercial agents cannot be directly "activated" — you create a copy in your organization.
+
+**Process:**
 
 1. Find agent in **Marketplace**
-2. Click **Use This Agent**
-3. Agent is copied to your organization
-4. Configure settings:
-   - System prompt (customize for your needs)
+2. Note the agent configuration (name, description, system prompt, etc.)
+3. Click **List Your Agent** or go to **Agents → Create Agent**
+4. Create a new agent with **similar configuration**
+5. Customize for your needs:
+   - System prompt (adapt for your use case)
    - Voice (optional change)
    - Functions (add your API keys)
-5. Click **Activate**
+   - Knowledge bases (link your docs)
+6. Set mode to **Commercial** (if you want to publish your version)
+7. Click **Create Agent**
+
+<Note>
+  **Commercial agents are templates.** You don't "clone" them directly — instead, use them as inspiration to create your own agents with similar configurations. The marketplace showcases what's possible, and you can build your own version.
+</Note>
 
 ### Customization
 
-After copying, the agent is **yours to modify**:
+After creating your agent, it's **yours to modify**:
 
 - ✅ Edit system prompt
 - ✅ Change voice and settings
 - ✅ Add/remove functions
 - ✅ Link your knowledge bases
 - ✅ Adjust for your use case
-
-<Note>
-  You're customizing your own copy. Changes don't affect the original agent or other users.
-</Note>
+- ✅ Publish as your own commercial agent (optional)
 
 ### Pricing Models
 
-**Free Agents:**
-- No cost to use
-- You pay only for API usage (LLM, TTS, etc.)
-- Great for getting started
+**Current Model:**
+- **Free to Use** — All marketplace agents are currently free
+- **You Pay API Costs** — You pay for your own API usage (LLM, TTS, STT)
+- **No Revenue Sharing Yet** — Revenue sharing is planned for future releases
 
-**Paid Agents:** (Coming Soon)
-- One-time purchase or subscription
-- Revenue shared with creator
-- Premium support included
+**Future Model (Coming Soon):**
+- **Paid Agents** — Creators can set prices
+- **Revenue Share:** ~70% to creator, ~30% to TalkifAI platform
+- **Monthly Payouts** — Via Stripe or similar
+- **Minimum Payout:** $50 (typical threshold)
+
+**Earnings Dashboard (Coming Soon):**
+- Track usage and revenue
+- Download reports
+- Manage subscriptions
 
 ---
 
@@ -199,7 +229,7 @@ After copying, the agent is **yours to modify**:
     Improve your agent based on user feedback. Add features, fix issues, stay current.
   </Card>
   <Card title="Competitive Pricing" icon="dollar-sign">
-    Research similar agents. Price fairly for the value provided.
+    Research similar agents. Price fairly for the value provided. (When paid agents launch)
   </Card>
 </CardGroup>
 
@@ -218,18 +248,21 @@ After copying, the agent is **yours to modify**:
 | **Hospitality** | Reservations, concierge |
 | **Legal** | Initial consultation, intake |
 
-### Revenue Sharing (Coming Soon)
+### Publishing Checklist
 
-**Paid Agent Model:**
-- **70%** to creator
-- **30%** to TalkifAI platform
-- Monthly payouts via Stripe
-- Minimum payout: $50
+Before publishing your commercial agent:
 
-**Earnings Dashboard:**
-- Track usage and revenue
-- Download reports
-- Manage subscriptions
+<Check>Agent handles 20+ test conversations successfully</Check>
+<Check>System prompt is polished and professional</Check>
+<Check>All functions work correctly</Check>
+<Check>Voice quality is excellent</Check>
+<Check>Edge cases are handled gracefully</Check>
+<Check>Agent provides genuine value to users</Check>
+<Check>Clear description and documentation</Check>
+
+<Warning>
+  Commercial agents represent your brand. Poor quality agents receive negative feedback and damage your reputation.
+</Warning>
 
 ---
 
@@ -312,18 +345,36 @@ GET /v1/marketplace/agents/{agentId}
 
 ### Clone Commercial Agent
 
+**Note:** The marketplace doesn't have a direct "clone" feature. Instead, create your own agent based on the commercial agent's configuration.
+
 ```bash
-POST /v1/marketplace/agents/{agentId}/clone
-Authorization: Bearer YOUR_API_KEY
+# Create your own agent inspired by marketplace agent
+POST /api/agents
+Authorization: Bearer YOUR_SESSION_TOKEN
+Content-Type: application/json
+
+{
+  "name": "My Support Agent",
+  "description": "Based on E-Commerce Support Pro",
+  "mode": "public",
+  "agentArchitecture": "pipeline",
+  "model": "gpt_4o_mini",
+  "stt": "deepgram",
+  "voiceId": "cartesia-voice-123",
+  "sysMsg": "You are a professional customer support agent...",
+  "languages": ["english"],
+  "organizationId": "org_your123"
+}
 ```
 
 **Response:**
 ```json
 {
   "success": true,
-  "data": {
-    "newAgentId": "agent_your123",
-    "message": "Agent copied to your organization successfully"
+  "agent": {
+    "id": "agent_your123",
+    "name": "My Support Agent",
+    "message": "Agent created successfully"
   }
 }
 ```
@@ -367,30 +418,34 @@ Authorization: Bearer YOUR_API_KEY
 ## Troubleshooting
 
 <AccordionGroup>
-  <Accordion title="My agent was rejected from marketplace">
-    **Common Reasons:**
-    - Incomplete system prompt
-    - Poor audio quality
-    - Functions not working
-    - Inappropriate content
+  <Accordion title="My agent isn't appearing in marketplace">
+    **Check:**
+    1. Is mode set to `commercial`?
+    2. Are you an Owner or Admin? (Members can't create commercial agents)
+    3. Refresh the marketplace page
+    4. Check browser console for errors
 
-    **Fix:** Review feedback email, improve agent, resubmit.
+    **Fix:** Verify agent mode and permissions, then refresh.
   </Accordion>
 
   <Accordion title="How do I update my commercial agent?">
     **Process:**
-    1. Edit agent in Studio
-    2. Changes auto-apply to all users
-    3. For major changes, notify existing users
-    4. Test thoroughly before publishing
+    1. Edit agent in Studio (Agents → Edit)
+    2. Make your changes
+    3. Click **Update Agent**
+    4. Changes apply immediately
+    5. For major changes, notify existing users
+
+    **Note:** All users see your updated version immediately.
   </Accordion>
 
   <Accordion title="Can I remove my agent from marketplace?">
     **Yes:**
-    1. Change mode from `commercial` to `private`
-    2. Agent removed from marketplace immediately
-    3. Existing users keep their copies
-    4. New users cannot discover it
+    1. Go to agent settings
+    2. Change mode from `commercial` to `private` or `public`
+    3. Agent removed from marketplace immediately
+    4. Existing users keep their copies
+    5. New users cannot discover it
   </Accordion>
 
   <Accordion title="How do I support users of my agent?">
@@ -398,7 +453,14 @@ Authorization: Bearer YOUR_API_KEY
     - Provide email support in documentation
     - Respond within 48 hours
     - Create FAQ/troubleshooting guide
-    - Monitor user reviews for issues
+    - Monitor user feedback
+    - Update agent based on common issues
+  </Accordion>
+
+  <Accordion title="Can members delete commercial agents?">
+    **No.** Only Owners and Admins can delete commercial agents.
+
+    **Reason:** Commercial agents are public-facing and affect your organization's reputation. Members can only delete their own private or public agents.
   </Accordion>
 </AccordionGroup>
 

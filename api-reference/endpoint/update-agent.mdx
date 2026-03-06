@@ -1,5 +1,410 @@
 ---
 title: "Update Agent"
-openapi: "PATCH /agents/{agentId}"
-description: "Updates one or more fields on an agent. Only send the fields you want to change."
+openapi: "PUT /v1/agents/{agentId}"
+description: "Updates one or more fields on an agent. Only send the fields you want to change. Architecture cannot be changed after creation."
 ---
+
+## Overview
+
+Updates an existing agent's configuration. Send only the fields you want to modify — all other fields remain unchanged.
+
+**Authentication:** Session-based (Better Auth)
+**Scope:** Active organization from session
+
+## Request
+
+**Path Parameters:**
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `agentId` | string | ✅ | Agent ID (ULID format) |
+
+**Headers:**
+```
+Authorization: Bearer YOUR_SESSION_TOKEN
+Content-Type: application/json
+```
+
+**Request Body:**
+```json
+{
+  "name": "Updated Agent Name",
+  "description": "Updated description",
+  "sysMsg": "Updated system prompt...",
+  "languages": ["english", "urdu"],
+  "agentArchitecture": "pipeline",
+  "model": "gpt_4o_mini",
+  "stt": "deepgram",
+  "voiceId": "cartesia-voice-456",
+  "realtimeProvider": "gemini",
+  "greetingType": "agentFirst",
+  "greetingMessage": "Hello! How can I assist you?",
+  "lastMessage": "Goodbye!",
+  "temperature": 0.7,
+  "inactivityTimeout": 30,
+  "mode": "public"
+}
+```
+
+**Optional Fields:**
+| Field | Type | Validation | Description |
+|-------|------|------------|-------------|
+| `name` | string | 2-50 chars | Agent display name |
+| `description` | string | Max 200 chars | Internal description |
+| `sysMsg` | string | Max 5000 chars | System prompt |
+| `languages` | array | 1+ items | Language codes (en, ur, sd) |
+| `agentArchitecture` | string | Fixed after create | `pipeline`, `realtime`, or `text` |
+| `model` | string | Required for pipeline/text | LLM model |
+| `stt` | string | Required for pipeline | STT provider |
+| `voiceId` | string | Required for pipeline | Voice ID |
+| `realtimeProvider` | string | Required for realtime | `openai` or `gemini` |
+| `greetingType` | string | `agentFirst` or `userFirst` | Who speaks first |
+| `greetingMessage` | string | Optional | Greeting text |
+| `lastMessage` | string | Max 100 chars | Farewell message |
+| `temperature` | number | 0.1–1.0 | Response randomness |
+| `inactivityTimeout` | number | 10–60 seconds | Silence timeout |
+| `mode` | string | `public`, `private`, `commercial` | Visibility mode |
+
+## Response
+
+**Status:** `200 OK`
+
+```json
+{
+  "success": true,
+  "agent": {
+    "id": "agent_abc123",
+    "name": "Updated Agent Name",
+    "description": "Updated description",
+    "agentArchitecture": "pipeline",
+    "mode": "public",
+    "model": "gpt_4o_mini",
+    "stt": "deepgram",
+    "voiceId": "cartesia-voice-456",
+    "sysMsg": "Updated system prompt...",
+    "functionCallingEnabled": true,
+    "enabledFunctions": ["web_search", "end_call"],
+    "enabledCustomFunctions": [],
+    "greetingType": "agentFirst",
+    "greetingMessage": "Hello! How can I assist you?",
+    "lastMessage": "Goodbye!",
+    "temperature": 0.7,
+    "inactivityTimeout": 30,
+    "createdAt": "2024-01-10T09:00:00Z",
+    "updatedAt": "2024-01-15T14:30:00Z",
+    "userId": "user_xyz789",
+    "organizationId": "org_123",
+    "languages": [
+      {
+        "id": "lang_123",
+        "language": "english"
+      },
+      {
+        "id": "lang_124",
+        "language": "urdu"
+      }
+    ],
+    "VoiceOption": {
+      "voiceId": "cartesia-voice-456",
+      "voiceName": "Sonic British",
+      "provider": "cartesia"
+    }
+  }
+}
+```
+
+**Special Response (Missing API Keys):**
+```json
+{
+  "success": true,
+  "agent": { /* ... agent object ... */ },
+  "missingKeys": ["openaiKey"],
+  "usedDefaults": true,
+  "finalModel": "gemini-2.0-flash",
+  "finalStt": "gemini",
+  "redirectUrl": "/organization?callbackUrl=/agents/create-agent/agent_abc123"
+}
+```
+
+## Access Control
+
+| User Role | Can Update |
+|-----------|------------|
+| **Owner** | ✅ Any agent in organization |
+| **Admin** | ✅ Any agent in organization |
+| **Member (Creator)** | ✅ Own agents (except commercial) |
+| **Member (Not Creator)** | ❌ Cannot update |
+
+**Commercial Agent Restriction:**
+- Only Owners/Admins can update commercial agents
+- Creators cannot modify their own commercial agents
+
+## Validation Rules
+
+### Architecture-Specific Validation
+
+**Pipeline:**
+```json
+{
+  "agentArchitecture": "pipeline",
+  "voiceId": "required",
+  "model": "required",
+  "stt": "required"
+}
+```
+
+**Realtime:**
+```json
+{
+  "agentArchitecture": "realtime",
+  "realtimeProvider": "required (openai or gemini)",
+  "voiceId": "required if greetingType=agentFirst"
+}
+```
+
+**Text:**
+```json
+{
+  "agentArchitecture": "text",
+  "model": "required",
+  "voiceId": "not applicable",
+  "stt": "not applicable"
+}
+```
+
+### Field Validation
+
+| Field | Rule | Error Message |
+|-------|------|---------------|
+| `inactivityTimeout` | 10–60 seconds | "Inactivity timeout must be between 10 and 60 seconds" |
+| `mode` | public/private/commercial | "Invalid agent mode" |
+| `languages` | en/ur/sd only | "Invalid language: {lang}" |
+| `name` | Required | "Name is required" |
+| `description` | Required | "Description is required" |
+| `sysMsg` | Required | "System message is required" |
+
+### Mode Change Validation
+
+**Changing to Commercial:**
+```json
+{
+  "mode": "commercial"
+}
+```
+- ✅ Allowed for Owners/Admins
+- ❌ Forbidden for Members
+- Error: "Only organization owners and admins can set agent as commercial"
+
+## Error Responses
+
+### 401 Unauthorized
+```json
+{
+  "error": "Unauthorized"
+}
+```
+
+### 403 Forbidden
+```json
+{
+  "error": "You don't have permission to update this agent"
+}
+```
+
+### 400 Bad Request
+```json
+{
+  "error": "Inactivity timeout must be between 10 and 60 seconds"
+}
+```
+
+```json
+{
+  "error": "For pipeline architecture, voiceId, model, and STT are required"
+}
+```
+
+```json
+{
+  "error": "Invalid agent mode. Must be 'public', 'private', or 'commercial'"
+}
+```
+
+### 404 Not Found
+```json
+{
+  "error": "Agent not found"
+}
+```
+
+### 500 Server Error
+```json
+{
+  "error": "Update failed"
+}
+```
+
+## Examples
+
+### cURL
+```bash
+curl -X PUT "https://studio.talkifai.dev/api/agents/agent_abc123" \
+  -H "Authorization: Bearer YOUR_SESSION_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Updated Support Bot",
+    "temperature": 0.5,
+    "mode": "public"
+  }'
+```
+
+### JavaScript (Fetch)
+```javascript
+const agentId = "agent_abc123";
+const updateData = {
+  name: "Updated Support Bot",
+  temperature: 0.5,
+  mode: "public"
+};
+
+const response = await fetch(`/api/agents/${agentId}`, {
+  method: 'PUT',
+  headers: {
+    'Authorization': `Bearer ${sessionToken}`,
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify(updateData)
+});
+
+const data = await response.json();
+if (data.redirectUrl) {
+  // Missing API keys - redirect to configure
+  window.location.href = data.redirectUrl;
+}
+```
+
+### Next.js (Client Component)
+```tsx
+async function updateAgent(agentId: string, updates: Partial<Agent>) {
+  const response = await fetch(`/api/agents/${agentId}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(updates)
+  });
+
+  const data = await response.json();
+  
+  if (!response.ok) {
+    throw new Error(data.error || "Update failed");
+  }
+  
+  // Handle missing keys redirect
+  if (data.redirectUrl) {
+    router.push(data.redirectUrl);
+    return;
+  }
+  
+  // Success - agent updated
+  toast.success("Agent updated successfully!");
+  return data.agent;
+}
+
+// Usage
+await updateAgent("agent_abc123", {
+  name: "New Name",
+  temperature: 0.5
+});
+```
+
+### Update Languages
+```javascript
+const response = await fetch(`/api/agents/${agentId}`, {
+  method: 'PUT',
+  headers: {
+    'Authorization': `Bearer ${sessionToken}`,
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    languages: ["english", "urdu", "sindhi"]
+  })
+});
+```
+
+### Change to Commercial Mode
+```javascript
+// Only works for Owners/Admins
+const response = await fetch(`/api/agents/${agentId}`, {
+  method: 'PUT',
+  headers: {
+    'Authorization': `Bearer ${sessionToken}`,
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    mode: "commercial"
+  })
+});
+
+if (response.status === 403) {
+  console.error("Only owners/admins can create commercial agents");
+}
+```
+
+## Use Cases
+
+### Partial Update (Recommended)
+```javascript
+// Only send fields you want to change
+await updateAgent(agentId, {
+  temperature: 0.5  // Only change temperature
+});
+```
+
+### Full Configuration Update
+```javascript
+await updateAgent(agentId, {
+  name: "New Name",
+  description: "New description",
+  sysMsg: "New system prompt...",
+  languages: ["english"],
+  model: "gpt_4o_mini",
+  stt": "deepgram",
+  voiceId: "cartesia-voice-123",
+  greetingType: "agentFirst",
+  greetingMessage: "Hello!",
+  temperature: 0.7,
+  inactivityTimeout: 30,
+  mode: "public"
+});
+```
+
+### Architecture-Specific Update
+```javascript
+// Pipeline agent update
+await updateAgent(agentId, {
+  agentArchitecture: "pipeline",
+  voiceId: "cartesia-voice-456",
+  model: "gpt_4o_mini",
+  stt: "deepgram"
+});
+
+// Realtime agent update
+await updateAgent(agentId, {
+  agentArchitecture: "realtime",
+  realtimeProvider: "gemini",
+  voiceId: "gemini-leda-en"
+});
+
+// Text agent update
+await updateAgent(agentId, {
+  agentArchitecture: "text",
+  model: "gpt_4o_mini"
+});
+```
+
+## Related Endpoints
+
+- [List Agents](/api-reference/endpoint/list-agents) — List all agents
+- [Get Agent](/api-reference/endpoint/get-agent) — Get agent details
+- [Create Agent](/api-reference/endpoint/create-agent) — Create new agent
+- [Delete Agent](/api-reference/endpoint/delete-agent) — Delete agent

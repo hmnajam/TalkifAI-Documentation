@@ -58,8 +58,9 @@ User asks: "What's your return policy?"
 
 <Info>
   **Supported file types:** PDF, TXT, DOCX, MD, CSV
-  **Max file size:** 50MB per file
-  **Processing time:** 1-5 minutes depending on file size
+  **Max file size:** 50MB per file (actual limit may vary by deployment)
+  **Processing time:** Typically 1-5 minutes depending on file size and system load
+  **Chunk defaults:** 1000 characters with 200 character overlap (configurable)
 </Info>
 
 ### Document Processing
@@ -123,6 +124,8 @@ After linking, configure how the agent searches your knowledge base:
 
 <Warning>
   Too many chunks can confuse the agent and increase response latency. Start with 5 and adjust based on testing.
+  
+  **UI Range:** The Studio UI allows 1-10 chunks. For values outside this range, use the API.
 </Warning>
 
 ### Similarity Threshold

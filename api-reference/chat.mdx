@@ -128,13 +128,13 @@ data: {"usage": {"input_tokens": 12, "output_tokens": 18}, "end_session": false}
 
 | Event | Data fields | Description |
 |-------|-------------|-------------|
-| `stream_start` | `agent_name` | Streaming has started |
-| `chunk` | `delta` | Incremental text of the response |
-| `tool_call` | `name`, `status: "executing"` | Agent started executing a tool |
-| `tool_result` | `name`, `status: "completed"` | Tool execution finished |
-| `handoff` | subagent details | Multi-agent handoff in progress |
-| `stream_end` | `usage` (input/output tokens), `end_session` | Response is complete |
-| `error` | `error` | An error occurred mid-stream |
+| `stream_start` | `{ "agent_name": "..." }` | Agent started responding — show loading indicator |
+| `chunk` | `{ "delta": "..." }` | Incremental text — append to chat bubble |
+| `tool_call` | `{ "name": "...", "status": "executing" }` | Agent invoked a tool — optionally show status to user |
+| `tool_result` | `{ "name": "...", "status": "completed" }` | Tool finished — agent continues streaming |
+| `handoff` | `{ "from_agent": "...", "to_agent": "..." }` | Multi-agent handoff — a subagent is now responding |
+| `stream_end` | `{ "usage": {"input_tokens": N, "output_tokens": N}, "end_session": bool }` | Response complete — clear loading. If `end_session: true`, call `/end` immediately |
+| `error` | `{ "error": "..." }` | Error mid-stream — **clear loading state and show error message to user** |
 
 ### Parsing the Stream
 
@@ -180,16 +180,26 @@ while (true) {
     if (!dataStr) continue;
     const data = JSON.parse(dataStr);
 
-    if (eventType === 'chunk') {
+    if (eventType === 'stream_start') {
+      // Show loading indicator
+    } else if (eventType === 'chunk') {
       fullText += data.delta;
-      // update your UI
+      // Update chat bubble with streaming text
+    } else if (eventType === 'tool_call') {
+      // Optionally show "Looking that up..." indicator
+    } else if (eventType === 'tool_result') {
+      // Tool finished — agent continues
+    } else if (eventType === 'handoff') {
+      // { from_agent, to_agent } — a subagent took over
     } else if (eventType === 'stream_end') {
-      console.log('Tokens used:', data.usage);
+      setIsLoading(false); // clear loading state
       if (data.end_session) {
-        // Agent requested the session be closed
+        // Agent called end_chat — close the session immediately
+        endSession();
       }
     } else if (eventType === 'error') {
-      console.error('Stream error:', data.error);
+      setIsLoading(false); // clear loading — don't leave UI hanging
+      showError(data.error || 'Something went wrong. Please try again.');
     }
   }
 }

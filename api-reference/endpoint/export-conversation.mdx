@@ -1,0 +1,535 @@
+---
+title: "Export Conversation"
+openapi: "POST /export/conversation"
+description: "Export complete conversation data including transcript, post-call analysis, and recording URL. Returns a downloadable JSON file."
+---
+
+## Overview
+
+Exports a single conversation's complete data as a downloadable JSON file. Includes billing session details, agent configuration, transcript, post-call analysis, and recording URL (if available).
+
+**Authentication:** API Key or Internal Token
+**Response:** JSON file download
+
+---
+
+## Request
+
+### Endpoint 1: Form Data
+```
+POST /api/export/conversation
+Content-Type: application/x-www-form-urlencoded
+```
+
+**Form Parameters:**
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `conversationId` | string | ✅ | — | Room name/conversation ID to export |
+| `includeTranscript` | boolean | ❌ | `true` | Include transcript data |
+| `includeAnalysis` | boolean | ❌ | `true` | Include post-call analysis |
+| `includeRecording` | boolean | ❌ | `true` | Include recording URL |
+
+### Endpoint 2: JSON Body
+```
+POST /api/export/conversation/json
+Content-Type: application/json
+```
+
+**Request Body:**
+```json
+{
+  "conversationId": "agent_abc123_1705320000_user123",
+  "includeTranscript": true,
+  "includeAnalysis": true,
+  "includeRecording": true
+}
+```
+
+### Headers
+
+**For API Key Authentication:**
+```
+x-api-key: YOUR_API_KEY
+```
+
+**For Internal Authentication:**
+```
+x-internal-token: YOUR_INTERNAL_TOKEN
+x-organization-id: org_123
+```
+
+---
+
+## Response
+
+**Status:** `200 OK`
+
+**Content-Type:** `application/json`
+**Content-Disposition:** `attachment; filename="conversation-{id}-{date}.json"`
+
+### Response Structure
+
+```json
+{
+  "exportMetadata": {
+    "exportedAt": "2024-01-15T10:35:00Z",
+    "organizationId": "org_123",
+    "conversationId": "agent_abc123_1705320000_user123",
+    "dataVersion": "1.1",
+    "exportType": "single_conversation",
+    "includedData": {
+      "transcript": true,
+      "analysis": true,
+      "recording": true
+    },
+    "schemaVersion": "billing-session-v1"
+  },
+  "conversation": {
+    "sessionId": "session_abc123",
+    "roomName": "agent_abc123_1705320000_user123",
+    "agentId": "agent_xyz789",
+    "agentName": "Customer Support Bot",
+    "sessionType": "webcall",
+    "sessionStatus": "completed",
+    "agentModel": "gpt_4o_mini",
+    "agentArchitecture": "pipeline",
+    "keyMode": "talkifai_keys",
+    "callDirection": "inbound",
+    "callerPhone": "+12025550123",
+    "calleePhone": "+1234567890",
+    "startTime": "2024-01-15T10:30:00Z",
+    "endTime": "2024-01-15T10:35:00Z",
+    "duration": 300,
+    "baseCost": 0.25,
+    "totalCost": 0.45,
+    "user": {
+      "id": "user_123",
+      "name": "John Doe",
+      "email": "john@example.com",
+      "phone": "+12025550123",
+      "company": "Acme Corp"
+    },
+    "agent": {
+      "id": "agent_xyz789",
+      "name": "Customer Support Bot",
+      "description": "Handles customer inquiries",
+      "model": "gpt_4o_mini",
+      "stt": "deepgram",
+      "agentArchitecture": "pipeline",
+      "realtimeProvider": null,
+      "enabledFunctions": ["web_search", "end_call"],
+      "functionCallingEnabled": true,
+      "enabledCustomFunctions": [],
+      "greetingMessage": "Hello! How can I help you?",
+      "greetingType": "agentFirst",
+      "temperature": 0.7,
+      "enabledPronunciations": [],
+      "postCallAnalysisModel": "gpt_5_mini",
+      "category": "customer_support",
+      "mode": "public",
+      "inactivityTimeout": 30
+    },
+    "transcript": {
+      "raw": "[{\"speaker\": \"agent\", \"text\": \"Hello! How can I help you?\", \"timestamp\": \"2024-01-15T10:30:00Z\"}, ...]",
+      "parsed": [
+        {
+          "function": "check_order_status",
+          "parameters": {"order_id": "ORD-12345"},
+          "timestamp": "2024-01-15T10:31:00Z"
+        }
+      ],
+      "createdAt": "2024-01-15T10:35:00Z",
+      "user": {
+        "id": "user_123",
+        "name": "John Doe",
+        "email": "john@example.com"
+      }
+    },
+    "postCallAnalysis": {
+      "analysisData": {
+        "call_summary": "Customer called about order status. Issue resolved.",
+        "call_outcome": "Fully Resolved",
+        "agent_professionalism": 9,
+        "followed_protocol": true,
+        "empathy_shown": true,
+        "improvement_areas": "None"
+      },
+      "analyzedAt": "2024-01-15T10:36:00Z",
+      "user": {
+        "id": "user_123",
+        "name": "John Doe",
+        "email": "john@example.com"
+      },
+      "agent": {
+        "id": "agent_xyz789",
+        "name": "Customer Support Bot",
+        "description": "Handles customer inquiries",
+        "model": "gpt_4o_mini"
+      }
+    },
+    "recording": {
+      "id": "rec_abc123",
+      "fileName": "recordings/2024/01/15/agent_abc123_1705320000_user123.webm",
+      "signedUrl": "https://storage.googleapis.com/...?X-Goof-Algorithm=...",
+      "urlExpiry": "2024-01-16T10:35:00Z",
+      "createdAt": "2024-01-15T10:35:00Z",
+      "available": true
+    },
+    "createdAt": "2024-01-15T10:30:00Z",
+    "updatedAt": "2024-01-15T10:36:00Z"
+  },
+  "summary": {
+    "hasTranscript": true,
+    "hasAnalysis": true,
+    "hasRecording": true,
+    "hasFunctionCalls": true,
+    "recordingAvailable": true,
+    "duration": 300,
+    "callCompleted": true,
+    "isTelephonyCall": true,
+    "hasBillingInfo": true
+  }
+}
+```
+
+---
+
+## Response Fields
+
+### Export Metadata
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `exportMetadata.exportedAt` | string | ISO 8601 timestamp |
+| `exportMetadata.organizationId` | string | Organization ID |
+| `exportMetadata.conversationId` | string | Exported conversation ID |
+| `exportMetadata.dataVersion` | string | Data schema version |
+| `exportMetadata.exportType` | string | `single_conversation` |
+| `exportMetadata.includedData` | object | What data is included |
+| `exportMetadata.includedData.transcript` | boolean | Transcript included |
+| `exportMetadata.includedData.analysis` | boolean | Analysis included |
+| `exportMetadata.includedData.recording` | boolean | Recording included |
+| `exportMetadata.schemaVersion` | string | Schema version |
+
+### Conversation Object
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `conversation.sessionId` | string | Billing session ID |
+| `conversation.roomName` | string | Room/conversation ID |
+| `conversation.agentId` | string | Agent ID |
+| `conversation.agentName` | string | Agent display name |
+| `conversation.sessionType` | string | `webcall`, `telephony`, `chat` |
+| `conversation.sessionStatus` | string | `completed`, `failed`, `abandoned` |
+| `conversation.agentModel` | string | LLM model used |
+| `conversation.agentArchitecture` | string | `pipeline`, `realtime`, `text` |
+| `conversation.keyMode` | string | `talkifai_keys`, `my_keys`, `hybrid` |
+| `conversation.callDirection` | string | `inbound` or `outbound` |
+| `conversation.callerPhone` | string | Caller phone number |
+| `conversation.calleePhone` | string | Destination phone number |
+| `conversation.startTime` | string | ISO 8601 timestamp |
+| `conversation.endTime` | string | ISO 8601 timestamp |
+| `conversation.duration` | number | Duration in seconds |
+| `conversation.baseCost` | number | Base infrastructure cost |
+| `conversation.totalCost` | number | Total session cost |
+| `conversation.user` | object | User details |
+| `conversation.agent` | object | Agent configuration |
+| `conversation.transcript` | object | Transcript data (if included) |
+| `conversation.postCallAnalysis` | object | Analysis data (if included) |
+| `conversation.recording` | object | Recording data (if included) |
+
+### Summary Object
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `summary.hasTranscript` | boolean | Transcript exists |
+| `summary.hasAnalysis` | boolean | Analysis exists |
+| `summary.hasRecording` | boolean | Recording exists |
+| `summary.hasFunctionCalls` | boolean | Function calls in transcript |
+| `summary.recordingAvailable` | boolean | GCS bucket configured |
+| `summary.duration` | number | Call duration |
+| `summary.callCompleted` | boolean | Has end time |
+| `summary.isTelephonyCall` | boolean | Phone call (not web) |
+| `summary.hasBillingInfo` | boolean | Has cost data |
+
+---
+
+## Authentication
+
+### API Key Authentication
+
+**Header:**
+```
+x-api-key: YOUR_API_KEY
+```
+
+**Valid Keys:**
+- Active API keys from database
+- Test keys: `test-api-key-123`, `demo-api-key-456`
+
+### Internal Token Authentication
+
+**Headers:**
+```
+x-internal-token: YOUR_INTERNAL_TOKEN
+x-organization-id: org_123
+```
+
+**Use Case:** Internal service-to-service calls
+
+---
+
+## Error Responses
+
+### 401 Unauthorized
+```json
+{
+  "detail": "Authentication required: either x-internal-token or x-api-key header"
+}
+```
+
+```json
+{
+  "detail": "Invalid API key"
+}
+```
+
+### 400 Bad Request
+```json
+{
+  "detail": "Organization ID missing for internal requests. Please provide x-organization-id header."
+}
+```
+
+### 404 Not Found
+```json
+{
+  "detail": "Conversation not found or you don't have access to this conversation"
+}
+```
+
+### 500 Server Error
+```json
+{
+  "detail": "Export failed"
+}
+```
+
+---
+
+## Examples
+
+### cURL (Form Data)
+```bash
+curl -X POST "https://api.talkifai.dev/api/export/conversation" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -F "conversationId=agent_abc123_1705320000_user123" \
+  -F "includeTranscript=true" \
+  -F "includeAnalysis=true" \
+  -F "includeRecording=true" \
+  -o conversation-export.json
+```
+
+### cURL (JSON)
+```bash
+curl -X POST "https://api.talkifai.dev/api/export/conversation/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "conversationId": "agent_abc123_1705320000_user123",
+    "includeTranscript": true,
+    "includeAnalysis": true,
+    "includeRecording": true
+  }' \
+  -o conversation-export.json
+```
+
+### JavaScript (Fetch)
+```javascript
+const response = await fetch('https://api.talkifai.dev/api/export/conversation/json', {
+  method: 'POST',
+  headers: {
+    'x-api-key': 'YOUR_API_KEY',
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    conversationId: 'agent_abc123_1705320000_user123',
+    includeTranscript: true,
+    includeAnalysis: true,
+    includeRecording: true
+  })
+});
+
+if (response.ok) {
+  const blob = await response.blob();
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = response.headers.get('content-disposition').split('filename=')[1];
+  a.click();
+  window.URL.revokeObjectURL(url);
+}
+```
+
+### Python (Requests)
+```python
+import requests
+
+url = "https://api.talkifai.dev/api/export/conversation/json"
+headers = {
+    "x-api-key": "YOUR_API_KEY",
+    "Content-Type": "application/json"
+}
+data = {
+    "conversationId": "agent_abc123_1705320000_user123",
+    "includeTranscript": True,
+    "includeAnalysis": True,
+    "includeRecording": True
+}
+
+response = requests.post(url, json=data, headers=headers)
+
+if response.status_code == 200:
+    filename = response.headers['Content-Disposition'].split('filename=')[1]
+    with open(filename, 'wb') as f:
+        f.write(response.content)
+    print(f"Exported: {filename}")
+```
+
+### Next.js (Download)
+```tsx
+async function downloadConversation(conversationId: string) {
+  const response = await fetch('/api/export/conversation/json', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      conversationId,
+      includeTranscript: true,
+      includeAnalysis: true,
+      includeRecording: true
+    })
+  });
+
+  if (response.ok) {
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `conversation-${conversationId}-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+}
+```
+
+---
+
+## Recording Signed URLs
+
+**How it works:**
+- Recording URLs are Google Cloud Storage signed URLs
+- Expiry: 1 day from export time
+- Requires `GCS_BUCKET` environment variable
+- Requires `credentials.json` for GCP authentication
+
+**When Recording is Unavailable:**
+```json
+{
+  "recording": null
+}
+```
+
+**Reasons:**
+- `includeRecording: false`
+- GCS bucket not configured
+- Recording file not found
+- Storage client initialization failed
+
+---
+
+## Data Included in Export
+
+### Always Included
+- ✅ Billing session details
+- ✅ Agent configuration
+- ✅ Call metadata (duration, cost, timestamps)
+- ✅ User information (if available)
+
+### Conditionally Included
+- ✅ Transcript (if `includeTranscript: true` and exists)
+- ✅ Post-call analysis (if `includeAnalysis: true` and exists)
+- ✅ Recording URL (if `includeRecording: true` and GCS configured)
+
+### Function Calls
+Extracted from transcript JSON:
+```json
+{
+  "functionCalls": [
+    {
+      "function": "check_order_status",
+      "parameters": {"order_id": "ORD-12345"},
+      "result": {"status": "shipped", "tracking": "1Z999AA1"},
+      "timestamp": "2024-01-15T10:31:00Z"
+    }
+  ]
+}
+```
+
+---
+
+## Use Cases
+
+### Export for Compliance
+```javascript
+// Export all conversations with full data
+const conversations = await getConversationList();
+for (const conv of conversations) {
+  await downloadConversation(conv.id);
+}
+```
+
+### Backup Conversation Data
+```python
+# Daily backup script
+def backup_conversations():
+    conversations = get_today_conversations()
+    for conv in conversations:
+        export_conversation(conv['id'])
+```
+
+### Share Conversation with Customer
+```javascript
+// Export specific conversation for customer
+const exportData = await exportConversation(conversationId);
+emailToCustomer(exportData);
+```
+
+---
+
+## Related Endpoints
+
+- [List Call Logs](/api-reference/call-logs/list-call-logs) — List all conversations
+- [Get Transcript](/api-reference/transcripts/get-transcript) — Get transcript only
+- [Get Recording](/api-reference/recordings/get-recording) — Get recording URL
+- [Get Analysis](/api-reference/post-call-analysis/get-results) — Get analysis results
+
+---
+
+## Environment Variables
+
+**Required for Full Functionality:**
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `GCS_BUCKET` | Google Cloud Storage bucket | `talkifai-recordings` |
+| `INTERNAL_TOKEN` | Internal service token | `your-secret-token` |
+| `credentials.json` | GCP service account key | File in root directory |
+
+**Recording Storage:**
+- Recordings stored in: `gs://{GCS_BUCKET}/recordings/{date}/{filename}.webm`
+- Signed URLs expire after 1 day
+- Requires GCP credentials for authentication

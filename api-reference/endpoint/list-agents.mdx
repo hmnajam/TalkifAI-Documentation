@@ -1,5 +1,211 @@
 ---
 title: "List Agents"
-openapi: "GET /agents"
-description: "Returns all agents in your organization. Filter by visibility mode or paginate results."
+openapi: "GET /v1/agents"
+description: "Returns all agents in your current organization. Access is scoped by user role — owners/admins see all agents, members see public agents plus their own private agents."
 ---
+
+## Overview
+
+Lists all agents within your active organization. The response is filtered based on your user role:
+
+- **Owners/Admins:** See all agents (public + private)
+- **Members:** See public agents + their own private agents only
+
+**Authentication:** Session-based (Better Auth)
+**Scope:** Active organization from session
+
+## Request
+
+**Headers:**
+```
+Authorization: Bearer YOUR_SESSION_TOKEN
+```
+
+**Query Parameters:** None
+
+## Response
+
+**Status:** `200 OK`
+
+```json
+{
+  "agents": [
+    {
+      "id": "agent_abc123",
+      "name": "Customer Support Bot",
+      "description": "Handles customer inquiries and support tickets",
+      "agentArchitecture": "pipeline",
+      "mode": "public",
+      "model": "gpt_4o_mini",
+      "stt": "deepgram",
+      "voiceId": "cartesia-voice-123",
+      "functionCallingEnabled": true,
+      "enabledFunctions": ["web_search", "end_call"],
+      "enabledCustomFunctions": [],
+      "temperature": 0.7,
+      "inactivityTimeout": 30,
+      "greetingType": "agentFirst",
+      "greetingMessage": "Hello! How can I help you today?",
+      "lastMessage": "Thank you for calling!",
+      "createdAt": "2024-01-10T09:00:00Z",
+      "updatedAt": "2024-01-15T14:30:00Z",
+      "userId": "user_xyz789",
+      "languages": [
+        {
+          "id": "lang_123",
+          "language": "english"
+        }
+      ],
+      "VoiceOption": {
+        "voiceId": "cartesia-voice-123",
+        "voiceName": "Sonic English",
+        "provider": "cartesia",
+        "providerVoiceId": "sonic-english",
+        "gender": "neutral",
+        "accent": "American",
+        "age": "adult",
+        "description": "Clear, professional voice",
+        "language": "en-US",
+        "model": "sonic"
+      },
+      "user": {
+        "id": "user_xyz789",
+        "name": "John Doe",
+        "email": "john@example.com"
+      },
+      "organization": {
+        "id": "org_123",
+        "name": "Acme Corp",
+        "slug": "acme-corp"
+      }
+    }
+  ]
+}
+```
+
+## Response Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `agents` | array | List of agent objects |
+| `agents[].id` | string | Agent ID (ULID format) |
+| `agents[].name` | string | Agent display name |
+| `agents[].description` | string | Internal description |
+| `agents[].agentArchitecture` | string | `pipeline`, `realtime`, or `text` |
+| `agents[].mode` | string | `public`, `private`, or `commercial` |
+| `agents[].model` | string | LLM model (pipeline/text only) |
+| `agents[].stt` | string | STT provider (pipeline only) |
+| `agents[].voiceId` | string | Voice ID (pipeline/realtime only) |
+| `agents[].realtimeProvider` | string | `openai` or `gemini` (realtime only) |
+| `agents[].functionCallingEnabled` | boolean | Functions enabled |
+| `agents[].enabledFunctions` | array | Built-in function IDs |
+| `agents[].enabledCustomFunctions` | array | Custom function IDs |
+| `agents[].temperature` | number | 0.1–1.0 |
+| `agents[].inactivityTimeout` | number | 10–60 seconds |
+| `agents[].greetingType` | string | `agentFirst` or `userFirst` |
+| `agents[].greetingMessage` | string | Custom greeting |
+| `agents[].lastMessage` | string | Farewell message |
+| `agents[].languages` | array | Language objects |
+| `agents[].VoiceOption` | object | Voice details |
+| `agents[].user` | object | Creator info |
+| `agents[].organization` | object | Organization info |
+
+## Access Control
+
+### Owners/Admins
+```json
+// See ALL agents in organization
+{
+  "mode": { "in": ["public", "private"] }
+}
+```
+
+### Members
+```json
+// See public + own private agents only
+{
+  "OR": [
+    { "mode": "public" },
+    { "mode": "private", "userId": "current_user_id" }
+  ]
+}
+```
+
+## Error Responses
+
+### 401 Unauthorized
+```json
+{
+  "error": "Unauthorized"
+}
+```
+
+### 400 Bad Request
+```json
+{
+  "error": "Please select an organization first"
+}
+```
+
+### 403 Forbidden
+```json
+{
+  "error": "You are not a member of the selected organization"
+}
+```
+
+### 500 Server Error
+```json
+{
+  "error": "Server error"
+}
+```
+
+## Examples
+
+### cURL
+```bash
+curl -X GET "https://studio.talkifai.dev/api/agents" \
+  -H "Authorization: Bearer YOUR_SESSION_TOKEN"
+```
+
+### JavaScript (Fetch)
+```javascript
+const response = await fetch('/api/agents', {
+  method: 'GET',
+  headers: {
+    'Authorization': `Bearer ${sessionToken}`
+  }
+});
+
+const data = await response.json();
+console.log(data.agents);
+```
+
+### Next.js (Server Component)
+```tsx
+import { auth } from "@/src/lib/auth";
+import { headers } from "next/headers";
+
+async function getAgents() {
+  const session = await auth.api.getSession({
+    headers: await headers()
+  });
+
+  const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/agents`, {
+    headers: {
+      cookie: headers().get("cookie") ?? ""
+    },
+    cache: "no-store"
+  });
+
+  return response.json();
+}
+```
+
+## Related Endpoints
+
+- [Create Agent](/api-reference/endpoint/create-agent) — Create a new agent
+- [Get Agent](/api-reference/endpoint/get-agent) — Get single agent details
+- [Update Agent](/api-reference/endpoint/update-agent) — Update agent configuration
+- [List All Agents](/api-reference/endpoint/list-all-agents) — Agents across all organizations

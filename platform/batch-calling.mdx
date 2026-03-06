@@ -360,7 +360,11 @@ Available actions depend on batch status:
 | **Cancel** | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
 | **Delete** | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ |
 | **Reschedule** | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
-| **Export** | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ |
+| **Export** | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ |
+
+<Info>
+  **Export Feature:** Export functionality is available for Completed and Failed batches. Export options include CSV (all contacts, successful only, or failed only).
+</Info>
 
 ### Pause a Batch
 
@@ -439,6 +443,60 @@ Available actions depend on batch status:
 - Only for Pending/Scheduled batches
 - Cannot reschedule running batches
 - New time must be in future
+
+**API Endpoint:**
+```bash
+POST /batch/jobs/{batchId}/reschedule?scheduledStartTime={time}&timezone={tz}
+Authorization: Bearer YOUR_SESSION_TOKEN
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Batch job rescheduled successfully",
+  "scheduledStartTime": "2024-01-20T14:00:00Z"
+}
+```
+
+### Export Batch
+
+**When:** Download batch results for analysis or reporting
+
+**How:**
+1. Go to batch detail page (Completed or Failed status)
+2. Click **Export** button
+3. Select export options:
+   - Format: CSV
+   - Filter: All / Successful / Failed
+4. Download CSV file
+
+**Export Includes:**
+- Contact name
+- Phone number
+- Call status
+- Number of attempts
+- Call duration
+- Failure reason (if failed)
+- Call timestamp
+
+**API Endpoint:**
+```bash
+POST /batch/jobs/{batchId}/export
+Authorization: Bearer YOUR_SESSION_TOKEN
+Content-Type: application/json
+
+{
+  "format": "csv",
+  "filter": "all"
+}
+```
+
+**Response:** CSV file download
+
+<Info>
+  **Export Availability:** Export is only available for batches with Completed or Failed status. Running batches must complete before export.
+</Info>
 
 ---
 
@@ -755,10 +813,30 @@ DELETE /batch/{batchId}
 Authorization: Bearer YOUR_SESSION_TOKEN
 ```
 
+### Reschedule Batch
+
+```bash
+POST /batch/jobs/{batchId}/reschedule?scheduledStartTime={time}&timezone={tz}
+Authorization: Bearer YOUR_SESSION_TOKEN
+```
+
+**Parameters:**
+- `scheduledStartTime` — ISO 8601 datetime (e.g., `2024-01-20T14:00:00`)
+- `timezone` — IANA timezone (e.g., `America/New_York`)
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Batch job rescheduled successfully",
+  "scheduledStartTime": "2024-01-20T14:00:00Z"
+}
+```
+
 ### Export Batch
 
 ```bash
-POST /batch/{batchId}/export
+POST /batch/jobs/{batchId}/export
 Authorization: Bearer YOUR_SESSION_TOKEN
 Content-Type: application/json
 
@@ -767,6 +845,8 @@ Content-Type: application/json
   "filter": "all"  // or "successful", "failed"
 }
 ```
+
+**Response:** CSV file download
 
 ---
 
