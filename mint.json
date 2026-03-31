@@ -121,6 +121,7 @@
       "pages": [
         "guides/custom-functions",
         "guides/chat-api",
+        "guides/widget-integration",
         "guides/byoc",
         "guides/noise-cancellation"
       ]

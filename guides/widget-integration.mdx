@@ -1,0 +1,888 @@
+---
+title: "TalkifAI Widget Integration Guide"
+description: "Complete guide to integrating the TalkifAI chat widget on your website — supports both text chat and voice conversations."
+---
+
+## Overview
+
+The **TalkifAI Widget** is a production-ready, dual-mode chatbot widget that provides:
+
+- **Text Chat:** Real-time SSE-streamed text conversations with AI agents
+- **Voice Chat:** LiveKit WebRTC-based voice conversations
+- **Shadow DOM Isolation:** No CSS bleeding from host page
+- **Responsive Design:** Mobile-first (300px → 800px width)
+- **Voice Input/Output:** Web Speech API for STT/TTS in text mode
+- **Audio Visualization:** Real-time frequency analysis for voice mode
+
+**Best for:**
+- Customer support chatbots
+- Voice AI demos
+- Internal agent testing
+- Website live chat replacement
+
+---
+
+## Quick Start
+
+### Step 1: Get Your Credentials
+
+1. Go to [**TalkifAI Studio → Settings → API Keys**](/platform/api-keys)
+2. Click **Generate New API Key** section
+3. Enter a **Key Name** (e.g., "Website Chat", "Production Widget")
+4. Click **Generate API Key**
+5. **Copy the key immediately** — it will only be shown once
+6. Go to [**Agents**](/platform/create-agent) and copy your **Agent ID**
+
+<Info>
+  **Widget Key vs API Key:** For production widgets, use a domain-locked Widget Key (coming soon). For now, use a regular TalkifAI API key and restrict CORS origins.
+</Info>
+
+### Step 2: Add to Your Website
+
+Add this code before `</body>`:
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+  <!-- 1. Configure widget BEFORE loading widget.js -->
+  <script id="talkifai-config">
+    window.__TALKIFAI__ = {
+      apiUrl: "https://api.talkifai.dev/v1/chat",
+      widgetKey: "your-widget-key-here",
+      agentId: "your-agent-id-here",
+      theme: {
+        primaryColor: '#4c0797',
+        primaryDark: '#76107f',
+      },
+    };
+  </script>
+  
+  <!-- 2. Load widget script -->
+  <script src="https://talkifai.dev/widget.js" defer></script>
+</head>
+<body>
+  <!-- Widget automatically renders -->
+</body>
+</html>
+```
+
+**That's it!** The widget will appear as a floating button at bottom-right.
+
+---
+
+## Configuration Options
+
+### Required Parameters
+
+| Parameter | Type | Description | Example |
+|-----------|------|-------------|---------|
+| `apiUrl` | string | TalkifAI Chat API base URL | `https://api.talkifai.dev/v1/chat` |
+| `widgetKey` | string | Domain-locked widget API key | `tk_widget_abc123...` |
+| `agentId` | string | UUID of the agent to use | `5b710eca-ee67-4c3a-aeb6-8b541f451b40` |
+
+### Optional Theme Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `theme.primaryColor` | string | `#4c0797` | Primary brand color (purple) |
+| `theme.primaryDark` | string | `#76107f` | Darker shade for gradients |
+
+### Example Configuration
+
+```javascript
+window.__TALKIFAI__ = {
+  apiUrl: "https://api.talkifai.dev/v1/chat",
+  widgetKey: "tk_widget_your_key_here",
+  agentId: "5b710eca-ee67-4c3a-aeb6-8b541f451b40",
+  theme: {
+    primaryColor: '#0066cc',  // Blue brand color
+    primaryDark: '#004c99',   // Darker blue
+  },
+};
+```
+
+---
+
+## Framework Integrations
+
+### Next.js (App Router)
+
+```tsx
+// app/layout.tsx
+import Script from 'next/script'
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="en">
+      <body>
+        {/* 1. Inject config before widget loads */}
+        <Script id="talkifai-config" strategy="beforeInteractive">
+          {`
+            window.__TALKIFAI__ = {
+              apiUrl: "${process.env.NEXT_PUBLIC_TALKIFAI_API_URL || ''}",
+              widgetKey: "${process.env.NEXT_PUBLIC_TALKIFAI_WIDGET_KEY || ''}",
+              agentId: "${process.env.NEXT_PUBLIC_TALKIFAI_AGENT_ID || ''}",
+              theme: {
+                primaryColor: '#4c0797',
+                primaryDark: '#76107f',
+              },
+            };
+          `}
+        </Script>
+        
+        {/* 2. Load widget after page is interactive */}
+        <Script src="https://talkifai.dev/widget.js" strategy="afterInteractive" />
+        
+        {children}
+      </body>
+    </html>
+  )
+}
+```
+
+### React (Vite, CRA)
+
+```tsx
+// App.tsx
+import { useEffect } from 'react'
+
+export default function App() {
+  useEffect(() => {
+    // Inject config
+    const script = document.createElement('script')
+    script.id = 'talkifai-config'
+    script.textContent = `
+      window.__TALKIFAI__ = {
+        apiUrl: "https://api.talkifai.dev/v1/chat",
+        widgetKey: "tk_widget_your_key",
+        agentId: "your-agent-id",
+        theme: {
+          primaryColor: '#4c0797',
+          primaryDark: '#76107f',
+        },
+      };
+    `
+    document.head.appendChild(script)
+
+    // Load widget
+    const widgetScript = document.createElement('script')
+    widgetScript.src = 'https://talkifai.dev/widget.js'
+    widgetScript.defer = true
+    document.body.appendChild(widgetScript)
+
+    return () => {
+      // Cleanup on unmount
+      document.head.removeChild(script)
+      document.body.removeChild(widgetScript)
+    }
+  }, [])
+
+  return <div>{/* Your app */}</div>
+}
+```
+
+### Plain HTML
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>My Website with TalkifAI Widget</title>
+  
+  <!-- Widget config -->
+  <script id="talkifai-config">
+    window.__TALKIFAI__ = {
+      apiUrl: "https://api.talkifai.dev/v1/chat",
+      widgetKey: "tk_widget_your_key",
+      agentId: "your-agent-id",
+    };
+  </script>
+  
+  <!-- Widget script -->
+  <script src="https://talkifai.dev/widget.js" defer></script>
+</head>
+<body>
+  <h1>Welcome to My Website</h1>
+  <p>Chat widget will appear at bottom-right corner.</p>
+</body>
+</html>
+```
+
+### WordPress
+
+Add to **Appearance → Theme Editor → footer.php** (before `</body>`):
+
+```php
+<script id="talkifai-config">
+  window.__TALKIFAI__ = {
+    apiUrl: "https://api.talkifai.dev/v1/chat",
+    widgetKey: "<?php echo get_option('talkifai_widget_key'); ?>",
+    agentId: "<?php echo get_option('talkifai_agent_id'); ?>",
+  };
+</script>
+<script src="https://talkifai.dev/widget.js" defer></script>
+```
+
+### Shopify
+
+Add to **Online Store → Themes → Edit code → layout/theme.liquid** (before `</body>`):
+
+```liquid
+<script id="talkifai-config">
+  window.__TALKIFAI__ = {
+    apiUrl: "https://api.talkifai.dev/v1/chat",
+    widgetKey: "{{ settings.talkifai_widget_key }}",
+    agentId: "{{ settings.talkifai_agent_id }}",
+  };
+</script>
+<script src="https://talkifai.dev/widget.js" defer></script>
+```
+
+---
+
+## Widget Features
+
+### 1. Dual-Mode Interface
+
+Users can switch between:
+- **Text Mode:** Traditional chat interface with typing
+- **Voice Mode:** Real-time voice conversation (like a phone call)
+
+**Mode Switcher:** Located in header — tap "Text" or "Voice" to switch.
+
+### 2. Text Mode Features
+
+| Feature | Description |
+|---------|-------------|
+| **SSE Streaming** | Real-time text streaming as AI generates responses |
+| **Voice Input** | Tap mic button to speak — converts to text automatically |
+| **Voice Output** | Enable TTS to hear responses spoken aloud |
+| **Typing Indicator** | Animated dots while AI is generating |
+| **Message History** | Scrollable conversation history |
+| **Session Persistence** | Conversation survives page refresh (until tab close) |
+
+### 3. Voice Mode Features
+
+| Feature | Description |
+|---------|-------------|
+| **LiveKit WebRTC** | Professional-grade voice quality with echo cancellation |
+| **Audio Visualization** | Real-time frequency bars show when agent is speaking |
+| **Mic Mute** | Tap mic icon to mute/unmute yourself |
+| **Connection Status** | Shows "Connecting...", "Connected", "Agent speaking..." |
+| **Auto-Reconnect** | Attempts to reconnect on connection loss |
+
+### 4. Responsive Design
+
+| Screen Size | Widget Width | Widget Height |
+|-------------|--------------|---------------|
+| Mobile (less than 768px) | 300px | 350px (collapsed) to 400px (expanded) |
+| Desktop (768px and up) | 470px to 800px (zoomed) | 470px |
+
+**Expand Button:** Tap the expand icon in header to zoom on desktop.
+
+---
+
+## Widget Architecture
+
+### Shadow DOM Isolation
+
+The widget renders inside a **Shadow DOM** root (`#talkifai-root`):
+
+```javascript
+const shadowRoot = document.createElement('div').attachShadow({ mode: 'open' })
+shadowRoot.id = 'talkifai-root'
+document.body.appendChild(shadowRoot)
+```
+
+**Benefits:**
+- Host page CSS cannot affect widget styles
+- Widget CSS cannot affect host page
+- Complete visual isolation
+- No z-index conflicts
+
+### Bundled Dependencies
+
+The widget is **self-contained** with all dependencies bundled:
+
+- **React 19.2.4** (production build)
+- **React DOM 19.2.4**
+- **Tailwind CSS v4.2.2** (inline, no external stylesheet)
+- **LiveKit Client 2.18.0** (for voice mode)
+- **Lucide Icons** (for UI icons)
+
+**No external CSS or JS required** — just load `widget.js`.
+
+---
+
+## API Integration Flow
+
+### Text Chat Flow
+
+```
+1. Widget loads → reads window.__TALKIFAI__
+        ↓
+2. User opens widget → POST /sessions
+   Headers: { 'X-API-Key': widgetKey }
+   Body: { "agent_id": agentId }
+        ↓
+3. API returns: { conversation_id, session_token, greeting }
+        ↓
+4. Show greeting (if exists)
+        ↓
+5. User sends message → POST /sessions/{id}/messages
+   Headers: { 'Authorization': 'Bearer {session_token}' }
+        ↓
+6. SSE stream: event: chunk → append text incrementally
+        ↓
+7. User closes widget → POST /sessions/{id}/end
+   (with keepalive: true for reliability)
+```
+
+### Voice Chat Flow
+
+```
+1. User switches to Voice mode
+        ↓
+2. POST /voice-sessions
+   Headers: { 'X-API-Key': widgetKey }
+   Body: { "agent_id": agentId }
+        ↓
+3. API returns: { livekit_url, token, room_name, agent_name }
+        ↓
+4. Connect to LiveKit room:
+   const room = new Room()
+   await room.connect(livekit_url, token)
+        ↓
+5. Enable microphone:
+   await room.localParticipant.setMicrophoneEnabled(true)
+        ↓
+6. Subscribe to agent audio tracks:
+   room.on(RoomEvent.TrackSubscribed, (track) => {
+     const el = track.attach()
+     el.autoplay = true
+   })
+        ↓
+7. User ends call → room.disconnect()
+```
+
+---
+
+## Customization Guide
+
+### Changing Colors
+
+The widget uses a **purple gradient theme** by default. To customize:
+
+```javascript
+window.__TALKIFAI__ = {
+  // ... other config
+  theme: {
+    primaryColor: '#0066cc',   // Blue
+    primaryDark: '#004c99',
+  },
+};
+```
+
+**Note:** The widget bundles Tailwind CSS with custom color definitions. For advanced theming, you'll need to rebuild the widget from source.
+
+### Changing Position
+
+The widget is fixed at **bottom-right** by default:
+
+```css
+/* In widget source (src/components/chatbot/chat-area.tsx) */
+className="fixed bottom-4 right-4 z-50"
+```
+
+To change position, modify the widget source and rebuild:
+
+```css
+/* Bottom-left */
+className="fixed bottom-4 left-4 z-50"
+
+/* Top-right */
+className="fixed top-4 right-4 z-50"
+
+/* Top-left */
+className="fixed top-4 left-4 z-50"
+```
+
+### Changing Size
+
+Default sizes:
+
+```typescript
+// Collapsed
+className="w-[300px] h-[350px] md:w-[470px] md:h-[470px]"
+
+// Expanded (desktop only)
+className="w-[300px] h-[400px] md:w-[800px] md:h-[470px]"
+```
+
+Modify in `chat-area.tsx` to change dimensions.
+
+---
+
+## Building Widget from Source
+
+If you need to customize the widget beyond theme colors:
+
+### 1. Navigate to Widget Source
+
+```bash
+cd TalkifAI-Marketing/widget-src
+```
+
+### 2. Install Dependencies
+
+```bash
+npm install
+```
+
+### 3. Make Your Changes
+
+Edit files in `widget-src/src/`:
+- `chat-area.tsx` — Main widget component
+- `globals.css` — Tailwind theme and custom styles
+- `vite.config.ts` — Build configuration
+
+### 4. Build Widget
+
+```bash
+npm run build
+```
+
+Output: `public/widget.js` (bundled, production-ready)
+
+### 5. Deploy
+
+Copy `public/widget.js` to your CDN or web server:
+
+```bash
+cp public/widget.js /path/to/your/cdn/widget.js
+```
+
+Update your widget script src:
+
+```html
+<script src="https://your-cdn.com/widget.js" defer></script>
+```
+
+---
+
+## Environment Variables
+
+### Frontend (Next.js)
+
+```env
+# .env.local
+NEXT_PUBLIC_TALKIFAI_API_URL=https://api.talkifai.dev/v1/chat
+NEXT_PUBLIC_TALKIFAI_WIDGET_KEY=tk_widget_your_key_here
+NEXT_PUBLIC_TALKIFAI_AGENT_ID=5b710eca-ee67-4c3a-aeb6-8b541f451b40
+```
+
+### Backend (API Proxy Routes)
+
+```env
+# .env.local
+TALKIFAI_API_URL=https://api.talkifai.dev/v1/chat
+TALKIFAI_API_KEY=tk_live_your_server_key_here
+TALKIFAI_AGENT_ID=5b710eca-ee67-4c3a-aeb6-8b541f451b40
+```
+
+**Important:**
+- `NEXT_PUBLIC_*` variables are exposed to browser (safe for widget key)
+- `TALKIFAI_API_KEY` is server-side only (never expose `tk_live_*` keys)
+
+---
+
+## Security Considerations
+
+### Widget Key vs API Key
+
+| Key Type | Prefix | Usage | Security |
+|----------|--------|-------|----------|
+| **Widget Key** | `tk_widget_` | Browser-safe, domain-locked | ✅ Safe for frontend |
+| **API Key** | `tk_live_` | Server-side only | ❌ Never expose to browser |
+
+**Best Practice:** Always use a **Widget Key** for frontend integrations. Widget keys are:
+- Domain-locked (only work on specific domains)
+- Rate-limited
+- Cannot create other API keys
+- Can be revoked without affecting server-side keys
+
+### CORS Configuration
+
+Widget keys are configured with CORS origins in TalkifAI Studio:
+
+1. Go to **Settings → API Keys**
+2. Edit your widget key
+3. Add allowed origins:
+   - `https://yourdomain.com`
+   - `https://www.yourdomain.com`
+   - `https://app.yourdomain.com`
+
+**Multiple domains:** Add each domain separately.
+
+### Session Token Security
+
+Session tokens (`session_token`) returned from `/sessions`:
+- Valid for **24 hours**
+- Tied to specific `conversation_id`
+- Cannot be used to create new sessions
+- Automatically invalidated when session ends
+
+**Safe to store in:**
+- `sessionStorage` (cleared on tab close)
+- Memory (React state/ref)
+
+**Do NOT store in:**
+- `localStorage` (persists indefinitely)
+- Cookies without `HttpOnly` flag
+
+---
+
+## Troubleshooting
+
+### Widget Not Appearing
+
+**Check:**
+1. Config script loaded **before** `widget.js`
+2. `window.__TALKIFAI__` is defined (check browser console)
+3. No JavaScript errors in console
+4. Widget script URL is correct
+
+**Debug:**
+```javascript
+console.log(window.__TALKIFAI__)
+// Should output: { apiUrl, widgetKey, agentId, theme }
+```
+
+### "Failed to Create Session"
+
+**Causes:**
+- Invalid widget key
+- Agent ID not found
+- CORS origin not configured
+- Insufficient credits
+
+**Check:**
+```javascript
+// In browser console
+fetch('https://api.talkifai.dev/v1/chat/sessions', {
+  method: 'POST',
+  headers: {
+    'X-API-Key': window.__TALKIFAI__.widgetKey,
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({ agent_id: window.__TALKIFAI__.agentId })
+})
+.then(r => r.json())
+.then(console.log)
+.catch(console.error)
+```
+
+### Voice Mode Not Working
+
+**Check:**
+1. Microphone permissions granted
+2. LiveKit URL is reachable
+3. Agent supports voice (Pipeline or Realtime architecture)
+4. Browser supports WebRTC (Chrome, Firefox, Safari, Edge)
+
+**Debug:**
+```javascript
+navigator.mediaDevices.getUserMedia({ audio: true })
+  .then(() => console.log('Mic permissions OK'))
+  .catch(err => console.error('Mic permissions denied:', err))
+```
+
+### Text Streaming Not Working
+
+**Check:**
+1. API returns `Content-Type: text/event-stream`
+2. SSE parser handles all event types
+3. Network tab shows streaming response
+
+**Debug:**
+```javascript
+// Test SSE endpoint directly
+const eventSource = new EventSource(
+  'https://api.talkifai.dev/v1/chat/sessions/{id}/messages',
+  { headers: { 'Authorization': 'Bearer {token}' } }
+)
+eventSource.onmessage = (e) => console.log('SSE:', e.data)
+```
+
+---
+
+## Advanced Usage
+
+### Programmatic Control
+
+You can control the widget programmatically via custom events:
+
+```javascript
+// Open widget
+document.dispatchEvent(new CustomEvent('talkifai:open'))
+
+// Close widget
+document.dispatchEvent(new CustomEvent('talkifai:close'))
+
+// Switch to text mode
+document.dispatchEvent(new CustomEvent('talkifai:mode', { detail: 'text' }))
+
+// Switch to voice mode
+document.dispatchEvent(new CustomEvent('talkifai:mode', { detail: 'voice' }))
+```
+
+### Custom Styling (Post-Load)
+
+After widget loads, you can inject custom CSS:
+
+```javascript
+const style = document.createElement('style')
+style.textContent = `
+  #talkifai-root button {
+    border-radius: 8px !important;
+  }
+`
+document.head.appendChild(style)
+```
+
+### Analytics Integration
+
+Track widget usage:
+
+```javascript
+document.addEventListener('talkifai:session-started', (e) => {
+  analytics.track('Chat Session Started', {
+    conversationId: e.detail.conversation_id,
+    agentName: e.detail.agent_name,
+  })
+})
+
+document.addEventListener('talkifai:message-sent', (e) => {
+  analytics.track('Chat Message Sent', {
+    role: e.detail.role,
+    length: e.detail.content.length,
+  })
+})
+```
+
+---
+
+## Performance Optimization
+
+### Lazy Loading
+
+Load widget only when user interacts:
+
+```javascript
+let widgetLoaded = false
+
+function loadWidget() {
+  if (widgetLoaded) return
+  widgetLoaded = true
+  
+  // Inject config
+  const config = document.createElement('script')
+  config.id = 'talkifai-config'
+  config.textContent = `
+    window.__TALKIFAI__ = {
+      apiUrl: "https://api.talkifai.dev/v1/chat",
+      widgetKey: "tk_widget_key",
+      agentId: "agent_id",
+    };
+  `
+  document.head.appendChild(config)
+  
+  // Load widget
+  const widget = document.createElement('script')
+  widget.src = 'https://talkifai.dev/widget.js'
+  widget.defer = true
+  document.body.appendChild(widget)
+}
+
+// Load on first user interaction
+document.addEventListener('click', loadWidget, { once: true })
+```
+
+### Preloading
+
+Preload widget script for faster load:
+
+```html
+<link rel="preload" href="https://talkifai.dev/widget.js" as="script" />
+```
+
+---
+
+## Browser Support
+
+| Browser | Version | Text Mode | Voice Mode |
+|---------|---------|-----------|------------|
+| Chrome | 90+ | ✅ | ✅ |
+| Firefox | 88+ | ✅ | ✅ |
+| Safari | 14+ | ✅ | ✅ |
+| Edge | 90+ | ✅ | ✅ |
+| Opera | 76+ | ✅ | ✅ |
+| Samsung Internet | 14+ | ✅ | ✅ |
+
+**Voice Mode Requirements:**
+- WebRTC support
+- Microphone permissions
+- Audio playback
+
+**Text Mode Requirements:**
+- Fetch API
+- SSE (Server-Sent Events)
+- Modern JavaScript (ES6+)
+
+---
+
+## Migration Guide
+
+### From Chat API to Widget
+
+If you already have a custom chat integration:
+
+**Before (Custom Implementation):**
+```javascript
+// Your custom chat code
+const session = await fetch('/api/chat/session', { ... })
+const response = await fetch(`/api/chat/messages`, { ... })
+// ... SSE parsing, UI rendering, etc.
+```
+
+**After (Widget):**
+```html
+<!-- Just add widget -->
+<script src="https://talkifai.dev/widget.js"></script>
+```
+
+**Benefits:**
+- ✅ No custom UI code needed
+- ✅ Built-in voice mode
+- ✅ Automatic session management
+- ✅ Responsive design included
+- ✅ Shadow DOM isolation
+
+### From Other Chat Widgets
+
+**From Intercom/Drift/Zendesk:**
+
+1. Remove old widget script
+2. Add TalkifAI config + widget
+3. Update agent in TalkifAI Studio
+4. Test on staging first
+
+**Migration Checklist:**
+- [ ] Remove old widget code
+- [ ] Create TalkifAI agent (import conversation history if needed)
+- [ ] Configure widget key with CORS
+- [ ] Test text mode
+- [ ] Test voice mode
+- [ ] Verify analytics tracking
+- [ ] Deploy to production
+
+---
+
+## Best Practices
+
+### 1. Always Use Widget Keys
+
+❌ **Wrong:**
+```javascript
+window.__TALKIFAI__ = {
+  widgetKey: "tk_live_..." // ❌ Server key exposed!
+}
+```
+
+✅ **Correct:**
+```javascript
+window.__TALKIFAI__ = {
+  widgetKey: "tk_widget_..." // ✅ Browser-safe
+}
+```
+
+### 2. Configure CORS Properly
+
+Add only trusted domains to widget key CORS allowlist:
+- Production domain
+- Staging domain (for testing)
+- Localhost (for development)
+
+### 3. Handle Session Cleanup
+
+Widget automatically ends sessions on close, but you can explicitly end:
+
+```javascript
+// Before page unload
+window.addEventListener('beforeunload', () => {
+  if (sessionRef.current) {
+    fetch(`/sessions/${sessionRef.current.conversation_id}/end`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${sessionRef.current.session_token}` },
+      keepalive: true,
+    })
+  }
+})
+```
+
+### 4. Test on Multiple Devices
+
+Test widget on:
+- Desktop (Chrome, Firefox, Safari, Edge)
+- Mobile (iOS Safari, Chrome Android)
+- Tablets (iPad, Android tablets)
+
+### 5. Monitor Widget Performance
+
+Track metrics:
+- Widget load time
+- Session creation time
+- Message latency
+- Voice connection success rate
+
+---
+
+## Related Documentation
+
+- [Chat API Reference](/api-reference/chat) — REST API for custom integrations
+- [Create a Text Agent](/platform/create-agent) — Set up your first agent
+- [Conversation Memory](/platform/memory) — Enable long-term memory
+- [Custom Functions](/guides/custom-functions) — Add API integrations
+
+---
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Create Your Agent" icon="robot">
+    Set up the agent you want to embed in the widget.
+  </Card>
+  <Card title="Get Widget Key" icon="key">
+    Generate a domain-locked widget key in Studio.
+  </Card>
+  <Card title="Customize Widget" icon="palette">
+    Learn how to customize colors and positioning.
+  </Card>
+  <Card title="View Analytics" icon="chart">
+    Track widget usage and performance.
+  </Card>
+</CardGroup>
+
+---
+
+## Support
+
+**Issues?** Contact TalkifAI support:
+- Email: support@talkifai.dev
+- Documentation: https://docs.talkifai.dev
+- Status: https://status.talkifai.dev
+
+**Widget Source:** Available in TalkifAI-Marketing repository (MIT License)
