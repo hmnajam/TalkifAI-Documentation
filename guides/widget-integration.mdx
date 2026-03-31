@@ -26,15 +26,39 @@ The **TalkifAI Widget** is a production-ready, dual-mode chatbot widget that pro
 
 ### Step 1: Get Your Credentials
 
-1. Go to [**TalkifAI Studio → Settings → API Keys**](/platform/api-keys)
-2. Click **Generate New API Key** section
-3. Enter a **Key Name** (e.g., "Website Chat", "Production Widget")
-4. Click **Generate API Key**
-5. **Copy the key immediately** — it will only be shown once
-6. Go to [**Agents**](/platform/create-agent) and copy your **Agent ID**
+1. Go to [**TalkifAI Studio → Organization → API Keys**](/platform/api-keys)
+
+2. In the **"Generate New Key"** section, configure your widget key:
+   
+   **a. Enter Key Name**
+   - Example: "Website Chat", "Production Widget", "Support Widget"
+   - Max 50 characters
+   
+   **b. Select Key Type**
+   - Click **"Widget Key"** (not "Secret Key")
+   - Widget Keys are browser-safe and domain-locked
+   
+   **c. Add Allowed Domains** (required for Widget Keys)
+   - Enter comma-separated domains: `mysite.com, staging.mysite.com`
+   - `localhost` is automatically allowed for development
+   - Subdomains are automatically covered
+   
+   **d. Click "Generate API Key"**
+
+3. **Copy the widget key immediately** — it will only be shown once
+   - Starts with `tk_widget_` prefix
+   - Store in password manager or environment variables
+
+4. Go to [**Agents**](/platform/create-agent) and copy your **Agent ID**
+   - Navigate to the agent you want to embed
+   - Copy the Agent ID (UUID format)
 
 <Info>
-  **Widget Key vs API Key:** For production widgets, use a domain-locked Widget Key (coming soon). For now, use a regular TalkifAI API key and restrict CORS origins.
+  **Widget Key Features:**
+  - ✅ Safe to expose in browser/frontend code
+  - ✅ Domain-locked (CORS restricted to your allowed domains)
+  - ✅ `localhost` always allowed for development
+  - ✅ Can be revoked without affecting other keys
 </Info>
 
 ### Step 2: Add to Your Website
@@ -49,11 +73,11 @@ Add this code before `</body>`:
   <script id="talkifai-config">
     window.__TALKIFAI__ = {
       apiUrl: "https://api.talkifai.dev/v1/chat",
-      widgetKey: "your-widget-key-here",
+      widgetKey: "tk_widget_your_key_here",
       agentId: "your-agent-id-here",
       theme: {
-        primaryColor: '#4c0797',
-        primaryDark: '#76107f',
+        primaryColor: '#544AA8',  // Default purple
+        primaryDark: '#312D69',   // Default dark purple
       },
     };
   </script>
@@ -85,8 +109,8 @@ Add this code before `</body>`:
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `theme.primaryColor` | string | `#4c0797` | Primary brand color (purple) |
-| `theme.primaryDark` | string | `#76107f` | Darker shade for gradients |
+| `theme.primaryColor` | string | `#544AA8` | Primary brand color (purple) |
+| `theme.primaryDark` | string | `#312D69` | Darker shade for gradients |
 
 ### Example Configuration
 
@@ -101,6 +125,42 @@ window.__TALKIFAI__ = {
   },
 };
 ```
+
+---
+
+## Alternative Embed Method: Data Attributes
+
+For plain HTML sites, you can use `data-*` attributes instead of `window.__TALKIFAI__`:
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+  <title>My Website with TalkifAI Widget</title>
+</head>
+<body>
+  <!-- Widget with data attributes -->
+  <script 
+    src="https://talkifai.dev/widget.js" 
+    data-api-url="https://api.talkifai.dev/v1/chat"
+    data-widget-key="tk_widget_your_key"
+    data-agent-id="your-agent-id"
+    data-primary-color="#544AA8"
+    data-primary-dark="#312D69"
+    defer
+  ></script>
+</body>
+</html>
+```
+
+**Data Attributes:**
+- `data-api-url` — API endpoint (required)
+- `data-widget-key` — Widget API key (required)
+- `data-agent-id` — Agent ID (required)
+- `data-primary-color` — Primary color (optional, default: `#544AA8`)
+- `data-primary-dark` — Dark primary color (optional, default: `#312D69`)
+
+**Note:** If both `window.__TALKIFAI__` and `data-*` attributes are provided, `data-*` attributes take precedence.
 
 ---
 
@@ -124,8 +184,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               widgetKey: "${process.env.NEXT_PUBLIC_TALKIFAI_WIDGET_KEY || ''}",
               agentId: "${process.env.NEXT_PUBLIC_TALKIFAI_AGENT_ID || ''}",
               theme: {
-                primaryColor: '#4c0797',
-                primaryDark: '#76107f',
+                primaryColor: '#544AA8',  // Default purple
+                primaryDark: '#312D69',   // Default dark purple
               },
             };
           `}
@@ -158,8 +218,8 @@ export default function App() {
         widgetKey: "tk_widget_your_key",
         agentId: "your-agent-id",
         theme: {
-          primaryColor: '#4c0797',
-          primaryDark: '#76107f',
+          primaryColor: '#544AA8',  // Default purple
+          primaryDark: '#312D69',   // Default dark purple
         },
       };
     `
@@ -285,190 +345,30 @@ Users can switch between:
 
 ---
 
-## Widget Architecture
-
-### Shadow DOM Isolation
-
-The widget renders inside a **Shadow DOM** root (`#talkifai-root`):
-
-```javascript
-const shadowRoot = document.createElement('div').attachShadow({ mode: 'open' })
-shadowRoot.id = 'talkifai-root'
-document.body.appendChild(shadowRoot)
-```
-
-**Benefits:**
-- Host page CSS cannot affect widget styles
-- Widget CSS cannot affect host page
-- Complete visual isolation
-- No z-index conflicts
-
-### Bundled Dependencies
-
-The widget is **self-contained** with all dependencies bundled:
-
-- **React 19.2.4** (production build)
-- **React DOM 19.2.4**
-- **Tailwind CSS v4.2.2** (inline, no external stylesheet)
-- **LiveKit Client 2.18.0** (for voice mode)
-- **Lucide Icons** (for UI icons)
-
-**No external CSS or JS required** — just load `widget.js`.
-
----
-
-## API Integration Flow
-
-### Text Chat Flow
-
-```
-1. Widget loads → reads window.__TALKIFAI__
-        ↓
-2. User opens widget → POST /sessions
-   Headers: { 'X-API-Key': widgetKey }
-   Body: { "agent_id": agentId }
-        ↓
-3. API returns: { conversation_id, session_token, greeting }
-        ↓
-4. Show greeting (if exists)
-        ↓
-5. User sends message → POST /sessions/{id}/messages
-   Headers: { 'Authorization': 'Bearer {session_token}' }
-        ↓
-6. SSE stream: event: chunk → append text incrementally
-        ↓
-7. User closes widget → POST /sessions/{id}/end
-   (with keepalive: true for reliability)
-```
-
-### Voice Chat Flow
-
-```
-1. User switches to Voice mode
-        ↓
-2. POST /voice-sessions
-   Headers: { 'X-API-Key': widgetKey }
-   Body: { "agent_id": agentId }
-        ↓
-3. API returns: { livekit_url, token, room_name, agent_name }
-        ↓
-4. Connect to LiveKit room:
-   const room = new Room()
-   await room.connect(livekit_url, token)
-        ↓
-5. Enable microphone:
-   await room.localParticipant.setMicrophoneEnabled(true)
-        ↓
-6. Subscribe to agent audio tracks:
-   room.on(RoomEvent.TrackSubscribed, (track) => {
-     const el = track.attach()
-     el.autoplay = true
-   })
-        ↓
-7. User ends call → room.disconnect()
-```
-
----
-
-## Customization Guide
+## Customization
 
 ### Changing Colors
 
-The widget uses a **purple gradient theme** by default. To customize:
+The widget uses a **purple gradient theme** by default (`#544AA8` → `#312D69`). To customize:
 
+**Method 1: Via `window.__TALKIFAI__`**
 ```javascript
 window.__TALKIFAI__ = {
   // ... other config
   theme: {
-    primaryColor: '#0066cc',   // Blue
-    primaryDark: '#004c99',
+    primaryColor: '#0066cc',   // Your brand color
+    primaryDark: '#004c99',    // Darker shade
   },
 };
 ```
 
-**Note:** The widget bundles Tailwind CSS with custom color definitions. For advanced theming, you'll need to rebuild the widget from source.
-
-### Changing Position
-
-The widget is fixed at **bottom-right** by default:
-
-```css
-/* In widget source (src/components/chatbot/chat-area.tsx) */
-className="fixed bottom-4 right-4 z-50"
-```
-
-To change position, modify the widget source and rebuild:
-
-```css
-/* Bottom-left */
-className="fixed bottom-4 left-4 z-50"
-
-/* Top-right */
-className="fixed top-4 right-4 z-50"
-
-/* Top-left */
-className="fixed top-4 left-4 z-50"
-```
-
-### Changing Size
-
-Default sizes:
-
-```typescript
-// Collapsed
-className="w-[300px] h-[350px] md:w-[470px] md:h-[470px]"
-
-// Expanded (desktop only)
-className="w-[300px] h-[400px] md:w-[800px] md:h-[470px]"
-```
-
-Modify in `chat-area.tsx` to change dimensions.
-
----
-
-## Building Widget from Source
-
-If you need to customize the widget beyond theme colors:
-
-### 1. Navigate to Widget Source
-
-```bash
-cd TalkifAI-Marketing/widget-src
-```
-
-### 2. Install Dependencies
-
-```bash
-npm install
-```
-
-### 3. Make Your Changes
-
-Edit files in `widget-src/src/`:
-- `chat-area.tsx` — Main widget component
-- `globals.css` — Tailwind theme and custom styles
-- `vite.config.ts` — Build configuration
-
-### 4. Build Widget
-
-```bash
-npm run build
-```
-
-Output: `public/widget.js` (bundled, production-ready)
-
-### 5. Deploy
-
-Copy `public/widget.js` to your CDN or web server:
-
-```bash
-cp public/widget.js /path/to/your/cdn/widget.js
-```
-
-Update your widget script src:
-
+**Method 2: Via `data-*` attributes**
 ```html
-<script src="https://your-cdn.com/widget.js" defer></script>
+<script
+  src="https://talkifai.dev/widget.js"
+  data-primary-color="#0066cc"
+  data-primary-dark="#004c99"
+></script>
 ```
 
 ---
@@ -501,31 +401,68 @@ TALKIFAI_AGENT_ID=5b710eca-ee67-4c3a-aeb6-8b541f451b40
 
 ## Security Considerations
 
-### Widget Key vs API Key
+### Widget Key vs Secret Key
 
 | Key Type | Prefix | Usage | Security |
 |----------|--------|-------|----------|
-| **Widget Key** | `tk_widget_` | Browser-safe, domain-locked | ✅ Safe for frontend |
-| **API Key** | `tk_live_` | Server-side only | ❌ Never expose to browser |
+| **Widget Key** | `tk_widget_...` | Browser-safe, domain-locked | ✅ Safe for frontend |
+| **Secret Key** | (no prefix, 64-char) | Server-side only | ❌ Never expose to browser |
 
-**Best Practice:** Always use a **Widget Key** for frontend integrations. Widget keys are:
-- Domain-locked (only work on specific domains)
-- Rate-limited
-- Cannot create other API keys
-- Can be revoked without affecting server-side keys
+**Best Practice:** Always use a **Widget Key** for frontend integrations.
+
+**Widget Key Features:**
+- ✅ Domain-locked (only work on your allowed domains)
+- ✅ Rate-limited for security
+- ✅ Cannot create other API keys
+- ✅ Can be revoked without affecting other keys
+- ✅ `localhost` always allowed for development
+
+### Creating a Widget Key in TalkifAI Studio
+
+**Steps:**
+
+1. Go to **Organization → API Keys**
+2. In "Generate New Key" section:
+   - Enter **Key Name** (e.g., "Website Widget")
+   - Select **"Widget Key"** (not "Secret Key")
+   - Add **Allowed Domains** (comma-separated)
+3. Click **"Generate API Key"**
+4. **Copy immediately** — shown only once
+
+**Allowed Domains Format:**
+```
+mysite.com, staging.mysite.com, app.mysite.com
+```
+
+**Domain Rules:**
+- Subdomains automatically covered (`mysite.com` includes `*.mysite.com`)
+- `localhost` always allowed for development
+- Multiple domains: separate with commas
+- Protocol (`https://`) optional
+
+---
 
 ### CORS Configuration
 
-Widget keys are configured with CORS origins in TalkifAI Studio:
+Widget keys are automatically configured with CORS restrictions based on your allowed domains:
 
-1. Go to **Settings → API Keys**
-2. Edit your widget key
-3. Add allowed origins:
-   - `https://yourdomain.com`
-   - `https://www.yourdomain.com`
-   - `https://app.yourdomain.com`
+**Example Configuration:**
+```
+Allowed Origins:
+- https://mysite.com
+- https://staging.mysite.com
+- http://localhost:* (development)
+```
 
-**Multiple domains:** Add each domain separately.
+**To Update Domains:**
+1. Go to **Organization → API Keys**
+2. Find your widget key in "Your API Keys" section
+3. Click to edit (or revoke and create new)
+4. Update allowed domains list
+
+**Multiple domains:** Add each domain separately during creation.
+
+---
 
 ### Session Token Security
 
@@ -619,58 +556,30 @@ eventSource.onmessage = (e) => console.log('SSE:', e.data)
 
 ---
 
-## Advanced Usage
+## Customization
 
-### Programmatic Control
+### Changing Colors
 
-You can control the widget programmatically via custom events:
+The widget uses a **purple gradient theme** by default (`#544AA8` → `#312D69`). To customize:
 
+**Method 1: Via `window.__TALKIFAI__`**
 ```javascript
-// Open widget
-document.dispatchEvent(new CustomEvent('talkifai:open'))
-
-// Close widget
-document.dispatchEvent(new CustomEvent('talkifai:close'))
-
-// Switch to text mode
-document.dispatchEvent(new CustomEvent('talkifai:mode', { detail: 'text' }))
-
-// Switch to voice mode
-document.dispatchEvent(new CustomEvent('talkifai:mode', { detail: 'voice' }))
+window.__TALKIFAI__ = {
+  // ... other config
+  theme: {
+    primaryColor: '#0066cc',   // Your brand color
+    primaryDark: '#004c99',    // Darker shade
+  },
+};
 ```
 
-### Custom Styling (Post-Load)
-
-After widget loads, you can inject custom CSS:
-
-```javascript
-const style = document.createElement('style')
-style.textContent = `
-  #talkifai-root button {
-    border-radius: 8px !important;
-  }
-`
-document.head.appendChild(style)
-```
-
-### Analytics Integration
-
-Track widget usage:
-
-```javascript
-document.addEventListener('talkifai:session-started', (e) => {
-  analytics.track('Chat Session Started', {
-    conversationId: e.detail.conversation_id,
-    agentName: e.detail.agent_name,
-  })
-})
-
-document.addEventListener('talkifai:message-sent', (e) => {
-  analytics.track('Chat Message Sent', {
-    role: e.detail.role,
-    length: e.detail.content.length,
-  })
-})
+**Method 2: Via `data-*` attributes**
+```html
+<script
+  src="https://talkifai.dev/widget.js"
+  data-primary-color="#0066cc"
+  data-primary-dark="#004c99"
+></script>
 ```
 
 ---
