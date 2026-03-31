@@ -1,0 +1,386 @@
+---
+title: "Create Voice Session"
+openapi: "POST /v1/chat/voice-sessions"
+description: "Create a LiveKit voice session for real-time voice conversations with your agent."
+---
+
+## Overview
+
+Creates a LiveKit WebRTC voice session for real-time voice interactions. Returns a participant token to connect directly to LiveKit.
+
+**Authentication:** `X-API-Key` header required (server-side only)
+
+**Use Case:** Voice calls via browser microphone (not text chat)
+
+---
+
+## Request
+
+**Headers:**
+```
+X-API-Key: tk_live_your_api_key_here
+Content-Type: application/json
+Origin: https://your-domain.com (optional, for CORS)
+```
+
+**Body:**
+```json
+{
+  "agent_id": "5b710eca-ee67-4c3a-aeb6-8b541f451b40"
+}
+```
+
+### Request Fields
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `agent_id` | string | ✅ | Agent ID (must be Pipeline or Realtime architecture) |
+
+---
+
+## Response
+
+**Status:** `200 OK`
+
+```json
+{
+  "room_name": "agent_5b710eca_user123_1705312800000",
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "livekit_url": "wss://your-instance.livekit.cloud",
+  "agent_name": "Support Agent"
+}
+```
+
+### Response Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `room_name` | string | LiveKit room name (parse to get agent_id) |
+| `token` | string | LiveKit participant token (1 hour expiry) |
+| `livekit_url` | string | LiveKit WebSocket URL |
+| `agent_name` | string | Display name of the agent |
+
+---
+
+## What Happens on Creation
+
+1. **API Key Validated**
+   - Key checked against database
+   - Organization resolved
+   - User ID extracted
+
+2. **Agent Verified**
+   - Agent must belong to organization
+   - Architecture must be Pipeline or Realtime
+   - Text agents rejected
+
+3. **Credit Check**
+   - Organization credits verified
+   - Fail-closed: insufficient credits = 402 error
+
+4. **Room Created**
+   - LiveKit room created via API
+   - Agent worker dispatched immediately
+   - Room name pattern: `agent_{agent_id}_{user_id}_{timestamp}`
+
+5. **Token Generated**
+   - Short-lived participant token (1 hour)
+   - Grants: room join, publish, subscribe
+   - Identity set to user ID
+
+---
+
+## Error Responses
+
+### 400 Bad Request
+```json
+{
+  "detail": "Agent ID is required"
+}
+```
+
+### 401 Unauthorized
+```json
+{
+  "detail": "Invalid API key"
+}
+```
+
+### 402 Payment Required
+```json
+{
+  "detail": "Insufficient credits"
+}
+```
+
+### 404 Not Found
+```json
+{
+  "detail": "Agent not found or does not belong to your organization"
+}
+```
+
+### 500 Server Error
+```json
+{
+  "detail": "Failed to create voice session: LiveKit connection failed"
+}
+```
+
+---
+
+## Examples
+
+### cURL
+```bash
+curl -X POST "https://api.talkifai.dev/v1/chat/voice-sessions" \
+  -H "X-API-Key: tk_live_your_key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "agent_id": "5b710eca-ee67-4c3a-aeb6-8b541f451b40"
+  }'
+```
+
+### JavaScript (Backend Proxy)
+```javascript
+// server.js (Node.js/Express)
+app.post('/api/voice/start', async (req, res) => {
+  try {
+    const response = await fetch(
+      'https://api.talkifai.dev/v1/chat/voice-sessions',
+      {
+        method: 'POST',
+        headers: {
+          'X-API-Key': process.env.TALKIFAI_API_KEY,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          agent_id: process.env.TALKIFAI_AGENT_ID
+        })
+      }
+    );
+
+    const data = await response.json();
+    
+    if (!response.ok) {
+      return res.status(response.status).json(data);
+    }
+
+    res.json(data);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to start voice session' });
+  }
+});
+```
+
+### React (Connect to LiveKit)
+```tsx
+import { Room, RoomEvent } from 'livekit-client';
+
+async function startVoiceSession(agentId) {
+  // Get session from your backend
+  const response = await fetch('/api/voice/start', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ agent_id: agentId })
+  });
+
+  const data = await response.json();
+
+  // Connect to LiveKit room
+  const room = new Room();
+  
+  await room.connect(data.livekit_url, data.token, {
+    adaptiveStream: true,
+    dynacast: true
+  });
+
+  // Handle room events
+  room.on(RoomEvent.ParticipantConnected, (participant) => {
+    console.log('Participant connected:', participant.identity);
+  });
+
+  room.on(RoomEvent.TrackSubscribed, (track, publication) => {
+    if (track.kind === Track.Kind.Audio) {
+      // Play agent audio
+      const element = track.attach();
+      document.body.appendChild(element);
+    }
+  });
+
+  // Publish local audio track
+  const localTrack = await createLocalAudioTrack();
+  await room.localParticipant.publishTrack(localTrack);
+
+  return room;
+}
+```
+
+### Next.js API Route
+```typescript
+// app/api/voice/start/route.ts
+import { NextResponse } from 'next/server';
+
+export async function POST(request: Request) {
+  try {
+    const body = await request.json();
+
+    const response = await fetch(
+      `${process.env.TALKIFAI_API_URL}/v1/chat/voice-sessions`,
+      {
+        method: 'POST',
+        headers: {
+          'X-API-Key': process.env.TALKIFAI_API_KEY!,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          agent_id: body.agent_id
+        })
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      return NextResponse.json(data, { status: response.status });
+    }
+
+    return NextResponse.json(data);
+  } catch (error) {
+    return NextResponse.json(
+      { error: 'Failed to start voice session' },
+      { status: 500 }
+    );
+  }
+}
+```
+
+---
+
+## LiveKit Integration
+
+### Room Name Pattern
+
+```
+agent_{agent_id}_{user_id}_{timestamp}
+```
+
+Example: `agent_5b710eca_user123_1705312800000`
+
+The agent worker parses this to determine which agent to dispatch.
+
+### Token Grants
+
+Generated token includes these grants:
+
+```javascript
+{
+  room: room_name,
+  room_join: true,
+  can_publish: true,
+  can_subscribe: true,
+  can_publish_data: false
+}
+```
+
+### Token Expiry
+
+- **Validity:** 1 hour
+- **Use Case:** Enough time for typical voice calls
+- **After Expiry:** Must create new session
+
+---
+
+## Agent Architecture Requirements
+
+| Architecture | Supported | Notes |
+|--------------|-----------|-------|
+| **Pipeline** | ✅ Yes | Full STT/LLM/TTS pipeline |
+| **Realtime** | ✅ Yes | OpenAI Realtime or Gemini Live |
+| **Text** | ❌ No | Text agents cannot handle voice |
+
+**Error if Text Agent:**
+```json
+{
+  "detail": "Agent must be Pipeline or Realtime architecture for voice sessions"
+}
+```
+
+---
+
+## Best Practices
+
+### 1. Never Expose API Key
+
+```javascript
+// ❌ Wrong - exposes API key in browser
+fetch('https://api.talkifai.dev/v1/chat/voice-sessions', {
+  headers: {
+    'X-API-Key': 'tk_live_...' // Exposed!
+  }
+});
+
+// ✅ Correct - use backend proxy
+fetch('/api/voice/start', {
+  method: 'POST',
+  body: JSON.stringify({ agent_id: AGENT_ID })
+});
+```
+
+### 2. Handle Connection Errors
+
+```javascript
+try {
+  const room = await startVoiceSession(agentId);
+} catch (error) {
+  if (error.status === 402) {
+    showCreditError();
+  } else if (error.status === 404) {
+    showAgentNotFoundError();
+  } else {
+    showGenericError();
+  }
+}
+```
+
+### 3. Clean Up on Disconnect
+
+```javascript
+// Disconnect when done
+async function endVoiceSession(room) {
+  await room.disconnect();
+  // Clean up audio elements
+  document.querySelectorAll('audio').forEach(el => el.remove());
+}
+```
+
+### 4. Check Credits Before Creating
+
+```javascript
+// Your backend should check credits before calling API
+const creditCheck = await checkCredits(organizationId);
+if (!creditCheck.allowed) {
+  throw new Error('Insufficient credits');
+}
+```
+
+---
+
+## Related Endpoints
+
+- [Create Chat Session](/api-reference/chat/create-session) — Text chat session
+- [Send Message](/api-reference/chat/send-message) — Send text messages
+- [End Session](/api-reference/chat/end-session) — End and cleanup
+
+---
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="LiveKit Documentation" icon="book">
+    Learn about LiveKit WebRTC integration.
+  </Card>
+  <Card title="Voice Agents Guide" icon="mic">
+    Build voice agents with Pipeline or Realtime architecture.
+  </Card>
+</CardGroup>

@@ -157,11 +157,12 @@
     {
       "group": "Text Chat",
       "pages": [
-        "api-reference/chat",
-        "api-reference/endpoint/create-chat-session",
-        "api-reference/endpoint/send-message",
-        "api-reference/endpoint/get-messages",
-        "api-reference/endpoint/end-session"
+        "api-reference/chat/overview",
+        "api-reference/chat/create-session",
+        "api-reference/chat/send-message",
+        "api-reference/chat/get-history",
+        "api-reference/chat/end-session",
+        "api-reference/chat/create-voice-session"
       ]
     },
     {

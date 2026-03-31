@@ -1,0 +1,471 @@
+---
+title: "Send Message (SSE)"
+openapi: "POST /v1/chat/sessions/{conversation_id}/messages"
+description: "Send a message and receive streamed response via Server-Sent Events (SSE)."
+---
+
+## Overview
+
+Send a message to the chat agent and receive a real-time streamed response. The response uses Server-Sent Events (SSE) to stream text incrementally as the LLM generates it.
+
+**Authentication:** `Authorization: Bearer {session_token}`
+
+**Content-Type:** `text/event-stream`
+
+---
+
+## Request
+
+**Path Parameters:**
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `conversation_id` | string | ✅ | Session ID from create session response |
+
+**Headers:**
+```
+Authorization: Bearer {session_token}
+Content-Type: application/json
+```
+
+**Body:**
+```json
+{
+  "message": "What services do you offer?"
+}
+```
+
+### Request Fields
+
+| Field | Type | Required | Validation |
+|-------|------|----------|------------|
+| `message` | string | ✅ | 1-10,000 characters |
+
+---
+
+## Response
+
+**Status:** `200 OK`
+
+**Content-Type:** `text/event-stream`
+
+**Format:** SSE stream with event types
+
+### SSE Event Format
+
+Each event consists of:
+```
+event: {event_type}
+data: {json_data}
+
+```
+
+Events are separated by blank lines (`\n\n`).
+
+### Event Types
+
+#### stream_start
+
+Fired when agent starts generating response.
+
+```
+event: stream_start
+data: {"agent_name": "Support Agent"}
+```
+
+**Use:** Show loading indicator
+
+#### chunk
+
+Fired for each text delta.
+
+```
+event: chunk
+data: {"delta": "Hello! "}
+
+event: chunk
+data: {"delta": "How can I help?"}
+```
+
+**Use:** Append to chat bubble
+
+#### tool_call
+
+Fired when agent calls a function/tool.
+
+```
+event: tool_call
+data: {"name": "web_search", "status": "executing"}
+```
+
+**Use:** Optionally show "Looking that up..." indicator
+
+#### tool_result
+
+Fired when tool completes.
+
+```
+event: tool_result
+data: {"name": "web_search", "status": "completed"}
+```
+
+**Use:** Hide tool indicator
+
+#### handoff
+
+Fired during multi-agent handoff.
+
+```
+event: handoff
+data: {"to": "Billing Agent"}
+```
+
+**Use:** Show "Transferring to specialist..." message
+
+#### stream_end
+
+Fired when response complete.
+
+```
+event: stream_end
+data: {
+  "usage": {
+    "input_tokens": 45,
+    "output_tokens": 120
+  },
+  "end_session": false
+}
+```
+
+**Use:** 
+- Clear loading state
+- Check `end_session` flag
+- If `true`, call `/end` endpoint
+
+#### error
+
+Fired on error.
+
+```
+event: error
+data: {"error": "Something went wrong"}
+```
+
+**Use:** Show error message to user
+
+---
+
+## Parsing SSE Stream
+
+### JavaScript Example
+
+```javascript
+async function sendMessage(conversationId, sessionToken, message) {
+  const response = await fetch(
+    `https://api.talkifai.dev/v1/chat/sessions/${conversationId}/messages`,
+    {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${sessionToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ message })
+    }
+  );
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let fullResponse = '';
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+
+    // Split by double newline (SSE event separator)
+    const blocks = buffer.split('\n\n');
+    buffer = blocks.pop(); // Keep incomplete trailing block
+
+    for (const block of blocks) {
+      let eventType = '';
+      let dataStr = '';
+
+      // Parse event type and data
+      for (const line of block.split('\n')) {
+        if (line.startsWith('event: ')) {
+          eventType = line.slice(7).trim();
+        } else if (line.startsWith('data: ')) {
+          dataStr = line.slice(6);
+        }
+      }
+
+      if (!dataStr) continue;
+
+      const data = JSON.parse(dataStr);
+
+      // Handle each event type
+      if (eventType === 'chunk') {
+        fullResponse += data.delta;
+        updateChatBubble(fullResponse);
+      } else if (eventType === 'stream_end') {
+        console.log('Tokens:', data.usage);
+        if (data.end_session) {
+          await endSession(conversationId, sessionToken);
+        }
+      } else if (eventType === 'error') {
+        showError(data.error);
+      }
+    }
+  }
+}
+```
+
+### React Hook Example
+
+```tsx
+function useChatStream() {
+  const [messages, setMessages] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const sendMessage = async (conversationId, token, userMessage) => {
+    setIsLoading(true);
+    setError(null);
+
+    // Add user message
+    setMessages(prev => [...prev, { role: 'user', text: userMessage }]);
+
+    // Add empty assistant bubble for streaming
+    setMessages(prev => [...prev, { role: 'assistant', text: '' }]);
+
+    try {
+      const response = await fetch(
+        `/v1/chat/sessions/${conversationId}/messages`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ message: userMessage })
+        }
+      );
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let fullText = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const blocks = buffer.split('\n\n');
+        buffer = blocks.pop();
+
+        for (const block of blocks) {
+          let eventType = '';
+          let dataStr = '';
+
+          for (const line of block.split('\n')) {
+            if (line.startsWith('event: ')) eventType = line.slice(7).trim();
+            else if (line.startsWith('data: ')) dataStr = line.slice(6);
+          }
+
+          if (!dataStr) continue;
+          const data = JSON.parse(dataStr);
+
+          if (eventType === 'chunk') {
+            fullText += data.delta;
+            setMessages(prev => [
+              ...prev.slice(0, -1),
+              { role: 'assistant', text: fullText }
+            ]);
+          } else if (eventType === 'stream_end') {
+            setIsLoading(false);
+            if (data.end_session) {
+              await endSession(conversationId, token);
+            }
+          } else if (eventType === 'error') {
+            setIsLoading(false);
+            setError(data.error);
+          }
+        }
+      }
+    } catch (err) {
+      setIsLoading(false);
+      setError('Connection lost');
+    }
+  };
+
+  return { messages, isLoading, error, sendMessage };
+}
+```
+
+---
+
+## Session Lock
+
+The API automatically acquires a **session lock** when processing messages:
+
+- Prevents concurrent message processing
+- Ensures message order
+- Prevents race conditions
+
+If a previous message is still streaming, new requests wait for the lock.
+
+---
+
+## Conversation History
+
+The API maintains conversation history internally:
+
+- Last 40 items (20 exchanges) sent to LLM
+- Prevents unbounded growth
+- Automatic capping
+
+You can retrieve full history via [Get History](/api-reference/chat/get-history) endpoint.
+
+---
+
+## Token Tracking
+
+Automatic tracking of:
+
+- Input tokens (user messages)
+- Output tokens (assistant responses)
+- Total usage per session
+
+Returned in `stream_end` event's `usage` field.
+
+---
+
+## Error Responses
+
+### 400 Bad Request
+```json
+{
+  "detail": "Message too long (max 10000 characters)"
+}
+```
+
+### 401 Unauthorized
+```json
+{
+  "detail": "Invalid token"
+}
+```
+
+### 403 Forbidden
+```json
+{
+  "detail": "Conversation ID does not match session token"
+}
+```
+
+### 404 Not Found
+```json
+{
+  "detail": "Session not found or expired"
+}
+```
+
+---
+
+## Best Practices
+
+### 1. Show Loading State
+
+```javascript
+// Before sending
+setIsLoading(true);
+
+// On stream_start or first chunk
+// Keep loading visible
+
+// On stream_end or error
+setIsLoading(false);
+```
+
+### 2. Handle All Event Types
+
+```javascript
+switch (eventType) {
+  case 'chunk':
+    // Stream text
+    break;
+  case 'tool_call':
+    // Show tool indicator
+    break;
+  case 'tool_result':
+    // Hide tool indicator
+    break;
+  case 'handoff':
+    // Show transfer message
+    break;
+  case 'stream_end':
+    // Clear loading
+    break;
+  case 'error':
+    // Show error
+    break;
+}
+```
+
+### 3. Check end_session Flag
+
+```javascript
+if (eventType === 'stream_end') {
+  if (data.end_session) {
+    // Agent called end_chat tool
+    await endSession(conversationId, token);
+  }
+}
+```
+
+### 4. Handle Disconnections
+
+```javascript
+try {
+  // ... streaming logic
+} catch (err) {
+  setError('Connection lost. Please try again.');
+  // Allow retry
+}
+```
+
+### 5. Use keepalive for /end
+
+```javascript
+// On page unload
+window.addEventListener('beforeunload', () => {
+  fetch(`/v1/chat/sessions/${conversationId}/end`, {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${token}` },
+    keepalive: true // Ensures request completes
+  });
+});
+```
+
+---
+
+## Related Endpoints
+
+- [Create Session](/api-reference/chat/create-session) — Start new session
+- [Get History](/api-reference/chat/get-history) — Retrieve messages
+- [End Session](/api-reference/chat/end-session) — End and cleanup
+
+---
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="End Session" icon="check">
+    Always end sessions explicitly to trigger cleanup.
+  </Card>
+  <Card title="Get History" icon="database">
+    Retrieve message history for resuming conversations.
+  </Card>
+</CardGroup>

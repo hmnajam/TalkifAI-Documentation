@@ -1,0 +1,405 @@
+---
+title: "Get Message History"
+openapi: "GET /v1/chat/sessions/{conversation_id}/messages"
+description: "Retrieve paginated message history for a chat session. Useful for resuming conversations or page refreshes."
+---
+
+## Overview
+
+Retrieves the message history for a specific chat session. Returns paginated results with message content, timestamps, and token counts.
+
+**Authentication:** `Authorization: Bearer {session_token}`
+
+**Use Cases:**
+- Page refresh (restore chat state)
+- Resuming abandoned sessions
+- Exporting conversation history
+- Displaying chat history in UI
+
+---
+
+## Request
+
+**Path Parameters:**
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `conversation_id` | string | ✅ | Session ID from create session response |
+
+**Headers:**
+```
+Authorization: Bearer {session_token}
+```
+
+**Query Parameters:**
+| Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `limit` | number | ❌ | 50 | Max messages to return (max: 100) |
+| `offset` | number | ❌ | 0 | Skip this many messages |
+
+**Example:**
+```
+GET /v1/chat/sessions/chat_abc123_user_1705312800000/messages?limit=20&offset=0
+```
+
+---
+
+## Response
+
+**Status:** `200 OK`
+
+```json
+{
+  "messages": [
+    {
+      "role": "assistant",
+      "content": "Hello! How can I help you today?",
+      "timestamp": "2024-01-15T10:00:00+00:00",
+      "token_count": null
+    },
+    {
+      "role": "user",
+      "content": "What services do you offer?",
+      "timestamp": "2024-01-15T10:00:05+00:00",
+      "token_count": null
+    },
+    {
+      "role": "assistant",
+      "content": "We offer a wide range of services including...",
+      "timestamp": "2024-01-15T10:00:06+00:00",
+      "token_count": 45
+    },
+    {
+      "role": "user",
+      "content": "What are your pricing plans?",
+      "timestamp": "2024-01-15T10:00:15+00:00",
+      "token_count": null
+    },
+    {
+      "role": "assistant",
+      "content": "Our pricing plans are as follows...",
+      "timestamp": "2024-01-15T10:00:16+00:00",
+      "token_count": 120
+    }
+  ],
+  "count": 5
+}
+```
+
+### Response Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `messages` | array | List of message objects |
+| `messages[].role` | string | `user` or `assistant` |
+| `messages[].content` | string | Message text content |
+| `messages[].timestamp` | string | ISO 8601 datetime |
+| `messages[].token_count` | number | Token count (assistant messages only) |
+| `count` | number | Total messages returned |
+
+---
+
+## Pagination
+
+### Default Behavior
+- **Limit:** 50 messages (default)
+- **Offset:** 0 (start from beginning)
+- **Maximum:** 100 messages per request
+
+### Paginating Large Histories
+
+```javascript
+// Get first page
+const page1 = await fetch(
+  `/v1/chat/sessions/${conversationId}/messages?limit=50&offset=0`,
+  { headers: { Authorization: `Bearer ${token}` } }
+);
+
+// Get second page
+const page2 = await fetch(
+  `/v1/chat/sessions/${conversationId}/messages?limit=50&offset=50`,
+  { headers: { Authorization: `Bearer ${token}` } }
+);
+```
+
+### Getting Last N Messages
+
+```javascript
+// Get last 20 messages (reverse order in UI)
+const response = await fetch(
+  `/v1/chat/sessions/${conversationId}/messages?limit=20&offset=9999`,
+  { headers: { Authorization: `Bearer ${token}` } }
+);
+```
+
+---
+
+## Error Responses
+
+### 401 Unauthorized
+```json
+{
+  "detail": "Invalid token"
+}
+```
+
+### 403 Forbidden
+```json
+{
+  "detail": "Conversation ID does not match session token"
+}
+```
+
+### 404 Not Found
+```json
+{
+  "detail": "Session not found or expired"
+}
+```
+
+---
+
+## Examples
+
+### cURL
+```bash
+curl -X GET "https://api.talkifai.dev/v1/chat/sessions/chat_abc123/messages?limit=20" \
+  -H "Authorization: Bearer eyJhbGc..."
+```
+
+### JavaScript (Fetch)
+```javascript
+async function getMessageHistory(conversationId, token, limit = 50, offset = 0) {
+  const url = new URL(
+    `https://api.talkifai.dev/v1/chat/sessions/${conversationId}/messages`
+  );
+  url.searchParams.set('limit', limit);
+  url.searchParams.set('offset', offset);
+
+  const response = await fetch(url, {
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || 'Failed to fetch history');
+  }
+
+  return response.json();
+}
+
+// Usage
+const history = await getMessageHistory(conversationId, sessionToken);
+console.log(`${history.count} messages loaded`);
+```
+
+### React (Load on Mount)
+```tsx
+function ChatWindow({ conversationId, sessionToken }) {
+  const [messages, setMessages] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadHistory() {
+      try {
+        const response = await fetch(
+          `/v1/chat/sessions/${conversationId}/messages?limit=50`,
+          {
+            headers: {
+              'Authorization': `Bearer ${sessionToken}`
+            }
+          }
+        );
+
+        const data = await response.json();
+        setMessages(data.messages);
+      } catch (error) {
+        console.error('Failed to load history:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadHistory();
+  }, [conversationId, sessionToken]);
+
+  if (loading) return <div>Loading chat history...</div>;
+
+  return (
+    <div>
+      {messages.map((msg, i) => (
+        <div key={i} className={`message ${msg.role}`}>
+          {msg.content}
+        </div>
+      ))}
+    </div>
+  );
+}
+```
+
+### Next.js (Server Component)
+```tsx
+async function ChatHistory({ conversationId, sessionToken }) {
+  const response = await fetch(
+    `${process.env.TALKIFAI_API_URL}/v1/chat/sessions/${conversationId}/messages?limit=50`,
+    {
+      headers: {
+        'Authorization': `Bearer ${sessionToken}`
+      },
+      cache: 'no-store'
+    }
+  );
+
+  const data = await response.json();
+
+  return (
+    <div className="chat-history">
+      {data.messages.map((msg, i) => (
+        <Message key={i} role={msg.role} content={msg.content} />
+      ))}
+    </div>
+  );
+}
+```
+
+---
+
+## Use Cases
+
+### 1. Restore Chat After Page Refresh
+
+```javascript
+// On page load
+useEffect(() => {
+  const savedConversationId = sessionStorage.getItem('conversation_id');
+  const savedToken = sessionStorage.getItem('session_token');
+
+  if (savedConversationId && savedToken) {
+    loadHistory(savedConversationId, savedToken);
+  }
+}, []);
+```
+
+### 2. Export Conversation
+
+```javascript
+async function exportConversation(conversationId, token) {
+  const history = await getMessageHistory(conversationId, token, 1000);
+  
+  const text = history.messages.map(msg => 
+    `${msg.role.toUpperCase()}: ${msg.content}`
+  ).join('\n\n');
+  
+  // Download as text file
+  const blob = new Blob([text], { type: 'text/plain' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `chat-${conversationId}.txt`;
+  a.click();
+}
+```
+
+### 3. Infinite Scroll History
+
+```tsx
+function ChatWithScroll({ conversationId, token }) {
+  const [messages, setMessages] = useState([]);
+  const [offset, setOffset] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+
+  const loadMore = async () => {
+    const data = await getMessageHistory(conversationId, token, 50, offset);
+    
+    if (data.count < 50) {
+      setHasMore(false);
+    }
+    
+    setMessages(prev => [...data.messages, ...prev]);
+    setOffset(prev => prev + 50);
+  };
+
+  return (
+    <div onScroll={handleScroll}>
+      {hasMore && <button onClick={loadMore}>Load Earlier</button>}
+      {messages.map(msg => <Message {...msg} />)}
+    </div>
+  );
+}
+```
+
+---
+
+## Best Practices
+
+### 1. Cache History Locally
+
+```javascript
+// Store in localStorage for offline viewing
+localStorage.setItem(`chat_${conversationId}`, JSON.stringify(messages));
+
+// Load from cache first
+const cached = localStorage.getItem(`chat_${conversationId}`);
+if (cached) {
+  setMessages(JSON.parse(cached));
+}
+```
+
+### 2. Limit Initial Load
+
+```javascript
+// Load only last 20 messages initially
+const response = await fetch(
+  `/v1/chat/sessions/${conversationId}/messages?limit=20&offset=9999`
+);
+
+// Load full history on demand
+```
+
+### 3. Handle Session Expiry
+
+```javascript
+try {
+  const history = await getMessageHistory(conversationId, token);
+} catch (error) {
+  if (error.message.includes('expired') || error.message.includes('not found')) {
+    // Session expired - create new session
+    await startNewSession();
+  }
+}
+```
+
+### 4. Preserve Scroll Position
+
+```javascript
+const messageListRef = useRef(null);
+
+useEffect(() => {
+  if (messageListRef.current) {
+    // Scroll to bottom after loading
+    messageListRef.current.scrollTop = messageListRef.current.scrollHeight;
+  }
+}, [messages]);
+```
+
+---
+
+## Related Endpoints
+
+- [Create Session](/api-reference/chat/create-session) — Start new session
+- [Send Message](/api-reference/chat/send-message) — Send messages with SSE
+- [End Session](/api-reference/chat/end-session) — End and cleanup
+
+---
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Send Message" icon="message">
+    Continue the conversation with SSE streaming.
+  </Card>
+  <Card title="End Session" icon="check">
+    Properly end session to trigger cleanup.
+  </Card>
+</CardGroup>
