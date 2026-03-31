@@ -74,10 +74,17 @@ Call this endpoint from your **backend server** to create a chat session:
 ```bash
 POST https://api.talkifai.dev/v1/chat/sessions
 X-API-Key: tk_live_your_key_here
+# OR (for TalkifAI Studio internal use)
+# X-Studio-Token: better_auth_session_token
 Content-Type: application/json
 
 {
-  "agent_id": "5b710eca-ee67-4c3a-aeb6-8b541f451b40"
+  "agent_id": "5b710eca-ee67-4c3a-aeb6-8b541f451b40",
+  "user_identifier": "customer@example.com",
+  "metadata": {
+    "source": "website_chat",
+    "page_url": "https://example.com/support"
+  }
 }
 ```
 
@@ -97,8 +104,32 @@ Content-Type: application/json
 | `conversation_id` | Unique ID for this chat session |
 | `session_token` | JWT token for authenticating messages (24h expiry) |
 | `agent_name` | Name of the agent |
-| `greeting` | Agent's opening message to display in the chat UI. `null` if agent waits for user to speak first |
+| `greeting` | Agent's opening message. `null` if agent waits for user to speak first |
 | `agent_model` | LLM model used by the agent |
+
+### Request Fields
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `agent_id` | string | ✅ | Agent ID (UUID format) |
+| `user_identifier` | string | ❌ | **Important:** End-user email for memory linking across sessions |
+| `metadata` | object | ❌ | Optional metadata for tracking |
+
+<Warning>
+  **Always provide `user_identifier`** (customer email) for returning user memory. Without it, every session is isolated and memory cannot be retrieved later.
+</Warning>
+
+### Authentication Modes
+
+**Mode 1: API Key (External Websites)**
+- Use `X-API-Key` header
+- For customer-facing chat widgets
+- API key stays on your backend (never expose to browser)
+
+**Mode 2: Studio Token (Internal)**
+- Use `X-Studio-Token` header  
+- For TalkifAI Studio agent preview/testing
+- Token from Better Auth session
 
 **Time:** ~300–500ms (agent initialization + memory loading)
 

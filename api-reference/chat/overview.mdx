@@ -1,0 +1,266 @@
+---
+title: "Chat API Reference"
+description: "Complete API reference for the TalkifAI Text Chat API — embed text-based AI agents on any website."
+---
+
+## Overview
+
+The **Text Chat API** enables developers to integrate TalkifAI text agents into websites, mobile apps, and other applications using REST + Server-Sent Events (SSE) streaming.
+
+**Base URL:** `https://api.talkifai.dev/v1/chat`
+
+**Authentication:**
+- **Session Creation:** `X-API-Key` or `X-Studio-Token` header
+- **All Other Requests:** `Authorization: Bearer {session_token}` (JWT)
+
+---
+
+## Endpoints
+
+<CardGroup cols={2}>
+  <Card title="Create Session" icon="plus" href="/api-reference/chat/create-session">
+    `POST /sessions` — Create a new chat session
+  </Card>
+  <Card title="Send Message" icon="message" href="/api-reference/chat/send-message">
+    `POST /sessions/{id}/messages` — Send message (SSE stream)
+  </Card>
+  <Card title="Get History" icon="database" href="/api-reference/chat/get-history">
+    `GET /sessions/{id}/messages` — Retrieve message history
+  </Card>
+  <Card title="End Session" icon="check" href="/api-reference/chat/end-session">
+    `POST /sessions/{id}/end` — End session and cleanup
+  </Card>
+  <Card title="Create Voice Session" icon="mic" href="/api-reference/chat/create-voice-session">
+    `POST /voice-sessions` — Create LiveKit voice session
+  </Card>
+</CardGroup>
+
+---
+
+## Authentication
+
+### Session Creation (Server-Side)
+
+Two authentication methods supported:
+
+**Method 1: API Key**
+```
+POST /v1/chat/sessions
+X-API-Key: tk_live_your_api_key_here
+```
+
+**Method 2: Studio Token**
+```
+POST /v1/chat/sessions
+X-Studio-Token: better_auth_session_token
+```
+
+### All Other Requests (Client-Side)
+
+```
+Authorization: Bearer {session_token}
+```
+
+Session tokens are JWTs returned from `/sessions` endpoint, valid for 24 hours.
+
+---
+
+## Request/Response Models
+
+### CreateSessionRequest
+
+```json
+{
+  "agent_id": "string (required)",
+  "metadata": "object (optional)",
+  "user_identifier": "string (optional, email for memory)"
+}
+```
+
+### CreateSessionResponse
+
+```json
+{
+  "conversation_id": "string",
+  "session_token": "string",
+  "agent_name": "string",
+  "greeting": "string or null",
+  "agent_model": "string"
+}
+```
+
+### SendMessageRequest
+
+```json
+{
+  "message": "string (required, max 10000 chars)"
+}
+```
+
+### Message
+
+```json
+{
+  "role": "user | assistant",
+  "content": "string",
+  "timestamp": "ISO 8601 datetime",
+  "token_count": "number or null"
+}
+```
+
+### MessagesResponse
+
+```json
+{
+  "messages": "Message[]",
+  "count": "number"
+}
+```
+
+### EndSessionResponse
+
+```json
+{
+  "success": "boolean",
+  "message": "string"
+}
+```
+
+---
+
+## SSE Event Types
+
+When sending messages, the response is streamed via Server-Sent Events:
+
+| Event | Data | Description |
+|-------|------|-------------|
+| `stream_start` | `{"agent_name": "..."}` | Agent started generating |
+| `chunk` | `{"delta": "text..."}` | Incremental text delta |
+| `tool_call` | `{"name": "...", "status": "executing"}` | Tool execution started |
+| `tool_result` | `{"name": "...", "status": "completed"}` | Tool execution finished |
+| `handoff` | `{"to": "agent_name"}` | Multi-agent handoff |
+| `stream_end` | `{"usage": {...}, "end_session": bool}` | Response complete |
+| `error` | `{"error": "message"}` | Error occurred |
+
+---
+
+## Error Codes
+
+| Status | Code | Description |
+|--------|------|-------------|
+| 400 | `message_too_long` | Message exceeds 10,000 characters |
+| 400 | `not_text_agent` | Agent is not text architecture |
+| 401 | `invalid_api_key` | API key missing or invalid |
+| 401 | `invalid_token` | JWT token expired or invalid |
+| 402 | `insufficient_credits` | Organization has no credits |
+| 403 | `conversation_mismatch` | Conversation ID doesn't match token |
+| 404 | `session_not_found` | Session expired or not found |
+| 503 | — | Billing service unavailable |
+
+---
+
+## Session Lifecycle
+
+```
+1. Create Session (POST /sessions)
+   ↓
+   Returns: conversation_id, session_token
+   ↓
+2. Send Messages (POST /sessions/{id}/messages)
+   ↓
+   SSE stream with chunks
+   ↓
+3. End Session (POST /sessions/{id}/end)
+   ↓
+   Cleanup: billing, memory, analysis, webhooks
+```
+
+**Auto-Expiry:** Sessions expire after 30 minutes of inactivity.
+
+---
+
+## Related Documentation
+
+- [Chat API Guide](/guides/chat-api) — Complete integration guide with examples
+- [Custom Functions](/guides/custom-functions) — Add API integrations
+- [Conversation Memory](/platform/memory) — Enable long-term memory
+- [Agent Architectures](/platform/agent-architectures) — Text vs Voice agents
+
+---
+
+## SDK Support
+
+**Official SDKs:**
+- JavaScript/TypeScript (coming soon)
+- Python (coming soon)
+- React Hook (see guide)
+
+**Community SDKs:**
+- Check npm and PyPI for community-maintained packages
+
+---
+
+## Rate Limits
+
+| Endpoint | Limit |
+|----------|-------|
+| Create Session | 100/minute per API key |
+| Send Message | 60/minute per session |
+| Get History | 100/minute per session |
+| End Session | 60/minute per session |
+
+Rate limits are per API key or session token.
+
+---
+
+## CORS
+
+**Allowed Origins:**
+- All origins allowed (`*`)
+- Configure in your API key settings
+
+**Allowed Methods:**
+- `GET`, `POST`, `OPTIONS`
+
+**Allowed Headers:**
+- `Content-Type`
+- `Authorization`
+- `X-API-Key`
+- `X-Studio-Token`
+- `Origin`
+
+---
+
+## Webhooks
+
+When a chat session ends, a webhook is sent if configured on the agent:
+
+```json
+{
+  "event": "chat.ended",
+  "timestamp": "2024-01-15T10:35:00Z",
+  "data": {
+    "conversation_id": "chat_...",
+    "agent_id": "agent_...",
+    "agent_name": "Support Bot",
+    "duration": 300,
+    "message_count": 20,
+    "input_tokens": 150,
+    "output_tokens": 300,
+    "total_cost": 0.0045
+  }
+}
+```
+
+---
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Create Session" icon="arrow-right">
+    Start with POST /sessions to create your first chat session.
+  </Card>
+  <Card title="Integration Guide" icon="book">
+    See the complete guide with React/Next.js examples.
+  </Card>
+</CardGroup>

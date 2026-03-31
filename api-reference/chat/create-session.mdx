@@ -1,0 +1,500 @@
+---
+title: "Create Chat Session"
+openapi: "POST /v1/chat/sessions"
+description: "Create a new text chat session. Returns session token, conversation ID, and greeting message."
+---
+
+## Overview
+
+Creates a new chat session for a text-based AI agent. This endpoint initializes the agent, loads memory context (if enabled), starts billing, and returns a JWT session token for subsequent requests.
+
+**Authentication:** `X-API-Key` or `X-Studio-Token` header required
+
+**Time:** ~300-500ms (agent initialization + memory loading)
+
+---
+
+## Request
+
+**Headers:**
+```
+Content-Type: application/json
+X-API-Key: tk_live_your_api_key_here
+# OR
+X-Studio-Token: better_auth_session_token
+Origin: https://your-domain.com (optional, for CORS)
+```
+
+**Body:**
+```json
+{
+  "agent_id": "5b710eca-ee67-4c3a-aeb6-8b541f451b40",
+  "metadata": {
+    "source": "website_chat",
+    "page_url": "https://example.com/support"
+  },
+  "user_identifier": "customer@example.com"
+}
+```
+
+### Request Fields
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `agent_id` | string | ✅ | Agent ID (UUID format) |
+| `metadata` | object | ❌ | Optional metadata for tracking |
+| `user_identifier` | string | ❌ | End-user email for memory linking |
+
+### User Identifier (Important)
+
+The `user_identifier` should be the **end-user's email address**. This enables:
+
+- **Cross-channel memory:** Links web chat, voice calls, and telephony conversations
+- **Returning user context:** Memory persists across sessions
+- **Personalized responses:** Agent remembers past interactions
+
+If not provided, a throwaway UUID is generated and memory cannot be retrieved later.
+
+---
+
+## Response
+
+**Status:** `200 OK`
+
+```json
+{
+  "conversation_id": "chat_5b710eca_user123_1705312800000",
+  "session_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "agent_name": "Support Agent",
+  "greeting": "Hello! How can I help you today?",
+  "agent_model": "gpt-4o-mini"
+}
+```
+
+### Response Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `conversation_id` | string | Unique session ID (use in all subsequent requests) |
+| `session_token` | string | JWT token for authentication (24h expiry) |
+| `agent_name` | string | Display name of the agent |
+| `greeting` | string | Agent's opening message (null if user speaks first) |
+| `agent_model` | string | LLM model used (e.g., `gpt-4o-mini`) |
+
+---
+
+## Authentication Modes
+
+### Mode 1: API Key (External Embeds)
+
+**Use Case:** Customer-facing chat widgets on external websites
+
+**Flow:**
+1. Your backend calls `/v1/chat/sessions` with your API key
+2. Your backend receives `session_token`
+3. Your backend sends `session_token` to frontend
+4. Frontend uses `session_token` for all chat requests
+
+**Security:** API key never exposed to browser
+
+```javascript
+// Your backend server (Node.js/Express)
+app.post('/api/chat/start', async (req, res) => {
+  const response = await fetch('https://api.talkifai.dev/v1/chat/sessions', {
+    method: 'POST',
+    headers: {
+      'X-API-Key': process.env.TALKIFAI_API_KEY,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      agent_id: process.env.TALKIFAI_AGENT_ID,
+      user_identifier: req.body.userEmail // Optional
+    })
+  });
+
+  const data = await response.json();
+  res.json(data); // session_token is safe to send to frontend
+});
+```
+
+### Mode 2: Studio Token (Internal Preview)
+
+**Use Case:** TalkifAI Studio agent testing and preview
+
+**Flow:**
+1. User logged into TalkifAI Studio
+2. Frontend has Better Auth session token
+3. Frontend sends `X-Studio-Token` header
+4. Session created with user's active organization
+
+```typescript
+// TalkifAI Studio (Next.js)
+const response = await fetch('/v1/chat/sessions', {
+  method: 'POST',
+  headers: {
+    'X-Studio-Token': session.token,
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    agent_id: agentId,
+    user_identifier: user.email
+  })
+});
+```
+
+---
+
+## What Happens on Session Creation
+
+1. **Authentication Verified**
+   - API key validated against database
+   - OR Studio token verified against session table
+
+2. **Agent Loaded**
+   - Agent configuration fetched
+   - Custom functions loaded
+   - Subagents loaded (if configured)
+   - Knowledge bases linked
+
+3. **Memory Context Resolved**
+   - If `user_identifier` provided: resolve Graphiti `memory_id`
+   - Load historical context from knowledge graph
+   - Inject into system prompt
+
+4. **Credit Check**
+   - Organization credits verified
+   - Fail-closed: insufficient credits = 402 error
+
+5. **Billing Session Started**
+   - Billing session created in database
+   - Session type: `chat`
+   - Ready for message-based billing
+
+6. **Session Stored**
+   - Session stored in memory (SessionStore)
+   - Conversation input initialized
+   - Activity tracking started
+
+7. **Greeting Generated**
+   - Based on agent's `greetingType`
+   - Saved to ChatMessages table
+   - Returned in response
+
+8. **JWT Token Signed**
+   - Contains: conversation_id, agent_id, organization_id, user_id
+   - Valid for 24 hours
+   - Returned as `session_token`
+
+---
+
+## Error Responses
+
+### 400 Bad Request
+```json
+{
+  "detail": "Agent ID is required"
+}
+```
+
+```json
+{
+  "detail": "Agent not found or does not belong to your organization"
+}
+```
+
+### 401 Unauthorized
+```json
+{
+  "detail": "Authentication required: provide X-API-Key or X-Studio-Token"
+}
+```
+
+```json
+{
+  "detail": "Invalid or expired studio session"
+}
+```
+
+### 402 Payment Required
+```json
+{
+  "detail": "Insufficient credits. Please add credits to continue."
+}
+```
+
+### 404 Not Found
+```json
+{
+  "detail": "Agent {agent_id} not found or does not belong to your organization"
+}
+```
+
+### 503 Service Unavailable
+```json
+{
+  "detail": "Billing service unavailable: connection timeout"
+}
+```
+
+---
+
+## Examples
+
+### cURL (API Key)
+```bash
+curl -X POST "https://api.talkifai.dev/v1/chat/sessions" \
+  -H "X-API-Key: tk_live_your_key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "agent_id": "5b710eca-ee67-4c3a-aeb6-8b541f451b40",
+    "user_identifier": "customer@example.com"
+  }'
+```
+
+### JavaScript (Backend Proxy)
+```javascript
+// server.js (Node.js/Express)
+app.post('/api/chat/start', async (req, res) => {
+  try {
+    const response = await fetch('https://api.talkifai.dev/v1/chat/sessions', {
+      method: 'POST',
+      headers: {
+        'X-API-Key': process.env.TALKIFAI_API_KEY,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        agent_id: process.env.TALKIFAI_AGENT_ID,
+        user_identifier: req.body.email,
+        metadata: {
+          source: 'website_chat',
+          page: '/support'
+        }
+      })
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      return res.status(response.status).json(error);
+    }
+
+    const data = await response.json();
+    res.json(data);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to start chat' });
+  }
+});
+```
+
+### Next.js API Route
+```typescript
+// app/api/chat/start/route.ts
+import { NextResponse } from 'next/server';
+
+export async function POST(request: Request) {
+  try {
+    const body = await request.json();
+    
+    const response = await fetch(
+      `${process.env.TALKIFAI_API_URL}/v1/chat/sessions`,
+      {
+        method: 'POST',
+        headers: {
+          'X-API-Key': process.env.TALKIFAI_API_KEY!,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          agent_id: process.env.TALKIFAI_AGENT_ID,
+          user_identifier: body.email,
+          metadata: body.metadata
+        })
+      }
+    );
+
+    const data = await response.json();
+    
+    if (!response.ok) {
+      return NextResponse.json(data, { status: response.status });
+    }
+
+    return NextResponse.json(data);
+  } catch (error) {
+    return NextResponse.json(
+      { error: 'Failed to start chat' },
+      { status: 500 }
+    );
+  }
+}
+```
+
+### Python (FastAPI)
+```python
+# main.py
+from fastapi import FastAPI, HTTPException
+import httpx
+import os
+
+app = FastAPI()
+
+@app.post("/api/chat/start")
+async def start_chat(email: str, metadata: dict = None):
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            "https://api.talkifai.dev/v1/chat/sessions",
+            headers={
+                "X-API-Key": os.environ["TALKIFAI_API_KEY"],
+                "Content-Type": "application/json"
+            },
+            json={
+                "agent_id": os.environ["TALKIFAI_AGENT_ID"],
+                "user_identifier": email,
+                "metadata": metadata or {}
+            }
+        )
+        
+        if response.status_code != 200:
+            raise HTTPException(
+                status_code=response.status_code,
+                detail=response.json()
+            )
+        
+        return response.json()
+```
+
+### React (Frontend with Backend Proxy)
+```tsx
+// ChatWidget.tsx
+async function startChat(userEmail: string) {
+  // Call YOUR backend, not TalkifAI directly
+  const response = await fetch('/api/chat/start', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      email: userEmail,
+      metadata: {
+        source: 'chat_widget',
+        page: window.location.pathname
+      }
+    })
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || 'Failed to start chat');
+  }
+
+  const data = await response.json();
+  
+  // Store session token for subsequent requests
+  sessionStorage.setItem('chat_session_token', data.session_token);
+  sessionStorage.setItem('conversation_id', data.conversation_id);
+  
+  // Show greeting if agent speaks first
+  if (data.greeting) {
+    addMessage('assistant', data.greeting);
+  }
+  
+  return data;
+}
+```
+
+---
+
+## Best Practices
+
+### 1. Always Use Backend Proxy
+
+**Never expose API key in frontend:**
+
+❌ **Wrong:**
+```javascript
+// DON'T DO THIS - exposes API key
+fetch('https://api.talkifai.dev/v1/chat/sessions', {
+  headers: {
+    'X-API-Key': 'tk_live_...' // Exposed in browser!
+  }
+});
+```
+
+✅ **Correct:**
+```javascript
+// Call your backend instead
+fetch('/api/chat/start', {
+  method: 'POST',
+  body: JSON.stringify({ email: user@email })
+});
+```
+
+### 2. Provide User Identifier
+
+Always provide `user_identifier` for returning user memory:
+
+```javascript
+{
+  "user_identifier": "customer@example.com" // ✅ Good
+}
+```
+
+Without it, every session is isolated and memory cannot be retrieved.
+
+### 3. Handle Greeting Properly
+
+Check if greeting exists before displaying:
+
+```javascript
+if (data.greeting) {
+  addMessage('assistant', data.greeting);
+}
+// If null, agent waits for user to speak first
+```
+
+### 4. Store Session Token Securely
+
+**Browser:**
+```javascript
+sessionStorage.setItem('chat_session_token', data.session_token);
+```
+
+**React Native:**
+```javascript
+await AsyncStorage.setItem('chat_session_token', data.session_token);
+```
+
+### 5. Handle Errors Gracefully
+
+```javascript
+try {
+  const response = await startChat(email);
+} catch (error) {
+  if (error.status === 402) {
+    showCreditError();
+  } else if (error.status === 401) {
+    showAuthError();
+  } else {
+    showGenericError();
+  }
+}
+```
+
+---
+
+## Related Endpoints
+
+- [Send Message](/api-reference/chat/send-message) — Send messages with SSE streaming
+- [Get History](/api-reference/chat/get-history) — Retrieve message history
+- [End Session](/api-reference/chat/end-session) — End session and cleanup
+- [Create Voice Session](/api-reference/chat/create-voice-session) — LiveKit voice session
+
+---
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Send Message" icon="message">
+    Use the session_token to send messages via SSE streaming.
+  </Card>
+  <Card title="Integration Guide" icon="book">
+    See complete examples in the Chat API Guide.
+  </Card>
+</CardGroup>
